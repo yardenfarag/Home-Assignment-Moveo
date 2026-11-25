@@ -30,7 +30,7 @@ export function json(body: unknown, status = 200): Response {
 export function errorResponse(error: UserError): Response {
   const { status, ...body } = error;
   const headers: Record<string, string> = { ...NO_STORE };
-  if (status === 401) headers["WWW-Authenticate"] = 'Basic realm="The Daily Prophet", charset="UTF-8"';
+  if (status === 401) headers["WWW-Authenticate"] = 'Basic realm="Sneakoscope", charset="UTF-8"';
   return Response.json({ error: body }, { status, headers });
 }
 

@@ -17,15 +17,18 @@ body {
     radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
     radial-gradient(900px 500px at 110% 10%, rgba(20, 184, 166, 0.12), transparent 60%),
     var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-roboto), system-ui, sans-serif;
 }
 
-/* Frosted-glass surface used by cards and panels. */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+/* Frosted-glass surface used by cards and panels. In the components layer so utilities can override it. */
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
 }

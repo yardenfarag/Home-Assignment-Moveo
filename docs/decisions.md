@@ -7,7 +7,7 @@ Every choice we made, and why, in plain language. Newest at the bottom of each s
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Name: **The Daily Prophet**. Original design, no Harry Potter logos, fonts, crests or characters. | Fun theme without copying anyone's brand. |
+| D1 | Name: **Sneakoscope** (originally "The Daily Prophet", renamed in the Step 6 review, see D89). Original design, no Harry Potter logos, fonts, crests or characters. | Fun theme without copying anyone's brand. |
 | D2 | **36 hubs**, one per major US metro, stored as rows in the database. Adding a city = adding a row. | The brief asked for 25–50 metros and for hubs to be data, not code. |
 | D3 | "Midwest", "South" and so on use the **official US Census regions**. | Gives "Which Midwest hubs…" a clear, quotable definition. |
 | D4 | A hub's location is the **city-center point**. FEMA data comes from the county that point is in. | Simple and consistent. A real warehouse can sit elsewhere in the metro (written down as an assumption). |
@@ -110,6 +110,25 @@ All numbers below live in **one file**, [`src/core/scoring/config.ts`](../src/co
 | D77 | **`GET /api/widgets`** (A5): top 5 hubs, leader per hazard, data freshness. A pure, tested function over the latest snapshots. No health route. | Deterministic dashboard data, and fewer routes. |
 | D78 | GET routes call **`await connection()` first**, outside try/catch. | With Cache Components on, Next tried to prerender them at build. Reading headers threw its "bail out" signal, which our try/catch swallowed. Next's docs recommend `connection()`. |
 | D79 | `AgentInputError` moved to `core/errors/`, and its messages are friendlier ("That message is too long for me — please keep it under 1,000 characters."). | Error classes belong with errors. The error module no longer pulls in the whole agent. |
+
+### UI details (Step 6, round U1–U8)
+| # | Decision | Why |
+|---|---|---|
+| D80 | **Layout** (U1): side nav (chats) · chat · overview column. Phone: the overview becomes a **swipe strip** above the chat. Tablet: a row of three. Desktop: the right column. Dark glass, Roboto. | The chat stays primary on every screen size. |
+| D81 | **The answer card** (U2), top to bottom: premise banner (code-decided) → text → visuals → recommendation (with disclaimer) → confidence → collapsible "Assumptions & limits" and "How I got this" → follow-up chips. While it works: live progress lines, then streaming text. On a failed check: "Double-checking my numbers…". On failure: a soft card with a hint and "Try again". | Live but trustworthy: only the validated answer gets the data panel. |
+| D82 | **Visuals only where they add something the text can't** (U3, U3b, Yarden: "are visuals adding value?"). **Score breakdown** (where a hub's score comes from), **comparison grid** (hubs × hazards at a glance), **seasonality strip** (*when* hazard days happen), and a plain **ranked list** for rankings. Built in HTML/CSS, **no chart library** (Recharts dropped). Chosen by code from the tool results, at most 2 per answer. | Bar charts of numbers the text already states are clutter. Each kept visual answers a question the prose can't. |
+| D83 | **US/Metric switch** (U4): the weather-stat tool also returns its threshold in both systems (`thresholdBySystem`) and counts by month (`byMonth`). The explain tool returns each hazard's points (`contributions`, `worstHazardBoost`). All computed in code. | The switch flips panels instantly (D60), and the visuals never do arithmetic in the browser. |
+| D84 | **Chat history** (U5, U5b): a refresh starts a new chat, the side nav lists **this browser's chats only** (ids in localStorage), and opening one restores its questions and validated answers. New endpoints: `GET /api/chat/sessions?ids=…`, `GET /api/chat/history?sessionId=…`. Retry feedback is hidden from transcripts. | Everyone shares one login, so "all chats" would expose other visitors' conversations. Real per-user history needs real accounts (later). |
+| D85 | **Dependencies** (U6): `@ai-sdk/react` 4.0.186 (pins our `ai` 7.0.181) for `useChat`, and `react-markdown` (no raw HTML). | Standard, less custom code. Verified compatible before installing. |
+| D86 | **Accessibility** (U7): the streaming answer is announced (`aria-live`), Enter sends / Shift+Enter adds a line, native `<details>`, visible focus rings, reduced motion respected, colors always paired with text labels. **Personality** (U8): the cat in the empty state and friendly errors, the owl wordmark. Answers stay plain. | Readability first, a little warmth around it. |
+| D87 | **Tool output types are imported by the UI** from exported tool builder functions (`ExplainHubScoreOutput`, …). No duplicated shapes. | Single source of truth: a tool change can't silently break a visual. |
+| D89 | **Renamed to Sneakoscope** (Yarden's Step 6 review): in the UI, metadata, agent prompt, error text, login realm, code identifiers, browser storage keys, package name and docs. **Kept on purpose:** the session log and the first migration's SQL comment (historical records), and the Supabase project name `daily-prophet` (cosmetic, can only be renamed in the dashboard). | A Sneakoscope "lights up when something's wrong", which fits a risk-detection tool better than a newspaper. |
+| D90 | **Original SVG icon**: a glass spinning top with a glowing amber core and an alert spark. One design used as the header logo, empty-state art (gently glowing, motion-safe) and browser-tab icon (`app/icon.svg`, replacing Next's default favicon). | The large cat emoji didn't fit a professional tool. The icon carries the name's meaning. |
+| D91 | **Empty-state copy is Yarden's own draft**: "Weather risk across our hubs" + "Ask me about weather risk across our N hubs. I can rank them, compare them, look at past weather, or explain a hub's score…". N comes from the live data, not hard-coded. | "Which hubs should we protect first?" sounded commercial. The hub count is data (adding a city must not need a copy change). |
+| D92 | **Widgets explain themselves**: plain titles ("Most at-risk hubs", "Most exposed hub, per hazard", "About the data"), one line on *what it shows and why it matters for investment decisions*, the Low/Medium/High scale (built from config), and a "select to ask" hint. | Yarden: "widgets are not very clear… why is this important?" |
+| D93 | **"New chat" lives only in the chat list** (the header copy was removed). On phones it's reachable through ☰. | Redundant control (Yarden's review). |
+| D88 | **No Markdown tables in answers** (prompt rule). The UI draws grids from the data. | A model-written table rendered as raw pipes, and it duplicated the comparison grid. |
+
 
 ## Engineering
 

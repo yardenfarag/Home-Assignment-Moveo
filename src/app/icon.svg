@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="glass" x1="12" y1="18" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0.25"/>
+    </linearGradient>
+    <radialGradient id="core" cx="32" cy="34" r="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="0.45" stop-color="#fbbf24" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b1020"/>
+  <rect x="29" y="6" width="6" height="12" rx="2.5" fill="#cbd5e1"/>
+  <rect x="27" y="15" width="10" height="4" rx="2" fill="#94a3b8"/>
+  <path d="M12 29C12 19 52 19 52 29C52 39 41 48 32 58C23 48 12 39 12 29Z" fill="url(#glass)" stroke="#7dd3fc" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="32" cy="29" rx="19" ry="4.5" stroke="#bae6fd" stroke-opacity="0.7" stroke-width="1.5"/>
+  <circle cx="32" cy="34" r="12" fill="url(#core)"/>
+  <path d="M50 10L51.6 14.4L56 16L51.6 17.6L50 22L48.4 17.6L44 16L48.4 14.4Z" fill="#fde68a"/>
+</svg>

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# The Daily Prophet: project rules
+# Sneakoscope: project rules
 
 A weather-risk agent for logistics hubs (take-home assignment). Read before any work:
 [docs/plan.md](docs/plan.md) for architecture and the step list, [docs/decisions.md](docs/decisions.md)
@@ -87,3 +87,12 @@ Each one: *next time you see X → do Y*.
    session log. Rotate any secret that leaks, even partially.
 14. **A GET route handler logs "needs to bail out of prerendering"** → call `await connection()` first, outside any
    try/catch (Cache Components tries to prerender GET handlers, and catching its signal hides it).
+15. **A phone layout is wider than the screen** → a grid track grew to fit a non-wrapping child (e.g. a swipe strip).
+   Use `grid-cols-[minmax(0,1fr)]` and `min-w-0` on the grid item.
+16. **A Tailwind class doesn't override a custom class** → custom CSS outside `@layer` beats Tailwind's layered
+   utilities. Put shared classes like `.glass` in `@layer components`.
+17. **Stopping a background `npx next start` leaves the port busy** → the `npx` wrapper dies but its Node child
+   keeps serving the OLD build. Start servers with `node node_modules/next/dist/bin/next start`, and check the port
+   owner before trusting a test.
+18. **Judging UI from code** → drive the real app and look at screenshots (headless Chrome over the DevTools protocol
+   with an Authorization header). Three layout bugs were invisible in the code and obvious in the screenshots.

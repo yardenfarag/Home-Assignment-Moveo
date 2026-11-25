@@ -1,4 +1,6 @@
-# 🦉 The Daily Prophet
+# Sneakoscope
+
+<img src="src/app/icon.svg" width="56" alt="Sneakoscope icon: a glass spinning top with a glowing core" />
 
 A weather risk intelligence agent for a logistics company's US distribution hubs.
 Analysts chat with it to find out which hubs are most exposed to severe weather, compare hubs,
@@ -38,6 +40,13 @@ npm run dev                    # http://localhost:3000
 | `npm run ask -- "question"` | Ask the real agent from the terminal (add `--session=<id>` for a follow-up, `--metric` for metric units) |
 | `npm run fema:anchors` | Recompute the national 95th-percentile FEMA anchors (for review before changing `scoring/config.ts`) |
 | `npm run session:export -- <file.jsonl>` | Export the AI session log to `docs/session/` (scrubbed) |
+
+## The app
+![Sneakoscope: a conversation with score breakdowns, a comparison grid, seasonality strips and a premise correction](docs/screenshots/desktop-conversation.png)
+
+More screenshots: [start screen](docs/screenshots/desktop-start.png) · [phone](docs/screenshots/phone-start.png).
+Ask in plain language. Every number comes from deterministic, tested code, and the agent says when the data is unsure.
+Use the **US / Metric** switch to change units, and the side nav to reopen this browser's earlier chats.
 
 ## API
 Every route requires the site login (HTTP Basic Auth: `APP_USERNAME` / `APP_PASSWORD`), except the cron route.

@@ -40,7 +40,7 @@ export const USER_ERRORS: Record<UserErrorCode, Omit<UserError, "code">> = {
   },
   unauthorized: {
     status: 401,
-    message: "Please sign in to use The Daily Prophet.",
+    message: "Please sign in to use Sneakoscope.",
     hint: "Use the username and password you were given. If you don't have them, ask whoever shared this link with you.",
     retryable: false,
   },
@@ -88,3 +88,11 @@ export function toUserError(error: unknown): UserError {
   }
   return userError("internal_error");
 }
+
+/** Shown when a streamed answer stops before the validated answer arrives (e.g. the connection dropped). */
+export const STREAM_INTERRUPTED: Omit<UserError, "status"> = {
+  code: "internal_error",
+  message: "The answer stopped before it finished.",
+  hint: "Your connection may have dropped — please try again.",
+  retryable: true,
+};

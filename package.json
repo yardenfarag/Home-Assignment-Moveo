@@ -1,5 +1,5 @@
 {
-  "name": "daily-prophet",
+  "name": "sneakoscope",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -18,12 +18,14 @@
     "ask": "tsx --env-file=.env.local scripts/ask.ts"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.186",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@supabase/supabase-js": "^2.119.2",
     "ai": "^7.0.181",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -38,7 +40,7 @@
     "typescript": "^5",
     "vitest": "^5.1.1"
   },
-  "description": "The Daily Prophet — weather risk intelligence agent for logistics hubs",
+  "description": "Sneakoscope — weather risk intelligence agent for logistics hubs",
   "engines": {
     "node": ">=22"
   }
