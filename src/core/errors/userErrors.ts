@@ -40,8 +40,8 @@ export const USER_ERRORS: Record<UserErrorCode, Omit<UserError, "code">> = {
   },
   unauthorized: {
     status: 401,
-    message: "Please sign in to use Sneakoscope.",
-    hint: "Use the username and password you were given. If you don't have them, ask whoever shared this link with you.",
+    message: "This address is only for Sneakoscope's nightly data job.",
+    hint: "To use Sneakoscope, open the home page and ask a question. 🐱",
     retryable: false,
   },
   no_data: {

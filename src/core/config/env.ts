@@ -42,16 +42,14 @@ const judgeEnvSchema = z.object({
 /** Validated judge settings. */
 export type JudgeEnv = z.infer<typeof judgeEnvSchema>;
 
-/** Site access (Basic Auth, Q16/A2) and the nightly job's secret (A3). */
-const accessEnvSchema = z.object({
-  APP_USERNAME: z.string().min(3),
-  APP_PASSWORD: z.string().min(12, "use at least 12 characters"),
+/** The nightly job's secret (A3). The site itself has no login (D113). */
+const cronEnvSchema = z.object({
   /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically. */
   CRON_SECRET: z.string().min(16, "use at least 16 random characters"),
 });
 
-/** Validated access settings. */
-export type AccessEnv = z.infer<typeof accessEnvSchema>;
+/** Validated cron settings. */
+export type CronEnv = z.infer<typeof cronEnvSchema>;
 
 /**
  * Every env schema, by feature. Add new feature schemas here so the
@@ -60,7 +58,7 @@ export type AccessEnv = z.infer<typeof accessEnvSchema>;
 export const ENV_SCHEMAS = {
   supabase: supabaseEnvSchema,
   openRouter: openRouterEnvSchema,
-  access: accessEnvSchema,
+  cron: cronEnvSchema,
   judge: judgeEnvSchema,
 } as const;
 
@@ -107,13 +105,13 @@ export function getOpenRouterEnv(source: EnvSource = process.env): OpenRouterEnv
 }
 
 /**
- * Returns validated access settings (site login + cron secret).
+ * Returns the validated cron secret.
  * @param source - variables to read (defaults to `process.env`; injectable for tests).
- * @returns username, password and cron secret.
- * @throws BoundaryError when a variable is missing or too weak.
+ * @returns the cron secret.
+ * @throws BoundaryError when it is missing or too short.
  */
-export function getAccessEnv(source: EnvSource = process.env): AccessEnv {
-  return parseEnv(accessEnvSchema, source, "getAccessEnv");
+export function getCronEnv(source: EnvSource = process.env): CronEnv {
+  return parseEnv(cronEnvSchema, source, "getCronEnv");
 }
 
 /**

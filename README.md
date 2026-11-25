@@ -25,8 +25,7 @@ the result, and code checks the explanation before you see it.
 
 ## Try it
 - **Live app:** the Vercel URL is added here at deployment (Step 10).
-- **Sign in:** the browser asks for a username and password (HTTP Basic Auth). They're shared privately with
-  reviewers.
+- **No sign-in needed.** Just open the link.
 - Click one of the example questions on the start screen, or type your own. Use the **US / Metric** switch for
   units, and the side menu to reopen earlier chats.
 
@@ -88,7 +87,6 @@ cp .env.example .env.local     # then fill in the values
 | `OPENROUTER_API_KEY` | the agent, evals | openrouter.ai → Keys (set a credit limit) |
 | `OPENROUTER_MODEL` | the agent | keep `openai/gpt-6.1-terra` (chosen by the [bakeoff](docs/bakeoff.md)) |
 | `JUDGE_MODEL` | evals | keep `google/gemini-3.5-flash-lite` (must be a different provider than the model) |
-| `APP_USERNAME`, `APP_PASSWORD` | the site login | choose them (password: 12+ characters) |
 | `CRON_SECRET` | the nightly job | 16+ random characters |
 | `SESSION_LOG_PATHS`, `SESSION_SCRUB_TERMS` | optional: session log export | see [.env.example](.env.example) |
 
@@ -105,7 +103,7 @@ new days.
 npm run ingest
 ```
 
-**4. Start the app**, open http://localhost:3000, and sign in with your `APP_USERNAME` / `APP_PASSWORD`.
+**4. Start the app** and open http://localhost:3000.
 ```bash
 npm run dev
 ```
@@ -127,8 +125,7 @@ npm run dev
 | `npm run session:export -- <file.jsonl>` | Export the AI coding session to [docs/session/](docs/session/), with private details removed |
 
 ## API
-Every route needs the site login (HTTP Basic Auth with `APP_USERNAME` / `APP_PASSWORD`), except the nightly job,
-which needs `CRON_SECRET`.
+The app has no login, so every route is open, except the nightly job, which needs `CRON_SECRET`.
 
 | Route | What it does |
 |---|---|
@@ -141,7 +138,7 @@ which needs `CRON_SECRET`.
 Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`.
 
 ```bash
-curl -u "$APP_USERNAME:$APP_PASSWORD" -H "Content-Type: application/json" \
+curl -H "Content-Type: application/json" \
   -d '{"sessionId":null,"message":"Which Midwest hubs are most exposed to winter?","units":"us"}' \
   http://localhost:3000/api/chat
 ```

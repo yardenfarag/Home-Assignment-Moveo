@@ -5,7 +5,7 @@
 import { connection } from "next/server";
 import { z } from "zod";
 import { loadTranscript } from "@/core/db/chatTranscript";
-import { failure, json, requireSiteAuth } from "../../_lib/http";
+import { failure, json } from "../../_lib/http";
 
 /**
  * Returns one session's transcript.
@@ -15,8 +15,6 @@ import { failure, json, requireSiteAuth } from "../../_lib/http";
 export async function GET(request: Request): Promise<Response> {
   await connection(); // per-request only; keep outside try/catch (D78)
   try {
-    const denied = requireSiteAuth(request);
-    if (denied) return denied;
     const sessionId = z.uuid().parse(new URL(request.url).searchParams.get("sessionId"));
     return json({ sessionId, turns: await loadTranscript(sessionId) });
   } catch (error) {

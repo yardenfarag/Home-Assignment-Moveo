@@ -7,7 +7,7 @@ import { createUIMessageStreamResponse } from "ai";
 import { answerQuestion } from "@/core/agent/answerQuestion";
 import { createAnswerQuestionDeps } from "@/core/agent/createAnswerQuestionDeps";
 import { buildChatStream, chatRequestSchema } from "@/core/api/chatStream";
-import { failure, requireSiteAuth } from "../_lib/http";
+import { failure } from "../_lib/http";
 
 /** Upper bound for one turn (the agent's own total timeout is 60 s; a validation retry may follow). */
 export const maxDuration = 120;
@@ -19,8 +19,6 @@ export const maxDuration = 120;
  */
 export async function POST(request: Request): Promise<Response> {
   try {
-    const denied = requireSiteAuth(request);
-    if (denied) return denied;
     const body = chatRequestSchema.parse(await request.json());
     const deps = createAnswerQuestionDeps();
     const stream = buildChatStream(body, (req, callbacks) => answerQuestion(req, deps, callbacks));

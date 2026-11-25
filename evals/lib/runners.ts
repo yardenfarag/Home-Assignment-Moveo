@@ -34,14 +34,12 @@ export async function runInProcess(evalCase: EvalCase, agent: AgentModel, contex
 /** Connection details for a deployed app. */
 export interface RemoteTarget {
   baseUrl: string;
-  /** "Basic …" header for the site login. */
-  authorization: string;
 }
 
 /**
  * Runs a case's turns against a deployed /api/chat (follow-ups reuse the session id).
  * @param evalCase - the case.
- * @param target - URL and login.
+ * @param target - the deployment's URL.
  * @returns one result per turn (no token usage — the stream doesn't carry it).
  */
 export async function runRemote(evalCase: EvalCase, target: RemoteTarget): Promise<TurnResult[]> {
@@ -54,7 +52,7 @@ export async function runRemote(evalCase: EvalCase, target: RemoteTarget): Promi
     try {
       const res = await fetch(new URL("/api/chat", target.baseUrl), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: target.authorization },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, message: question, units: "us" }),
         signal: AbortSignal.timeout(180_000),
       });

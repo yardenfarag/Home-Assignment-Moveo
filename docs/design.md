@@ -36,7 +36,6 @@ flowchart TB
   user([Analyst in a browser])
   subgraph vercel [Vercel: one Next.js app]
     ui["Chat UI<br/>src/app/_components"]
-    proxy["Login check<br/>src/proxy.ts"]
     api["API routes<br/>src/app/api"]
     subgraph core ["src/core: plain TypeScript, no Next.js"]
       agent["Agent<br/>agent/"]
@@ -52,7 +51,7 @@ flowchart TB
   meteo[Open-Meteo weather archive]
   fema[FEMA National Risk Index]
 
-  user --> proxy --> ui
+  user --> ui
   ui -->|"POST /api/chat, GET /api/widgets, …"| api
   api --> agent
   agent <-->|"chooses tools, writes the answer"| llm
@@ -69,8 +68,7 @@ flowchart TB
 | Part | Where | What it does | Talks to |
 |---|---|---|---|
 | **Chat UI** | [src/app/_components/](../src/app/_components/) | The page: chat, the list of earlier chats, the overview widgets. Entry: [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L55) | Only our own API routes, never the LLM |
-| **Login check** | [src/proxy.ts](../src/proxy.ts) | Asks for the site username/password on every page and API ([`proxy`](../src/proxy.ts#L18)) | — |
-| **API routes** | [src/app/api/](../src/app/api/) | Thin: check the login, validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
+| **API routes** | [src/app/api/](../src/app/api/) | Thin: validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
 | **Agent** | [src/core/agent/](../src/core/agent/) | Runs the LLM with tools, checks the answer, retries once | OpenRouter, the tools |
 | **Tools** | [src/core/agent/tools/](../src/core/agent/tools/) | `rank_hubs`, `compare_hubs`, `get_weather_stat`, `explain_hub_score`. They compute; the LLM only calls them | Scoring, stats, database |
 | **Scoring and stats** | [src/core/scoring/](../src/core/scoring/), [src/core/stats/](../src/core/stats/) | Pure functions: weather days → hazard scores → overall score, level, confidence | Nothing (pure) |
@@ -141,8 +139,7 @@ Step by step, with the code:
 1. **The browser sends the question.** [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L55) uses the AI SDK's
    `useChat` to `POST /api/chat` with `{ sessionId, message, units }`. The session id lives in the browser's
    localStorage, so earlier chats can be reopened from the side menu.
-2. **The route checks and hands off.** [`POST`](../src/app/api/chat/route.ts#L20) checks the login again (the proxy is
-   the first layer), validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L20)), and starts a
+2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L20) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L20)), and starts a
    stream ([`buildChatStream`](../src/core/api/chatStream.ts#L56)).
 3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L54) loads the latest score
    for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 10 turns of this chat
@@ -240,7 +237,6 @@ src/
   app/                   Next.js only: pages, API routes, React components
     _components/         the chat UI (answer cards in answer/, charts in visuals/)
     api/                 chat, chat/history, chat/sessions, widgets, cron/ingest
-  proxy.ts               site login (HTTP Basic Auth) for every page and API
   core/                  plain TypeScript, no Next.js (ESLint-enforced), all the logic:
     agent/               the agent: prompt, answer schema, ledger, checks, retry, the 4 tools
     api/                 chat-stream protocol shared by the route and the UI
@@ -252,7 +248,7 @@ src/
     ingest/, pipeline/   incremental ingest, rate limiting, ingest → score
     judge/               the independent answer judge used by the evals
     scoring/             hazard scores, overall, levels, confidence, caveats (pure)
-    security/            login and cron-secret checks (constant-time)
+    security/            the nightly job's secret check (constant-time)
     stats/, utils/       weather statistics, dates, units (pure)
     widgets/             data for the overview panel
 scripts/                 CLI entry points: ingest, score, ask, eval, bakeoff, session:export, …
@@ -271,9 +267,10 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   this time."*
 - **Every external call has a timeout:** HTTP 30 s, database 15 s, each LLM step 25 s
   ([src/core/config/timeouts.ts](../src/core/config/timeouts.ts)).
-- **Login:** HTTP Basic Auth on every page and API, checked in the proxy and again in each route, with constant-time
-  comparison ([`isSiteAuthorized`](../src/core/security/auth.ts#L56)). The cron route uses its own secret instead
-  ([`isCronAuthorized`](../src/core/security/auth.ts#L71)).
+- **No login, on purpose** (D113). Anyone with the link can use the app, so testers don't need credentials. Spending is
+  limited by the OpenRouter key's credit cap. The **nightly job** is the one protected route: it needs the secret
+  that only Vercel Cron sends ([`isCronAuthorized`](../src/core/security/auth.ts#L30)), compared in constant time.
+  Chat history is private by obscurity only: a chat can be reopened by anyone who knows its random id.
 - **Secrets** live only in `.env.local` (local, git-ignored) and Vercel's environment variables. Every variable is
   validated with Zod at startup, and errors name the missing variable, never its value
   ([src/core/config/env.ts](../src/core/config/env.ts)). [.env.example](../.env.example) lists them all, and a test

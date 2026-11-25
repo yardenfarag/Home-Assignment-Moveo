@@ -1,5 +1,5 @@
 /**
- * Home page: the chat app (client component). Access is guarded by src/proxy.ts.
+ * Home page: the chat app (client component). Open to everyone (D113).
  */
 import { SneakoscopeApp } from "./_components/SneakoscopeApp";
 
