@@ -1,31 +1,15 @@
 /**
  * @module app/_lib/storage
  *
- * What this BROWSER remembers (U5b, D60): the unit system, and the ids of its
- * own chats (newest first). Nothing sensitive — the chats live on the server.
+ * What this BROWSER remembers (U5b): the ids of its own chats (newest first) and the
+ * alerts it dismissed. Nothing sensitive: the chats live on the server. US units only (D126).
  */
-import { UNIT_SYSTEMS, type UnitSystem } from "@/core/utils/units";
-
-const UNITS_KEY = "sneakoscope.units";
 const SESSIONS_KEY = "sneakoscope.sessions";
 /** How many past chats the side nav remembers. */
 const MAX_SESSIONS = 50;
 
 /** True when running in a browser with localStorage available. */
 const hasStorage = () => typeof window !== "undefined" && !!window.localStorage;
-
-/** @returns the saved unit system (default US). */
-export function loadUnits(): UnitSystem {
-  if (!hasStorage()) return "us";
-  const saved = window.localStorage.getItem(UNITS_KEY);
-  return (UNIT_SYSTEMS as readonly string[]).includes(saved ?? "") ? (saved as UnitSystem) : "us";
-}
-
-/** @param units - the unit system to remember. */
-export function saveUnits(units: UnitSystem): void {
-  if (hasStorage()) window.localStorage.setItem(UNITS_KEY, units);
-  notify();
-}
 
 /** @returns ids of this browser's chats, newest first. */
 export function loadSessionIds(): string[] {

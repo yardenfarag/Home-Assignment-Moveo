@@ -22,6 +22,35 @@ body {
   font-family: var(--font-roboto), system-ui, sans-serif;
 }
 
+/*
+ * Scrollbars that match the glass theme (D125): thin, a translucent thumb that brightens on
+ * hover, no track. Standard properties for Firefox and Chrome 121+; ::-webkit- rules for Safari.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+*:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}
+
 /* Frosted-glass surface used by cards and panels. In the components layer so utilities can override it. */
 @layer components {
   .glass {

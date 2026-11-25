@@ -4,7 +4,7 @@ import { AgentInputError } from "../errors/agentInputError";
 import { buildChatStream, type ChatRequest, type TurnRunner } from "./chatStream";
 import { progressLabel } from "./progressLabels";
 
-const request: ChatRequest = { sessionId: null, message: "Why is Dallas high?", units: "us" };
+const request: ChatRequest = { sessionId: null, message: "Why is Dallas high?" };
 const answer = { answer: "Dallas is High.", meta: { toolCalls: [] } } as unknown as FinalAnswer;
 
 /** Reads every chunk of a stream. */

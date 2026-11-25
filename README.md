@@ -9,7 +9,9 @@ to invest in resilience upgrades.
 **Every number comes from tested code, never from the AI.** The AI only picks which calculation to run and explains
 the result, and code checks the explanation before you see it.
 
-![Sneakoscope: a conversation with score breakdowns, a comparison grid, monthly patterns and a premise correction](docs/screenshots/desktop-conversation.png)
+![Sneakoscope: three panels (your chats, the conversation with a Miami vs Houston comparison grid, and the overview with recent changes, top hubs and hazard leaders), all on one screen](docs/screenshots/desktop-conversation.png)
+
+More screenshots: [start screen](docs/screenshots/desktop-start.png) · [phone](docs/screenshots/phone-start.png).
 
 ## Contents
 - [Try it](#try-it)
@@ -28,8 +30,9 @@ the result, and code checks the explanation before you see it.
 - **Live app: https://sneakoscope.vercel.app**
 - **No sign-in needed.** Just open the link. To protect the shared budget, each visitor can ask **20 questions per
   10 minutes and 100 per day**, and everyone together **300 per day**.
-- Click one of the example questions on the start screen, or type your own. Use the **US / Metric** switch for
-  units, and the side menu to reopen earlier chats.
+- Click one of the example questions on the start screen, or type your own. Answers use US units. The screen has
+  three panels: **your chats** (reopen earlier ones), the **conversation**, and the **overview**. On a phone they're
+  tabs at the bottom.
 
 ## What you can ask
 The four questions from the brief, all answered by the agent (see the real answers in
@@ -140,7 +143,7 @@ npm run dev
 | `npm run db:check` | Connect to Supabase and list the hubs per region |
 | `npm run ingest` | Fetch new FEMA and Open-Meteo data for all hubs, then re-score. Add `-- --hub=dallas,denver` for some hubs only, or `-- --refresh-fema` to re-fetch FEMA |
 | `npm run score` | Re-score all hubs from the stored data (no API calls) |
-| `npm run ask -- "question"` | Ask the real agent from the terminal. Add `--session=<id>` for a follow-up, `--metric` for metric units |
+| `npm run ask -- "question"` | Ask the real agent from the terminal. Add `--session=<id>` for a follow-up |
 | `npm run eval` | Run the 13 eval cases ([Evals](#evals)) |
 | `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |
 | `npm run alerts:test` | Record one clearly marked test score-change alert, to see the "Recent changes" card |
@@ -153,7 +156,7 @@ The app has no login, so every route is open, except the nightly job, which need
 
 | Route | What it does |
 |---|---|
-| `POST /api/chat` | Ask a question. Body: `{ "sessionId": null \| "<uuid>", "message": "…", "units": "us" \| "metric" }`. Streams (AI SDK chat protocol): `data-session`, `data-progress` per tool, the answer text, then `data-answer` (the checked answer) or `data-error` |
+| `POST /api/chat` | Ask a question. Body: `{ "sessionId": null \| "<uuid>", "message": "…" }` (answers use US units). Streams (AI SDK chat protocol): `data-session`, `data-progress` per tool, the answer text, then `data-answer` (the checked answer) or `data-error` |
 | `GET /api/chat/sessions?ids=a,b` | Titles and dates of earlier chats (the ids this browser remembers) |
 | `GET /api/chat/history?sessionId=<uuid>` | Reopen an earlier chat: its questions and checked answers |
 | `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |
@@ -167,7 +170,7 @@ is reached.
 
 ```bash
 curl -H "Content-Type: application/json" \
-  -d '{"sessionId":null,"message":"Which Midwest hubs are most exposed to winter?","units":"us"}' \
+  -d '{"sessionId":null,"message":"Which Midwest hubs are most exposed to winter?"}' \
   http://localhost:3000/api/chat
 ```
 

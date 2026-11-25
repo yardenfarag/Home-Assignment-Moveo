@@ -70,7 +70,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 11 | Jev guard: topic + manipulation on every message, follow-ups judged with the last 2 turns, tuned cutoffs 0.15 / 0.6, 2 s fail-open, guard evals (done: D118–D121) | `JEV_MODEL` |
 | 12 | Scoring v2: inland flood per area, floored at the median county (done: D123) | — |
 | 13 | Score-change alerts (bonus): level change or ±10 points, Recent changes card with dismiss, no webhook (done: D124) | — |
-| 14 | Three-panel layout that fits the screen | — |
+| 14 | Three-panel layout that fits the screen, themed scrollbars, phone tabs (D125); US units only (D126) | — |
 | 15 | Voice (bonus) | — |
 | 16 | Evals from the UI (quality card, live run, limits) | — |
 

@@ -2,10 +2,10 @@
  * Data attribution (U7): Open-Meteo (CC BY 4.0) and FEMA, plus the one-line scope note.
  */
 
-/** Renders the footer. */
-export function Footer() {
+/** Renders the footer (one line on desktop; inside the Overview tab on small screens). */
+export function Footer({ className = "" }: { className?: string }) {
   return (
-    <footer className="border-t border-white/5 px-6 py-4 text-center text-[11px] leading-relaxed text-slate-500">
+    <footer className={`px-6 py-2 text-center text-[11px] leading-relaxed text-slate-500 ${className}`}>
       Weather data by{" "}
       <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-slate-300">
         Open-Meteo.com

@@ -4,7 +4,6 @@
  * Dev tool (G10): ask the real agent one question from the terminal.
  *   npm run ask -- "Why is the Dallas hub's risk high?"
  *   npm run ask -- --session=<id> "And what about its flood score?"   (follow-up)
- *   npm run ask -- --metric "How much snow…"                          (metric units)
  * Prints live progress, then the checked answer.
  */
 import { createAnswerQuestionDeps } from "../src/core/agent/createAnswerQuestionDeps";
@@ -19,12 +18,11 @@ function flag(name: string): string | undefined {
 async function main(): Promise<void> {
   const message = process.argv.slice(2).filter((a) => !a.startsWith("--")).join(" ");
   if (!message) {
-    console.error('Usage: npm run ask -- "your question" [--session=<id>] [--metric]');
+    console.error('Usage: npm run ask -- "your question" [--session=<id>]');
     process.exit(1);
   }
-  const units = process.argv.includes("--metric") || process.env.npm_config_metric === "true" ? "metric" : "us";
   const started = Date.now();
-  const result = await answerQuestion({ sessionId: flag("session") ?? null, message, units }, createAnswerQuestionDeps(), {
+  const result = await answerQuestion({ sessionId: flag("session") ?? null, message, units: "us" }, createAnswerQuestionDeps(), {
     onToolStart: (tool, input) => console.log(`🔧 ${tool} ${JSON.stringify(input)}`),
     onRetry: (problems) => console.log(`🔁 retrying: ${problems.join(" | ")}`),
   });

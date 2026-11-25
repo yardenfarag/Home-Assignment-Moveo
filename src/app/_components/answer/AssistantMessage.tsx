@@ -4,7 +4,6 @@
  */
 import type { SneakoscopeDataParts, SneakoscopeUIMessage } from "@/core/api/chatStream";
 import { STREAM_INTERRUPTED } from "@/core/errors/userErrors";
-import type { UnitSystem } from "@/core/utils/units";
 import { ErrorCard } from "./ErrorCard";
 import { FinalAnswerCard } from "./FinalAnswerCard";
 import { Markdown } from "./Markdown";
@@ -13,7 +12,6 @@ import { ProgressList } from "./ProgressList";
 /** Props for {@link AssistantMessage}. */
 interface AssistantMessageProps {
   message: SneakoscopeUIMessage;
-  units: UnitSystem;
   /** True while this is the message being streamed. */
   isStreaming: boolean;
   onAsk: (question: string) => void;
@@ -21,7 +19,7 @@ interface AssistantMessageProps {
 }
 
 /** Renders an assistant turn. */
-export function AssistantMessage({ message, units, isStreaming, onAsk, onRetry }: AssistantMessageProps) {
+export function AssistantMessage({ message, isStreaming, onAsk, onRetry }: AssistantMessageProps) {
   const progress: SneakoscopeDataParts["progress"][] = [];
   let text = "";
   let retrying = false;
@@ -41,7 +39,7 @@ export function AssistantMessage({ message, units, isStreaming, onAsk, onRetry }
   return (
     <article className="glass rounded-2xl p-5" aria-label="Sneakoscope's answer">
       {answer ? (
-        <FinalAnswerCard answer={answer} units={units} onAsk={onAsk} />
+        <FinalAnswerCard answer={answer} onAsk={onAsk} />
       ) : error ? (
         <div className="space-y-3">
           <ProgressList items={progress} />
