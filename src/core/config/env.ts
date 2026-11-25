@@ -42,6 +42,16 @@ const judgeEnvSchema = z.object({
 /** Validated judge settings. */
 export type JudgeEnv = z.infer<typeof judgeEnvSchema>;
 
+/** The out-of-scope guard (D118): Jev on OpenRouter's decisions endpoint, same key. */
+const jevEnvSchema = z.object({
+  OPENROUTER_API_KEY: z.string().min(20),
+  /** Pin the dated snapshot (e.g. typesafe/jev-1.14-20261014) so the tuned cutoffs can't drift (D119). */
+  JEV_MODEL: modelSlug,
+});
+
+/** Validated guard settings. */
+export type JevEnv = z.infer<typeof jevEnvSchema>;
+
 /** The nightly job's secret (A3). The site itself has no login (D113). */
 const cronEnvSchema = z.object({
   /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically. */
@@ -59,6 +69,7 @@ export const ENV_SCHEMAS = {
   supabase: supabaseEnvSchema,
   openRouter: openRouterEnvSchema,
   cron: cronEnvSchema,
+  jev: jevEnvSchema,
   judge: judgeEnvSchema,
 } as const;
 
@@ -102,6 +113,16 @@ export function getSupabaseEnv(source: EnvSource = process.env): SupabaseEnv {
  */
 export function getOpenRouterEnv(source: EnvSource = process.env): OpenRouterEnv {
   return parseEnv(openRouterEnvSchema, source, "getOpenRouterEnv");
+}
+
+/**
+ * Returns validated guard settings.
+ * @param source - variables to read (defaults to `process.env`; injectable for tests).
+ * @returns the API key and Jev model id.
+ * @throws BoundaryError when a variable is missing or malformed.
+ */
+export function getJevEnv(source: EnvSource = process.env): JevEnv {
+  return parseEnv(jevEnvSchema, source, "getJevEnv");
 }
 
 /**

@@ -2,8 +2,9 @@
  * @module core/agent/answerQuestion
  *
  * The ONE entry point for answering a chat message — used by `npm run ask`
- * and (Step 5) `POST /api/chat`. Loads context + memory, runs the agent,
- * saves the turn, and logs events under one correlation id per turn.
+ * and (Step 5) `POST /api/chat`. Loads context + memory, runs the out-of-scope
+ * guard (Step 11), runs the agent, saves the turn, and logs events under one
+ * correlation id per turn.
  */
 import { randomUUID } from "node:crypto";
 import type { ModelMessage } from "ai";
@@ -11,7 +12,8 @@ import type { NewEvent } from "../db/eventsRepository";
 import { describeUnknownError } from "../errors/boundaryError";
 import type { UnitSystem } from "../utils/units";
 import type { FinalAnswer } from "./answerSchema";
-import { HISTORY_TURNS } from "./config";
+import { guardDeclineAnswer, recentTurnsFromHistory, type GuardInput, type GuardVerdict } from "../guard/jevGuard";
+import { AGENT_LIMITS, HISTORY_TURNS } from "./config";
 import type { AgentContext } from "./context";
 import type { AgentModel } from "./model";
 import { runAgent, type AgentCallbacks, type AgentResult } from "./runAgent";
@@ -32,6 +34,8 @@ export interface AnswerQuestionDeps {
   loadHistory: (sessionId: string, turns: number) => Promise<ModelMessage[]>;
   saveTurn: (sessionId: string, messages: ModelMessage[], answer: FinalAnswer, model: string) => Promise<void>;
   recordEvent: (event: NewEvent) => Promise<boolean>;
+  /** The out-of-scope guard (D118). Must not throw: it fails open itself. */
+  guard: (input: GuardInput) => Promise<GuardVerdict>;
   /** Today `YYYY-MM-DD` (UTC). */
   today: () => string;
 }
@@ -64,6 +68,41 @@ export async function answerQuestion(
       deps.loadContext({ today: deps.today(), units: input.units }),
       deps.loadHistory(sessionId, HISTORY_TURNS),
     ]);
+
+    // The guard (D118) runs before the paid agent. Empty or over-long messages skip it:
+    // runAgent rejects those with its own friendly message.
+    const message = input.message.trim();
+    if (message.length > 0 && message.length <= AGENT_LIMITS.maxUserMessageChars) {
+      const verdict = await deps.guard({
+        message,
+        history: recentTurnsFromHistory(history),
+        hubNames: context.hubs.map((hub) => `${hub.name}, ${hub.state}`),
+      });
+      await deps.recordEvent({
+        eventType: "guard.decision",
+        source: "guard",
+        level: verdict.decision === "decline" || verdict.failedOpen ? "warn" : "info",
+        correlationId,
+        sessionId,
+        message: verdict.failedOpen ? `failed open: ${verdict.error}` : `${verdict.decision}${verdict.reason ? ` (${verdict.reason})` : ""}`,
+        payload: {
+          decision: verdict.decision,
+          reason: verdict.reason,
+          mode: verdict.mode,
+          inScope: verdict.scores?.inScope ?? null,
+          manipulation: verdict.scores?.manipulation ?? null,
+          failedOpen: verdict.failedOpen,
+          ms: verdict.ms,
+          model: verdict.model,
+        },
+      });
+      if (verdict.decision === "decline" && verdict.reason) {
+        const answer = guardDeclineAnswer(verdict.reason, context.hubs.length);
+        await deps.saveTurn(sessionId, [{ role: "user", content: message }, { role: "assistant", content: answer.answer }], answer, verdict.model);
+        return { sessionId, answer, usage: { inputTokens: 0, outputTokens: 0 } };
+      }
+    }
+
     const result = await runAgent(
       { message: input.message, history },
       { model: deps.agentModel.model, modelId: deps.agentModel.modelId, context },

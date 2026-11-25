@@ -100,6 +100,13 @@ national value per hazard, close to typical NWS warning levels:
 - Cities that aren't in our hub list. The agent says so instead of guessing.
 
 ## Agent behavior limits
+- **The guard is probabilistic.** Jev gives probabilities, not rules, and isn't fully deterministic (scores moved by
+  up to 0.09 between repeated runs of the same message). The cutoffs leave wide margins on the 32 test messages
+  ([guard-evals.md](guard-evals.md)), but an unusual real question could still be refused, or a cleverly worded off-topic
+  one let through. A refused analyst sees example questions and can rephrase. A message that slips through still meets
+  the agent's own checks: it declines off-topic questions and can't state a number no tool returned.
+- **The guard fails open.** If Jev is down or takes over 2 s, the message goes to the agent unchecked (logged as a
+  `guard.decision` event with `failedOpen`).
 - **Follow-ups may repeat earlier numbers.** Within a conversation, the agent may reuse numbers from earlier
   tool results (D65). If the nightly re-score changed a value since then, a follow-up could repeat the older one.
   Starting a new conversation always uses the latest scores.

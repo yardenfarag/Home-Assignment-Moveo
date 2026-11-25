@@ -30,13 +30,8 @@ export const CONFIDENCE_UI: Record<Confidence, { label: string; dot: string }> =
   low: { label: "Low confidence", dot: "#fb7185" },
 };
 
-/** The brief's four example questions, shown in the empty state. */
-export const EXAMPLE_QUESTIONS = [
-  "Which hubs in the Midwest are most exposed to winter disruption?",
-  "Compare Miami and Houston in terms of hurricane and flood exposure.",
-  "What percentage of days in Denver last year had snowfall?",
-  "Why is the Dallas hub's weather disruption risk high?",
-] as const;
+/** The brief's four example questions (defined in core: the guard's decline card uses them too). */
+export { EXAMPLE_QUESTIONS } from "@/core/agent/config";
 
 /**
  * Formats an ISO timestamp as a short relative time ("just now", "3 h ago", "Nov 24").
