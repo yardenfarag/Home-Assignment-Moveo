@@ -143,6 +143,7 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
 
   const ledger = new ToolLedger();
   ledger.seedFromHistory(request.history);
+  ledger.addKnownNumbers([deps.context.hubs.length]); // the prompt lists our hubs, so "36 hubs" is a known fact
   const tools = buildTools(deps.context, { ledger, callbacks });
   const system = buildSystemPrompt(deps.context);
   const newMessages: ModelMessage[] = [{ role: "user", content: message }];
@@ -172,7 +173,7 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
       callbacks.onRetry?.(problems);
       newMessages.push({
         role: "user",
-        content: `${RETRY_FEEDBACK_PREFIX}\n- ${problems.join("\n- ")}\nFix these and answer again. Use only numbers and hubs returned by tools (call more tools if needed).`,
+        content: `${RETRY_FEEDBACK_PREFIX}\n- ${problems.join("\n- ")}\nFix these and answer again. Use the tool results you already have; only call a tool if you truly need data you don't have yet.`,
       });
     }
   }

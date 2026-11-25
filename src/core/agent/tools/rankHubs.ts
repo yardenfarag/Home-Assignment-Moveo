@@ -10,7 +10,7 @@ import { CENSUS_REGIONS, type CensusRegion } from "../../domain/hub";
 import { GENERAL_CAVEATS, hazardCaveats } from "../../scoring/caveats";
 import { weakestConfidence } from "../../scoring/confidence";
 import { riskLevelFor } from "../../scoring/overall";
-import { rankHubs, type RankMetric } from "../../scoring/ranking";
+import { rankHubs, scoreSpread, type RankMetric } from "../../scoring/ranking";
 import { HAZARDS } from "../../scoring/types";
 import type { AgentContext } from "../context";
 import { hubLabel, runTool, type ToolRuntime } from "./shared";
@@ -77,6 +77,8 @@ export function rankHubsOutput(ctx: AgentContext, input: { metric: RankMetric; r
     scoringVersion: any.scoringVersion,
     scoredWindow: any.window,
     results,
+    /** Points between the first and last hub listed — quote this instead of subtracting (E10). */
+    spread: scoreSpread(results.map((r) => ({ hubId: r.hubId, score: r.score }))),
     hubIds: results.map((r) => r.hubId),
     confidence: results.length ? weakestConfidence(results.map((r) => r.confidence)) : null,
     caveats: [...GENERAL_CAVEATS, ...(metric === "overall" ? [] : hazardCaveats(metric, ctx.units))],

@@ -49,3 +49,6 @@ Thumbs.db
 # local scratch
 /tmp/
 *.log
+
+# eval run reports (the latest summary is committed as docs/evals.md)
+/evals/results/

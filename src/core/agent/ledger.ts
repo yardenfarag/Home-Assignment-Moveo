@@ -6,6 +6,8 @@
  * caveats in the final answer must trace back to entries here.
  */
 import type { ModelMessage } from "ai";
+import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS } from "../scoring/config";
+import { DAY_METRICS } from "../scoring/dayMetrics";
 import type { Confidence } from "../scoring/types";
 import type { ToolCallRecord } from "./answerSchema";
 
@@ -25,8 +27,6 @@ export interface ToolOutputBase {
  */
 const NUMBER_IN_TEXT = /(?:(?<![\d.])-)?\d[\d,]*(?:\.\d+)?/g;
 
-/** Fixed facts of the method that answers may always mention: the 0–100 score scale. */
-export const ALWAYS_KNOWN_NUMBERS: readonly number[] = [0, 100];
 
 /**
  * Collects every number in a value: numeric fields and numbers written inside strings.
@@ -42,6 +42,33 @@ export function collectNumbers(value: unknown, into: number[] = []): number[] {
   else if (value && typeof value === "object") Object.values(value).forEach((item) => collectNumbers(item, into));
   return into;
 }
+
+/** Share of each half in a mixed hazard (hazards.ts averages the observed and FEMA halves). */
+const HALF_BLEND_PERCENT = 50;
+
+/**
+ * Fixed facts of the METHOD that answers may always quote (they come from the
+ * system prompt, not from a tool) — all derived from config, never retyped:
+ * the 0–100 scale, level cut-offs, formula weights, hazard weights, the 50/50
+ * blend, the scoring window, and every hazard-day threshold in both unit systems.
+ */
+export const ALWAYS_KNOWN_NUMBERS: readonly number[] = [
+  0,
+  100,
+  RISK_LEVEL_CUTOFFS.mediumFrom - 1,
+  RISK_LEVEL_CUTOFFS.mediumFrom,
+  RISK_LEVEL_CUTOFFS.highFrom - 1,
+  RISK_LEVEL_CUTOFFS.highFrom,
+  OVERALL_MIX.weightedAverage,
+  OVERALL_MIX.worstHazard,
+  OVERALL_MIX.weightedAverage * 100,
+  OVERALL_MIX.worstHazard * 100,
+  ...Object.values(HAZARD_WEIGHTS).flatMap((w) => [w, w * 100]),
+  HALF_BLEND_PERCENT,
+  SCORING_WINDOW_DAYS,
+  Math.round(SCORING_WINDOW_DAYS / 365.25),
+  ...collectNumbers(Object.values(DAY_METRICS).map((m) => m.threshold)),
+];
 
 /**
  * True when `claimed` matches a tool number, allowing display rounding
@@ -88,6 +115,29 @@ export class ToolLedger {
   readonly calls: ToolCallRecord[] = [];
   private readonly outputs: ToolOutputBase[] = [];
   private historyOutputs: ToolOutputBase[] = [];
+  private extraKnown: number[] = [];
+  private readonly claimed = new Set<string>();
+
+  /**
+   * Claims a tool call when it STARTS (so parallel duplicates in one step are caught too).
+   * @param tool - tool name.
+   * @param input - tool input.
+   * @returns true the first time this exact call is seen in this answer, false for repeats.
+   */
+  claim(tool: string, input: unknown): boolean {
+    const key = `${tool}:${JSON.stringify(input)}`;
+    if (this.claimed.has(key)) return false;
+    this.claimed.add(key);
+    return true;
+  }
+
+  /**
+   * Adds facts known for this turn that aren't tool results (e.g. the live hub count from the prompt).
+   * @param numbers - the numbers.
+   */
+  addKnownNumbers(numbers: number[]): void {
+    this.extraKnown.push(...numbers);
+  }
 
   /**
    * Adds tool results from earlier turns. They count as known hubs and numbers;
@@ -121,7 +171,7 @@ export class ToolLedger {
 
   /** @returns every number found in tool outputs (this turn or earlier), plus the fixed scale bounds. */
   numbers(): number[] {
-    return collectNumbers([...this.outputs, ...this.historyOutputs], [...ALWAYS_KNOWN_NUMBERS]);
+    return collectNumbers([...this.outputs, ...this.historyOutputs], [...ALWAYS_KNOWN_NUMBERS, ...this.extraKnown]);
   }
 
   /** @returns the confidences of the relevant results that have one. */

@@ -65,6 +65,21 @@ curl -u "$APP_USERNAME:$APP_PASSWORD" -H "Content-Type: application/json" \
   http://localhost:3000/api/chat
 ```
 
+## Evals
+```bash
+npm run eval                                   # 13 cases on OPENROUTER_MODEL, about 3 min, about $1 on Sonnet
+npm run eval -- --model=openai/gpt-6.1-terra   # try another model
+npm run eval -- --repeat=3                     # consistency check
+npm run eval -- --url=https://your-app.vercel.app   # test a deployment
+npm run eval -- --no-judge                     # skip the independent judge
+npm run eval -- --rejudge=evals/results/<file>.json   # re-check + re-judge saved answers (cents, no agent calls)
+```
+Prints pass/fail per case and check, plus soft metrics (tool calls, duplicates, latency, tokens, cost), and exits 1 on failure.
+Every answer is also graded by an **independent judge** (`JUDGE_MODEL`, a cheap model from another provider) against
+the actual tool results. Only its faithful-to-data score (≥ 4) is a hard check. Before each run the judge must catch
+2 planted bad answers, or the report flags it as unreliable.
+Expected values are computed from the live data at run time. Latest results: [docs/evals.md](docs/evals.md).
+
 ## Database
 SQL migrations live in [supabase/migrations/](supabase/migrations/). Apply them in order to a fresh
 Supabase project (SQL editor or Supabase CLI). The second migration seeds the 36 hubs.

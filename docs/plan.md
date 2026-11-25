@@ -61,7 +61,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 4 | Agent: tools, answer schema + validation + retry, recommendation rules, chat history | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` |
 | 5 | Streaming `POST /api/chat`, `/api/widgets`, cron route, Basic Auth | `APP_USERNAME`, `APP_PASSWORD`, `CRON_SECRET` |
 | 6 | UI: chat, 3 widgets, per-answer charts | — |
-| 7 | Eval set (13 cases) + `npm run eval` (`--url` for deployed). **Revisit D57** (FEMA flood half capped for 15 hubs) if flood rankings look off | — |
+| 7 | Eval set (13 cases) + `npm run eval` (`--url` for deployed). **Revisit D57** (FEMA flood half capped for 15 hubs) if flood rankings look off (done: kept, D97) · independent judge + self-test (D99–D106) | `JUDGE_MODEL` |
 | 8 | Model bakeoff (3–4 models: accuracy → cost → speed), lock in the winner | — |
 | 9 | README, design doc, final assumptions | — |
 | 10 | Deploy to Vercel, env vars, cron, run evals against live URL | (same, in Vercel) |
@@ -70,7 +70,8 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 ## Later (order to be chosen)
 Themed login page · dust storm hazard (NOAA Storm Events) · US map widget · abuse/off-topic
 hardening · score-change alerts · 7-day forecast + NWS active alerts · per-hub local
-thresholds · hub volume weighting · voice.
+thresholds · hub volume weighting · voice · **scoring v2: inland flood per county area (D97)** ·
+**live "Reviewed" badge: the judge grades answers in the background after they are shown (D99, J1-c)**.
 
 ## Eval cases (Step 7)
 1. Midwest winter ranking. 2. Miami vs Houston hurricane + flood. 3. Denver % snow days 2025.

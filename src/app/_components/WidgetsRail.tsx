@@ -127,7 +127,7 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt>Hubs scored</dt>
+            <dt>Hubs tracked</dt>
             <dd className="text-slate-300">{data.dataStatus.hubCount}</dd>
           </div>
           <div className="flex justify-between gap-2">

@@ -71,3 +71,25 @@ export function rankHubs(
     .sort((a, b) => (options.order === "most" ? b.score - a.score : a.score - b.score));
   return ranked.slice(0, options.limit);
 }
+
+/** Who is highest/lowest among some hubs and how many points apart they are. */
+export interface ScoreSpread {
+  highestHubId: string;
+  lowestHubId: string;
+  /** highest − lowest, rounded to 1 decimal. */
+  spread: number;
+}
+
+/**
+ * Gap between the highest and lowest score (E10): computed in code so the agent
+ * can quote "4.3 points apart" without doing arithmetic itself.
+ * @param entries - hub ids with scores.
+ * @returns the spread, or null for fewer than two entries.
+ */
+export function scoreSpread(entries: { hubId: string; score: number }[]): ScoreSpread | null {
+  if (entries.length < 2) return null;
+  const sorted = [...entries].sort((a, b) => b.score - a.score);
+  const highest = sorted[0];
+  const lowest = sorted[sorted.length - 1];
+  return { highestHubId: highest.hubId, lowestHubId: lowest.hubId, spread: Math.round((highest.score - lowest.score) * 10) / 10 };
+}
