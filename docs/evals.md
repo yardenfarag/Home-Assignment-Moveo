@@ -1,9 +1,9 @@
 # Eval results
 
-Latest run: **remote https://sneakoscope.vercel.app** · 2026-11-25 16:11 UTC · 1 run(s) per case.
+Latest run: **remote https://sneakoscope.vercel.app** · 2026-11-25 16:45 UTC · 1 run(s) per case.
 Run it yourself: `npm run eval` (see [README](../README.md)). Expected values are computed from the live data at run time.
 
-**12/13 cases passed** (a case passes only if every run passed).
+**13/13 cases passed** (a case passes only if every run passed).
 
 | Case | What it checks | Result | Failed checks |
 |---|---|---|---|
@@ -18,7 +18,7 @@ Run it yourself: `npm run eval` (see [README](../README.md)). Expected values ar
 | dust-storm | Hazard we don't score (dust storms) | ✅ 1/1 | — |
 | decision | Decision question (recommendation + disclaimer) | ✅ 1/1 | — |
 | off-topic | Off-topic request | ✅ 1/1 | — |
-| last-year | 'Last year' = previous calendar year | ❌ 0/1 | answer says 2025 |
+| last-year | 'Last year' = previous calendar year | ✅ 1/1 | — |
 | confidence | Confidence explained (Seattle winter) | ✅ 1/1 | — |
 
 ## Soft metrics (not pass/fail)
@@ -26,9 +26,9 @@ Run it yourself: `npm run eval` (see [README](../README.md)). Expected values ar
 |---|---|
 | Avg tool calls per answer | 1.1 |
 | Duplicate tool calls (total) | 0 |
-| Numbers in text not traced to tools | 0 |
+| Numbers in text not traced to tools | 2 |
 | Answers that needed a validation retry | 0 |
-| Avg / p95 seconds per answer | 9.1 / 14.3 |
+| Avg / p95 seconds per answer | 13.0 / 20.2 |
 | Tokens (in / out) | n/a (remote run: the API stream doesn't report tokens) |
 | Estimated cost | n/a |
 
@@ -51,5 +51,5 @@ graded twice on identical answers, the pass/fail verdict flipped on 4 of 14, so 
 | Clarity | 5.0 |
 | "Pass" verdicts | 14/14 |
 | Unsupported claims about our data | 0 |
-| General-knowledge claims (allowed, D104) | 0 |
+| General-knowledge claims (allowed, D104) | 1 |
 | Self-contradicting verdicts (D109) | 0 |
