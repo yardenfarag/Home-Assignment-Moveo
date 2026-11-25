@@ -50680,3 +50680,1292 @@ The switch is gone and the header is clean, with everything still fitting at 144
 </details>
 
 ---
+
+### ⚙️ Tool output · 2026-11-25T17:45:32.403Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+port free
+🔒 Leak check passed: no emails, secrets, scrub terms or home path left.
+✓ no .env.local value in the export
+-- nothing private staged
+remote: 
+77aee6b feat(step-14): three-panel layout that fits the screen; US units only
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:45:43.744Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\pr18.md",
+  "content": "## Step 14: three-panel layout that fits the screen, plus US units only\n\n![The new layout at 1440×900: Your chats, Conversation and Overview panels, nothing scrolling](https://raw.githubusercontent.com/yardenfarag/Home-Assignment-Moveo/step-14-layout/docs/screenshots/desktop-conversation.png)\n\n### Layout (D125)\n- **The page never scrolls.** On desktop (1280 px+), **Your chats · Conversation · Overview** are three framed glass panels with a title strip, and **each scrolls inside itself**. The composer is pinned to the bottom of the conversation, and new answers scroll into view inside that panel.\n- **Below 1280 px:** one panel at a time with **bottom tabs** (Chats · Chat · Overview). This replaces the old ☰ overlay, so there's one navigation system. Asking from the overview (or an alert), or opening a chat, jumps to the Chat tab.\n- **Overview compacted:** one-line card descriptions, the level scale folded into the top-hubs description, tighter rows, the data facts in a 2-column block. The cards are lighter now that the panel itself is the glass surface.\n- **Scrollbars match the theme** (your request): thin, translucent, no arrows, brighter on hover, in every panel.\n\n**Measured in a real browser** (headless Chrome, page height vs window, each panel's content vs its visible area):\n\n| Screen | Page | Chats | Conversation | Overview |\n|---|---|---|---|---|\n| 1920×1080 | fits | fits | fits | fits |\n| 1440×900 | fits | fits | fits | **fits, even with an alert showing** |\n| 1366×768 | fits | fits | fits | scrolls 124 px (can't fit at a readable size) |\n| 390×844 (phone) | fits | — | the start screen's question list scrolls 49 px | — |\n\n### US units only (D126, your request in this PR)\n- Removed: the header switch, its browser storage, the `units` field of `POST /api/chat`, `npm run ask --metric`, and the remote eval runner's `units`. Both entry points pass `\"us\"`.\n- The core keeps its tested unit formatting, so thresholds still read \"≥ 0.4 in of snow (≥ 1 cm)\": US first, metric in brackets as context. Removing metric support from the scoring and tool layer too would be a larger, riskier change with no visible benefit. If you'd rather drop the bracketed metric values as well, tell me and I'll do it as a small follow-up.\n\n### Checks\n- `npx tsc --noEmit` ✅ · `npx eslint` ✅ · `npx vitest run`: 48 fil
+… [truncated 300 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:45:43.949Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\pr18.md (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:45:47.793Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\" && node -e 'const fs=require(\"fs\");fs.writeFileSync(process.argv[1]+\"/pr18.json\",JSON.stringify({title:\"Step 14: three-panel layout that fits the screen; US units only\",head:\"step-14-layout\",base:\"main\",body:fs.readFileSync(process.argv[1]+\"/pr18.md\",\"utf8\")}))' \"$S\" && gh api -X POST repos/yardenfarag/Home-Assignment-Moveo/pulls --input \"$S/pr18.json\" --include 2>&1 | head -1; gh api \"repos/yardenfarag/Home-Assignment-Moveo/pulls?head=yardenfarag:step-14-layout&state=all\" --jq '.[] | \"\\(.number) \\(.state) \\(.html_url) | body chars: \\(.body|length)\"' 2>&1 | tail -1",
+  "description": "Open the Step 14 PR and confirm it",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:45:51.544Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+HTTP/2.0 201 Created
+18 open https://github.com/yardenfarag/Home-Assignment-Moveo/pull/18 | body chars: 2620
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:45:58.031Z
+
+Step 14 is ready for review as PR #18: https://github.com/yardenfarag/Home-Assignment-Moveo/pull/18 🐱 It includes your US-only request.
+
+**The layout:**
+- **The page never scrolls.** Your chats, Conversation and Overview are now three separate framed panels, and each scrolls inside itself. The question box stays pinned at the bottom of the conversation.
+- **On phones and narrower screens** you see one panel at a time, with tabs at the bottom (Chats · Chat · Overview). Clicking a hub in the overview or opening an old chat switches to the Chat tab.
+- **The scrollbar now matches the app:** thin and see-through, with no arrows.
+- **I measured the fit in a real browser** instead of eyeballing it:
+  - At 1920×1080 and 1440×900 everything fits, even with an alert showing.
+  - On a 1366×768 laptop, only the overview scrolls (124 px). Fitting it there would have meant shrinking the text.
+  - On a phone, the start screen's list of example questions scrolls a little.
+
+**US units only:** the switch is gone from the header, and so is the setting behind it: the browser no longer stores it, the chat API no longer takes a units field, and `npm run ask` lost `--metric`. Thresholds still show the metric value in brackets, e.g. "≥ 0.4 in of snow (≥ 1 cm)". That's just helpful context, not a toggle. If you'd rather drop those brackets too, it's a small follow-up.
+
+**Next, after your OK:** Step 15, voice, the second bonus. A mic button to speak a question, and a speaker button to have an answer read aloud. Both run in the browser, cost nothing, and stay hidden in browsers that don't support them. Then Step 16: running evals from the UI.
+
+---
+
+### 👤 User · 2026-11-25T17:47:45.443Z
+
+merged pr 18, start step 15
+
+---
+
+### 🤖 Claude · 2026-11-25T17:47:51.817Z
+
+Starting Step 15. The plan is already agreed: a mic button, a speaker button, all in the browser, hidden where unsupported. Two UX details change how it feels, so I'd rather you pick them:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:47:55.787Z
+
+<details><summary>🔧 Tool call: <code>AskUserQuestion</code></summary>
+
+```json
+{
+  "questions": [
+    {
+      "question": "When someone asks by voice (mic button), what happens when they stop talking?",
+      "header": "Voice in",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "Fill the box, they press Ask (Recommended)",
+          "description": "The words appear in the question box as they speak; they can fix a misheard hub name (speech recognition often mangles names like 'Albuquerque') and press Ask or Enter. Safer, one extra click."
+        },
+        {
+          "label": "Send automatically",
+          "description": "As soon as they stop talking, the question is sent. Fully hands-free, but a misheard question goes straight to the agent (the guard still catches nonsense)."
+        }
+      ]
+    },
+    {
+      "question": "How should answers be read aloud?",
+      "header": "Voice out",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "Speaker button on each answer (Recommended)",
+          "description": "A small 🔊 button on every answer card; click to hear it, click again to stop. Only the answer text is read (not the tables or limitations). Nothing plays unless asked."
+        },
+        {
+          "label": "Auto-read voice questions",
+          "description": "Answers to questions asked by voice are read aloud automatically (a real 'conversation'), typed questions stay silent. Plus the speaker button on every answer."
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:49:03.890Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Your questions have been answered: "When someone asks by voice (mic button), what happens when they stop talking?"="Fill the box, they press Ask (Recommended)", "How should answers be read aloud?"="Auto-read voice questions". You can now continue with these answers in mind.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:49:15.978Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git checkout -q main && git pull -q && git checkout -q -b step-15-voice && git log --oneline -1 | cat && cat src/app/_components/Composer.tsx; grep -n \"Disclosure\\|followUpSuggestions\\|<Markdown\\|export function FinalAnswerCard\" src/app/_components/answer/FinalAnswerCard.tsx | head",
+  "description": "Branch for Step 15 and read the composer and answer card"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:49:18.874Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+8510695 Merge pull request #18 from yardenfarag/step-14-layout
+"use client";
+/**
+ * The message box (U7): Enter sends, Shift+Enter adds a line, Stop while answering.
+ */
+import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { AGENT_LIMITS } from "@/core/agent/config";
+
+/** Longest message the API accepts — the agent's own limit (single source of truth). */
+const MAX_CHARS = AGENT_LIMITS.maxUserMessageChars;
+
+/** Props for {@link Composer}. */
+interface ComposerProps {
+  busy: boolean;
+  onSend: (text: string) => void;
+  onStop: () => void;
+}
+
+/** Renders the composer. */
+export function Composer({ busy, onSend, onStop }: ComposerProps) {
+  const [text, setText] = useState("");
+  const tooLong = text.length > MAX_CHARS;
+
+  const submit = (event?: FormEvent) => {
+    event?.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed || busy || tooLong) return;
+    onSend(trimmed);
+    setText("");
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      submit();
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="glass flex items-end gap-2 rounded-2xl bg-slate-950/85 p-2 shadow-lg shadow-black/40">
+      <label htmlFor="question" className="sr-only">
+        Your question
+      </label>
+      <textarea
+        id="question"
+        rows={1}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Ask about a hub, hazard or region…"
+        className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-3 py-2 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none"
+        aria-describedby={tooLong ? "too-long" : undefined}
+      />
+      {tooLong && (
+        <span id="too-long" className="self-center text-xs text-amber-300">
+          {text.length}/{MAX_CHARS}
+        </span>
+      )}
+      {busy ? (
+        <button
+          type="button"
+          onClick={onStop}
+          className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+        >
+          Stop
+        </button>
+      ) : (
+        <button
+          type="submit"
+          disabled={!text.trim() || tooLong}
+          className="rounded-xl bg-sky-400/90 px-4 py-2 text-sm font-medium text-slate-950 tra
+… [truncated 692 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:49:31.005Z
+
+The composer is simple and self-contained. Here's where the 🔊 button will go on the answer card:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:49:31.750Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\answer\\FinalAnswerCard.tsx",
+  "offset": 1,
+  "limit": 112
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:49:31.945Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+1	/**
+2	 * The validated answer (U2): premise verdict, text, purposeful visuals,
+3	 * confidence, recommendation, assumptions & limits, how it was made, follow-ups.
+4	 */
+5	import type { FinalAnswer } from "@/core/agent/answerSchema";
+6	import { progressLabel } from "@/core/api/progressLabels";
+7	import { CONFIDENCE_UI } from "../../_lib/labels";
+8	import { pickVisuals, type AnswerVisual } from "../../_lib/toolResults";
+9	import { ComparisonGrid } from "../visuals/ComparisonGrid";
+10	import { RankedList } from "../visuals/RankedList";
+11	import { ScoreBreakdown } from "../visuals/ScoreBreakdown";
+12	import { SeasonalityStrip } from "../visuals/SeasonalityStrip";
+13	import { Disclosure } from "./Disclosure";
+14	import { Markdown } from "./Markdown";
+15	import { PremiseBanner } from "./PremiseBanner";
+16	import { RecommendationBox } from "./RecommendationBox";
+17	
+18	/** Props for {@link FinalAnswerCard}. */
+19	interface FinalAnswerCardProps {
+20	  answer: FinalAnswer;
+21	  /** Ask a follow-up question. */
+22	  onAsk: (question: string) => void;
+23	}
+24	
+25	/** Renders one visual. */
+26	function Visual({ visual }: { visual: AnswerVisual }) {
+27	  switch (visual.kind) {
+28	    case "breakdown":
+29	      return <ScoreBreakdown data={visual.data} />;
+30	    case "grid":
+31	      return <ComparisonGrid data={visual.data} />;
+32	    case "seasonality":
+33	      return <SeasonalityStrip data={visual.data} />;
+34	    case "ranking":
+35	      return <RankedList data={visual.data} />;
+36	  }
+37	}
+38	
+39	/** Renders the final answer card. */
+40	export function FinalAnswerCard({ answer, onAsk }: FinalAnswerCardProps) {
+41	  const visuals = pickVisuals(answer);
+42	  const steps = [...new Set(answer.meta.toolCalls.map((c) => progressLabel(c.tool, c.input).replace(/…$/, "")))];
+43	  const caveats = [...answer.assumptions, ...answer.limitations];
+44	
+45	  return (
+46	    <div className="space-y-4">
+47	      {answer.premiseCheck && <PremiseBanner check={answer.premiseCheck} />}
+48	      <Markdown text={answer.answer} />
+49	
+50	      {visuals.map((visual) => (
+51	        <div key={visual.key} className="rounded-xl border border-white/5 bg-black/15 p-4">
+52	          <Visual visual={visual} />
+53	        </div>
+54	      ))}
+55	
+56	      {answer.recommendation && <RecommendationBox recommendation={answer.recommendation} />}
+57	
+58	      {answer.confidence && (
+59	        <p className="flex items-center gap-2 text-xs text-slate-400" title="Computed by code from data completenes
+… [truncated 2523 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:49:55.181Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_lib\\speech.ts",
+  "content": "/**\n * @module app/_lib/speech\n *\n * Voice (Step 15, bonus, D127), using only the browser: speech recognition to ask by\n * voice (Chrome, Edge, Safari) and speech synthesis to read answers aloud (all modern\n * browsers). No server, no cost, nothing recorded by us. Each feature is hidden where\n * the browser can't do it.\n *\n * Also a tiny \"what is being read aloud right now\" store, so every speaker button\n * shows the right state (useSyncExternalStore).\n */\n\n/** The parts of the Web Speech recognition API we use (not in every TS DOM lib). */\ninterface RecognitionResultEvent {\n  resultIndex: number;\n  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;\n}\n\n/** A speech recognizer. */\nexport interface Recognizer {\n  start: () => void;\n  stop: () => void;\n}\n\n/** Events the recognizer reports. */\nexport interface RecognizerHandlers {\n  /** The words heard so far in this session (interim and final). */\n  onText: (text: string) => void;\n  onEnd: () => void;\n  /** A friendly message for the person (e.g. microphone blocked). */\n  onError: (message: string) => void;\n}\n\ntype RecognitionCtor = new () => {\n  lang: string;\n  interimResults: boolean;\n  continuous: boolean;\n  onresult: ((event: RecognitionResultEvent) => void) | null;\n  onend: (() => void) | null;\n  onerror: ((event: { error: string }) => void) | null;\n  start: () => void;\n  stop: () => void;\n};\n\n/** The browser's recognizer class, if any. */\nfunction recognitionClass(): RecognitionCtor | null {\n  if (typeof window === \"undefined\") return null;\n  const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };\n  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;\n}\n\n/** @returns true when this browser can turn speech into text. */\nexport const canListen = (): boolean => recognitionClass() !== null;\n\n/** @returns true when this browser can read text aloud. */\nexport const canSpeak = (): boolean => typeof window !== \"undefined\" && \"speechSynthesis\" in window;\n\n/** Friendly messages for recognition errors (the rest are silent: the person just tries again). */\nconst RECOGNITION_ERRORS: Record<string, string> = {\n  \"not-allowed\": \"Microphone access is blocked. Allow it in your browser to ask by voice.\",\n  \"service-not-allowed\": \"Microphone access is blocked. Allow it in your
+… [truncated 3532 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:49:59.380Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_lib\\speech.test.ts",
+  "content": "import { describe, expect, it } from \"vitest\";\nimport { canListen, canSpeak, createRecognizer, speakableText } from \"./speech\";\n\ndescribe(\"speakableText\", () => {\n  it(\"reads an answer naturally: no Markdown symbols, words for ≥ → · and ranges\", () => {\n    const markdown = [\n      \"**Dallas is High at 72.4**, rank 3 of 36.\",\n      \"\",\n      \"- **Severe storms:** 100 (score 0–100)\",\n      \"- Heavy-rain days ≥ 2 in · see [FEMA](https://hazards.fema.gov/nri/)\",\n      \"- Level: Medium → High\",\n    ].join(\"\\n\");\n    expect(speakableText(markdown)).toBe(\n      \"Dallas is High at 72.4, rank 3 of 36. Severe storms: 100 (score 0 to 100). Heavy-rain days at least 2 in, see FEMA. Level: Medium to High\",\n    );\n  });\n});\n\ndescribe(\"without a browser\", () => {\n  it(\"reports no speech support and creates no recognizer (so the buttons stay hidden)\", () => {\n    expect(canListen()).toBe(false);\n    expect(canSpeak()).toBe(false);\n    expect(createRecognizer({ onText: () => {}, onEnd: () => {}, onError: () => {} })).toBeNull();\n  });\n});\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:00.482Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npx vitest run src/app/_lib/speech.test.ts 2>&1 | grep -E \"×|Expected|Received|\\+ |\\- |Tests \" | head -12",
+  "description": "Run the speech text tests",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:00.688Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\_lib\speech.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:00.913Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\_lib\speech.test.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:05.040Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+      Tests  2 passed (2)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:10.215Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_lib\\speech.ts",
+  "old_string": "    .replace(/(\\d)\\s*[–-]\\s*(\\d)/g, \"$1 to $2\") // 0–100 → 0 to 100",
+  "new_string": "    .replace(/(\\d)\\s*–\\s*(\\d)/g, \"$1 to $2\") // ranges use an en dash: 0–100 → 0 to 100 (dates like 2021-01-01 stay intact)"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:12.017Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_lib\\speech.test.ts",
+  "old_string": "    );\n  });\n});\n\ndescribe(\"without a browser\", () => {",
+  "new_string": "    );\n  });\n\n  it(\"keeps dates and negative numbers intact\", () => {\n    expect(speakableText(\"Weather data 2021-01-01 to 2026-11-24, lows of -18 °F.\")).toBe(\"Weather data 2021-01-01 to 2026-11-24, lows of -18 °F.\");\n  });\n});\n\ndescribe(\"without a browser\", () => {"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:13.067Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npx vitest run src/app/_lib/speech.test.ts 2>&1 | grep -E \"×|Expected|Received|Tests \" | head -8",
+  "description": "Re-run the speech tests",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:13.294Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_lib\speech.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:13.517Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_lib\speech.test.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:17.494Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+      Tests  3 passed (3)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:39.746Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\Composer.tsx",
+  "content": "\"use client\";\n/**\n * The message box (U7): Enter sends, Shift+Enter adds a line, Stop while answering.\n * 🎤 (Step 15, D127): speak the question; the words fill the box so a misheard hub name\n * can be fixed before pressing Ask. Hidden in browsers that can't listen.\n */\nimport { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from \"react\";\nimport { AGENT_LIMITS } from \"@/core/agent/config\";\nimport { canListen, createRecognizer, type Recognizer } from \"../_lib/speech\";\n\n/** Longest message the API accepts — the agent's own limit (single source of truth). */\nconst MAX_CHARS = AGENT_LIMITS.maxUserMessageChars;\n\n/** How long a voice hint (e.g. \"microphone blocked\") stays visible. */\nconst HINT_MS = 6_000;\n\n/** Support never changes during a visit, so there's nothing to subscribe to. */\nconst noSubscribe = () => () => {};\n\n/** Props for {@link Composer}. */\ninterface ComposerProps {\n  busy: boolean;\n  /** `byVoice` is true when the question came from the mic (its answer is then read aloud). */\n  onSend: (text: string, byVoice: boolean) => void;\n  onStop: () => void;\n}\n\n/** Renders the composer. */\nexport function Composer({ busy, onSend, onStop }: ComposerProps) {\n  const [text, setText] = useState(\"\");\n  const [fromVoice, setFromVoice] = useState(false);\n  const [listening, setListening] = useState(false);\n  const [voiceHint, setVoiceHint] = useState<string | null>(null);\n  const recognizer = useRef<Recognizer | null>(null);\n  const micSupported = useSyncExternalStore(noSubscribe, canListen, () => false);\n  const tooLong = text.length > MAX_CHARS;\n\n  useEffect(() => {\n    if (!voiceHint) return;\n    const timer = setTimeout(() => setVoiceHint(null), HINT_MS);\n    return () => clearTimeout(timer);\n  }, [voiceHint]);\n\n  useEffect(() => () => recognizer.current?.stop(), []);\n\n  const toggleMic = () => {\n    if (listening) {\n      recognizer.current?.stop();\n      return;\n    }\n    const before = text.trim() ? `${text.trim()} ` : \"\";\n    recognizer.current = createRecognizer({\n      onText: (heard) => {\n        setText(before + heard);\n        if (heard) setFromVoice(true);\n      },\n      onEnd: () => setListening(false),\n      onError: setVoiceHint,\n    });\n    if (!recognizer.current) return;\n    setVoiceHint(null);\n    setListening(true);\n    recognizer
+… [truncated 3285 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:40.731Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\Composer.tsx has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:42.004Z
+
+Now the 🔊 button on the answer card, next to the confidence line:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:47.008Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\answer\\SpeakButton.tsx",
+  "content": "\"use client\";\n/**\n * 🔊 Listen / ■ Stop on an answer (Step 15, D127): reads the answer text aloud with the\n * browser's speech synthesis. Hidden where the browser can't speak. One answer at a time.\n */\nimport { useSyncExternalStore } from \"react\";\nimport { canSpeak, speak, speakingSnapshot, stopSpeaking, subscribeSpeaking } from \"../../_lib/speech\";\n\n/** Support never changes during a visit, so there's nothing to subscribe to. */\nconst noSubscribe = () => () => {};\n\n/** Props for {@link SpeakButton}. */\ninterface SpeakButtonProps {\n  /** Identifies the answer (its message id). */\n  speechKey: string;\n  text: string;\n}\n\n/** Renders the button (or nothing without speech support). */\nexport function SpeakButton({ speechKey, text }: SpeakButtonProps) {\n  const supported = useSyncExternalStore(noSubscribe, canSpeak, () => false);\n  const speaking = useSyncExternalStore(subscribeSpeaking, speakingSnapshot, () => null) === speechKey;\n  if (!supported) return null;\n  return (\n    <button\n      type=\"button\"\n      onClick={() => (speaking ? stopSpeaking() : speak(speechKey, text))}\n      aria-pressed={speaking}\n      aria-label={speaking ? \"Stop reading the answer aloud\" : \"Read the answer aloud\"}\n      className=\"ml-auto rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60\"\n    >\n      <span aria-hidden=\"true\">{speaking ? \"■\" : \"🔊\"}</span> {speaking ? \"Stop\" : \"Listen\"}\n    </button>\n  );\n}\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:50.110Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\answer\\FinalAnswerCard.tsx",
+  "old_string": "      {answer.confidence && (\n        <p className=\"flex items-center gap-2 text-xs text-slate-400\" title=\"Computed by code from data completeness and whether the sources agree\">\n          <span className=\"h-2 w-2 rounded-full\" style={{ background: CONFIDENCE_UI[answer.confidence].dot }} aria-hidden=\"true\" />\n          {CONFIDENCE_UI[answer.confidence].label}\n        </p>\n      )}",
+  "new_string": "      <div className=\"flex items-center gap-2\">\n        {answer.confidence && (\n          <p className=\"flex items-center gap-2 text-xs text-slate-400\" title=\"Computed by code from data completeness and whether the sources agree\">\n            <span className=\"h-2 w-2 rounded-full\" style={{ background: CONFIDENCE_UI[answer.confidence].dot }} aria-hidden=\"true\" />\n            {CONFIDENCE_UI[answer.confidence].label}\n          </p>\n        )}\n        <SpeakButton speechKey={speechKey} text={answer.answer} />\n      </div>"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:50:54.110Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,pairs)=>{let t=fs.readFileSync(p,\"utf8\");for(const [a,b] of pairs){if(!t.includes(a))throw new Error(p+\" missing: \"+a.slice(0,70));t=t.replace(a,b);}fs.writeFileSync(p,t);};\nedit(\"src/app/_components/answer/FinalAnswerCard.tsx\",[\n ['import { RecommendationBox } from \"./RecommendationBox\";','import { RecommendationBox } from \"./RecommendationBox\";\\nimport { SpeakButton } from \"./SpeakButton\";'],\n [\"  answer: FinalAnswer;\\n  /** Ask a follow-up question. */\",\"  answer: FinalAnswer;\\n  /** Identifies this answer for the read-aloud button (the message id). */\\n  speechKey: string;\\n  /** Ask a follow-up question. */\"],\n [\"export function FinalAnswerCard({ answer, onAsk }: FinalAnswerCardProps) {\",\"export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardProps) {\"],\n]);\nedit(\"src/app/_components/answer/AssistantMessage.tsx\",[[\"<FinalAnswerCard answer={answer} onAsk={onAsk} />\",\"<FinalAnswerCard answer={answer} speechKey={message.id} onAsk={onAsk} />\"]]);\nEOF\nnpx tsc --noEmit 2>&1 | head",
+  "description": "Wire the speak button into the answer card; typecheck"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:54.493Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\_components\answer\SpeakButton.tsx (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:50:55.464Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\answer\FinalAnswerCard.tsx has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:51:01.849Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:51:06.166Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"const ask = useCallback\" -A9 src/app/_components/SneakoscopeApp.tsx; grep -n \"const newChat = useCallback\" -A3 src/app/_components/SneakoscopeApp.tsx; grep -n \"onSend={ask}\" src/app/_components/SneakoscopeApp.tsx; grep -n \"const busy = \" src/app/_components/SneakoscopeApp.tsx",
+  "description": "Locate ask, newChat and the composer wiring"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:51:06.592Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+93:  const ask = useCallback(
+94-    (question: string) => {
+95-      if (busy) return;
+96-      clearError();
+97-      void sendMessage({ text: question }, { body: { sessionId } });
+98-    },
+99-    [busy, clearError, sendMessage, sessionId],
+100-  );
+101-
+102-  const retryLast = useCallback(() => {
+111:  const newChat = useCallback(() => {
+112-    void stop();
+113-    clearError();
+114-    setMessages([]);
+175:          footer={<Composer busy={busy} onSend={ask} onStop={() => void stop()} />}
+85:  const busy = status === "submitted" || status === "streaming";
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:51:14.164Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");const p=\"src/app/_components/SneakoscopeApp.tsx\";let t=fs.readFileSync(p,\"utf8\");\nconst rep=(a,b)=>{if(!t.includes(a))throw new Error(\"missing: \"+a.slice(0,70));t=t.replace(a,b);};\nrep(`  const ask = useCallback(\n    (question: string) => {\n      if (busy) return;\n      clearError();\n      void sendMessage({ text: question }, { body: { sessionId } });\n    },\n    [busy, clearError, sendMessage, sessionId],\n  );`,`  const ask = useCallback(\n    (question: string, byVoice = false) => {\n      if (busy) return;\n      stopSpeaking();\n      voiceTurn.current = byVoice;\n      clearError();\n      void sendMessage({ text: question }, { body: { sessionId } });\n    },\n    [busy, clearError, sendMessage, sessionId],\n  );\n\n  // A question asked by voice gets its answer read aloud once it's checked and complete (D127).\n  useEffect(() => {\n    if (status !== \"ready\" || !voiceTurn.current) return;\n    voiceTurn.current = false;\n    const last = messages.at(-1);\n    const answer = last?.role === \"assistant\" ? last.parts.find((part) => part.type === \"data-answer\") : undefined;\n    if (last && answer?.type === \"data-answer\") speak(last.id, answer.data.answer);\n  }, [status, messages]);`);\nrep(`  const newChat = useCallback(() => {\n    void stop();`,`  const newChat = useCallback(() => {\n    void stop();\n    stopSpeaking();`);\nrep(`  const busy = status === \"submitted\" || status === \"streaming\";`,`  const busy = status === \"submitted\" || status === \"streaming\";\n  /** True while the current question came from the mic (its answer will be read aloud). */\n  const voiceTurn = useRef(false);`);\nrep(`import { EMPTY_IDS, rememberSession, sessionIdsSnapshot, subscribeToStorage } from \"../_lib/storage\";`,`import { speak, stopSpeaking } from \"../_lib/speech\";\nimport { EMPTY_IDS, rememberSession, sessionIdsSnapshot, subscribeToStorage } from \"../_lib/storage\";`);\nfs.writeFileSync(p,t);\nEOF\nnpx tsc --noEmit 2>&1 | head -5; npx eslint 2>&1 | tail -5",
+  "description": "Read voice answers aloud on completion; stop on new question/chat; typecheck and lint"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:51:27.593Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:51:34.938Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");const p=\"src/app/_components/SneakoscopeApp.tsx\";let t=fs.readFileSync(p,\"utf8\");\nconst a=`    async (id: string) => {\n      setTab(\"chat\");`;\nif(!t.includes(a))throw new Error(\"openChat\");t=t.replace(a,`    async (id: string) => {\n      setTab(\"chat\");\n      stopSpeaking();`);fs.writeFileSync(p,t);\nEOF\nnpx tsc --noEmit 2>&1 | head -3; npx vitest run 2>&1 | grep -E \"×|FAIL|→|Test Files|Tests \"; npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -3",
+  "description": "Stop reading when switching chats; test and build",
+  "timeout": 600000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:52:16.547Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+     × every relative link exists, and every [`symbol`](file#L…) link still points at that symbol 71ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/docLinks.test.ts > documentation links > every relative link exists, and every [`symbol`](file#L…) link still points at that symbol
++   "docs\\design.md → ../src/app/_components/SneakoscopeApp.tsx#L56: line 56 no longer contains \"SneakoscopeApp\"",
++   "docs\\design.md → ../src/app/_components/SneakoscopeApp.tsx#L56: line 56 no longer contains \"SneakoscopeApp\"",
+ Test Files  1 failed | 48 passed (49)
+      Tests  1 failed | 224 passed (225)
+✓ Compiled successfully in 3.1s
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:52:20.145Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\" && npx vitest run 2>&1 | grep -E \"×|FAIL|Test Files|Tests \"",
+  "description": "Re-point the moved doc link and re-run tests",
+  "timeout": 300000
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:52:21.003Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node node_modules/next/dist/bin/next start -p 3100",
+  "description": "Start the build locally on port 3100",
+  "run_in_background": true
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:52:40.874Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+docs/design.md: SneakoscopeApp L56 → L57
+docs/design.md: SneakoscopeApp L56 → L57
+fixed 2
+ Test Files  49 passed (49)
+      Tests  225 passed (225)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:52:41.055Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Command running in background with ID: brktozu9x. Output is being written to: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\tasks\brktozu9x.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:53:06.698Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\drive-voice.cjs",
+  "content": "// Tests the voice flow in headless Chrome (no mic/speakers): a fake recognizer \"hears\" a question,\n// and speechSynthesis.speak is spied on. Checks: mic fills the box, voice answers are read aloud,\n// typed answers are not, and the 🔊 button toggles.\nconst fs = require(\"fs\"), path = require(\"path\"), os = require(\"os\"), { spawn } = require(\"child_process\");\nconst [baseUrl, outDir] = process.argv.slice(2);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst FAKES = `\n  class FakeRecognition {\n    start() { setTimeout(() => { this.onresult?.({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: \"Why is the Dallas hub high risk?\" } }] }); this.onend?.(); }, 400); }\n    stop() { this.onend?.(); }\n  }\n  window.SpeechRecognition = FakeRecognition;\n  window.webkitSpeechRecognition = FakeRecognition;\n  window.__spoken = [];\n  window.__speaking = false;\n  speechSynthesis.speak = (u) => { window.__spoken.push(u.text); window.__speaking = true; window.__current = u; };\n  speechSynthesis.cancel = () => { if (window.__speaking) { window.__speaking = false; } };\n`;\n(async () => {\n  const profile = fs.mkdtempSync(path.join(os.tmpdir(), \"sneakoscope-chrome-\"));\n  const chrome = spawn(\"C:/Program Files/Google/Chrome/Application/chrome.exe\",\n    [\"--headless=new\", \"--disable-gpu\", \"--hide-scrollbars\", \"--remote-debugging-port=9336\", `--user-data-dir=${profile}`, \"about:blank\"], { stdio: \"ignore\" });\n  let targets = [];\n  for (let i = 0; i < 40 && !targets.length; i++) {\n    await sleep(250);\n    try { targets = (await (await fetch(\"http://127.0.0.1:9336/json/list\")).json()).filter((t) => t.type === \"page\"); } catch {}\n  }\n  const ws = new WebSocket(targets[0].webSocketDebuggerUrl);\n  await new Promise((r) => (ws.onopen = r));\n  let id = 0; const pending = new Map();\n  ws.onmessage = (m) => { const msg = JSON.parse(m.data); if (pending.has(msg.id)) { pending.get(msg.id)(msg.result ?? msg); pending.delete(msg.id); } };\n  const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });\n  const evaluate = async (expr) => (await send(\"Runtime.evaluate\", { expression: expr, returnByValue: true, awaitPromise: true })).result?.value;\n  const waitAnswered = async (count) => {\n 
+… [truncated 3092 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:53:06.928Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\drive-voice.cjs (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:53:09.457Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "for i in $(seq 1 20); do curl -s -o /dev/null -w \"%{http_code}\" -m 5 http://localhost:3100/ 2>/dev/null | grep -q 200 && break; sleep 1; done; S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\"; node \"$S/drive-voice.cjs\" http://localhost:3100/ \"$S/layout\"",
+  "description": "Run the end-to-end voice flow test in the real app",
+  "timeout": 400000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:53:54.488Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+1. mic button shown: true
+2. box filled by voice: "Why is the Dallas hub high risk?"
+   nothing sent yet (you check, then Ask): true
+   answered: true
+3. voice answer read aloud automatically: true → "Dallas is high risk overall, with a score of 72.4 out of 100 and a rank of 3rd among 36 hubs. Its biggest driv"
+   no Markdown in the spoken text: true
+   🔊 button shows Stop while reading: true
+4. Stop button stops reading: true
+   answered (typed): true
+5. typed answer NOT read aloud: true
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:53:57.140Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\layout\\voice-answer.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:53:57.342Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:03.722Z
+
+<details><summary>🔧 Tool call: <code>TaskStop</code></summary>
+
+```json
+{
+  "task_id": "brktozu9x"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:03.933Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+{"message":"Successfully stopped task: brktozu9x (node node_modules/next/dist/bin/next start -p 3100)","task_id":"brktozu9x","task_type":"local_bash","command":"node node_modules/next/dist/bin/next start -p 3100"}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:04.714Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sleep 1; (netstat -ano 2>/dev/null | grep \":3100 \" | grep LISTEN || echo \"port free\"); grep -n \"^\\*\\*Score-change alerts (bonus):\\*\\*\" README.md; grep -n \"^## Operational limits of the demo deployment\" docs/assumptions.md; grep -n \"| \\*\\*Chat UI\\*\\* |\" docs/design.md | cut -c1-60",
+  "description": "Confirm server stopped; find doc insertion points"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:06.412Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+port free
+53:**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+
+133:## Operational limits of the demo deployment
+72:| **Chat UI** | [src/app/_components/](../src/app/_compon
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:08.119Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 53,55p README.md",
+  "description": "Read the alerts paragraph in the README"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:08.510Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+
+points shows up under **Recent changes** in the overview, where it can be dismissed.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:12.328Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\README.md",
+  "old_string": "**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+\npoints shows up under **Recent changes** in the overview, where it can be dismissed.",
+  "new_string": "**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+\npoints shows up under **Recent changes** in the overview, where it can be dismissed.\n\n**Voice (bonus):** press 🎤 and speak your question. The words fill the question box, so you can fix a misheard hub\nname before pressing Ask, and the answer is then read aloud. Every answer also has a 🔊 **Listen** button. It runs in\nthe browser (Chrome, Edge and Safari for speaking a question; reading aloud works in all modern browsers), and the\nbuttons are hidden where a browser can't do it."
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:15.371Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\docs\\assumptions.md",
+  "old_string": "## Operational limits of the demo deployment\n",
+  "new_string": "## Operational limits of the demo deployment\n- **Voice runs on the browser's own speech services.** Speech-to-text works in Chrome, Edge and Safari (not Firefox, so the 🎤\n  is hidden there). **Chrome and Edge send the recorded audio to Google or Microsoft** to turn it into text; Sneakoscope never\n  receives or stores audio, only the resulting text when you press Ask. Recognition can mishear hub names, which is why\n  the words fill the box for you to check instead of being sent straight away. Read-aloud uses the voices installed on the\n  device, so it sounds different from one device to another.\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:54:24.577Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,a,b)=>{let t=fs.readFileSync(p,\"utf8\");if(!t.includes(a))throw new Error(p+\" missing: \"+a.slice(0,60));t=t.replace(a,b);fs.writeFileSync(p,t);};\nedit(\"docs/design.md\",\"The page never scrolls; each panel scrolls inside itself (bottom tabs on phones).\",\"The page never scrolls; each panel scrolls inside itself (bottom tabs on phones). Voice in and out uses the browser's speech APIs ([src/app/_lib/speech.ts](../src/app/_lib/speech.ts), D127).\");\nlet d=fs.readFileSync(\"docs/decisions.md\",\"utf8\");const anchor=\"| D88 | **No Markdown tables in answers** (prompt rule).\";\nd=d.replace(anchor,`| D127 | **Voice** (Step 15, bonus). 🎤 in the composer uses the browser's speech recognition (US English, live interim text). **The words fill the question box**, and the person checks them and presses Ask. **Answers to questions asked by voice are read aloud automatically** when the checked answer arrives; typed questions stay silent. Every answer has a 🔊 Listen / ■ Stop button. Read-aloud uses the browser's speech synthesis, with Markdown and symbols turned into natural words (\"≥\" → \"at least\", \"0–100\" → \"0 to 100\"; dates stay intact). Reading stops on a new question, a new chat, or opening another chat. Both buttons are hidden where the browser can't do it. Friendly hints for a blocked mic or no speech. No server, no cost. | Your choices: fill-then-confirm (speech recognition mishears hub names) and auto-read for voice questions (a spoken conversation). Verified in the real app with a fake recognizer and a speech spy (headless Chrome has no mic or speakers): voice fills the box without sending, the answer is read aloud as clean text, Stop works, and typed answers stay silent. Privacy, stated in assumptions.md: Chrome and Edge send the audio to Google or Microsoft for recognition; we never receive audio. |\n${anchor}`);fs.writeFileSync(\"docs/decisions.md\",d);\nlet p=fs.readFileSync(\"docs/plan.md\",\"utf8\");p=p.replace(\"| 15 | Voice (bonus) | — |\",\"| 15 | Voice (bonus): 🎤 fills the box, voice answers read aloud, 🔊 on every answer (done: D127) | — |\");fs.writeFileSync(\"docs/plan.md\",p);\nEOF\nnode \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\"; npx tsc --noEmit 2>&1 | head -3; npx eslint 2>&1 | tail -3; npx vitest run 2>&1 | grep -E \"×|FAIL|→|Test Files|Tests \"",
+  "description": "Update design, de
+… [truncated 53 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:24.805Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\README.md has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:25.934Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\docs\assumptions.md has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:54:59.029Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+fixed 0
+ Test Files  49 passed (49)
+      Tests  225 passed (225)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:05.030Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\Composer.tsx",
+  "old_string": "            <span aria-hidden=\"true\">{listening ? \"●\" : \"🎤\"}</span>",
+  "new_string": "            {listening ? <StopIcon /> : <MicIcon />}"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:08.283Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\Composer.tsx",
+  "old_string": "/** Props for {@link Composer}. */",
+  "new_string": "/** A microphone, drawn in the button's text color (the emoji rendered unclearly in some fonts). */\nfunction MicIcon() {\n  return (\n    <svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\" strokeLinecap=\"round\" strokeLinejoin=\"round\" aria-hidden=\"true\">\n      <rect x=\"9\" y=\"2\" width=\"6\" height=\"12\" rx=\"3\" />\n      <path d=\"M5 10v1a7 7 0 0 0 14 0v-1\" />\n      <path d=\"M12 18v4M8 22h8\" />\n    </svg>\n  );\n}\n\n/** A small filled square: \"stop listening\". */\nfunction StopIcon() {\n  return (\n    <svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\" aria-hidden=\"true\">\n      <rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"2\" />\n    </svg>\n  );\n}\n\n/** Props for {@link Composer}. */"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:09.833Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"🎤\" src README.md docs/decisions.md -r | cut -c1-120; npx tsc --noEmit 2>&1 | head -3; npx eslint 2>&1 | tail -3; npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -3",
+  "description": "Find remaining mic emoji references; typecheck, lint, build",
+  "timeout": 600000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:55:10.077Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\Composer.tsx has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:55:11.207Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\Composer.tsx has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:55:40.043Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+src/app/_components/Composer.tsx:4: * 🎤 (Step 15, D127): speak the question; the words fill the box so a misheard hub
+README.md:56:**Voice (bonus):** press 🎤 and speak your question. The words fill the question box, so you can fix a mi
+docs/decisions.md:167:| D127 | **Voice** (Step 15, bonus). 🎤 in the composer uses the browser's speech recognition (U
+✓ Compiled successfully in 1774ms
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:42.830Z
+
+The docs still say "press 🎤". I'll reword those to "the microphone button", then screenshot the new icon at rest and while listening:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:45.734Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -i 's#^\\*\\*Voice (bonus):\\*\\* press 🎤 and speak your question.#**Voice (bonus):** press the microphone button and speak your question.#' README.md && sed -i 's#^| D127 | \\*\\*Voice\\*\\* (Step 15, bonus). 🎤 in the composer uses#| D127 | **Voice** (Step 15, bonus). A microphone button in the composer (an inline SVG icon; the 🎤 emoji rendered unclearly) uses#' docs/decisions.md && sed -i 's# \\* 🎤 (Step 15, D127): speak the question;# * Microphone button (Step 15, D127): speak the question;#' src/app/_components/Composer.tsx && grep -c \"microphone button\" README.md docs/decisions.md src/app/_components/Composer.tsx",
+  "description": "Reword docs to say microphone button"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:46.987Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -2 && node node_modules/next/dist/bin/next start -p 3100",
+  "description": "Rebuild and start the server on port 3100",
+  "run_in_background": true
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:55:47.764Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+README.md:1
+docs/decisions.md:1
+src/app/_components/Composer.tsx:0
+[This command modified 3 files you've previously read: README.md, docs\decisions.md, src\app\_components\Composer.tsx. Call Read before editing.]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:55:47.994Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Command running in background with ID: bsquthb5u. Output is being written to: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\tasks\bsquthb5u.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:55:51.557Z
+
+While the server starts, a small script to capture the composer up close (2× zoom), at rest and while "listening". I'll use a fake recognizer that keeps listening so the stop state is visible:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:00.867Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\shot-composer.cjs",
+  "content": "// Close-up screenshots of the composer: mic at rest, and while listening (fake recognizer that keeps listening).\nconst fs = require(\"fs\"), path = require(\"path\"), os = require(\"os\"), { spawn } = require(\"child_process\");\nconst [baseUrl, outDir] = process.argv.slice(2);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n(async () => {\n  const profile = fs.mkdtempSync(path.join(os.tmpdir(), \"sneakoscope-chrome-\"));\n  const chrome = spawn(\"C:/Program Files/Google/Chrome/Application/chrome.exe\",\n    [\"--headless=new\", \"--disable-gpu\", \"--hide-scrollbars\", \"--remote-debugging-port=9337\", `--user-data-dir=${profile}`, \"about:blank\"], { stdio: \"ignore\" });\n  let targets = [];\n  for (let i = 0; i < 40 && !targets.length; i++) {\n    await sleep(250);\n    try { targets = (await (await fetch(\"http://127.0.0.1:9337/json/list\")).json()).filter((t) => t.type === \"page\"); } catch {}\n  }\n  const ws = new WebSocket(targets[0].webSocketDebuggerUrl);\n  await new Promise((r) => (ws.onopen = r));\n  let id = 0; const pending = new Map();\n  ws.onmessage = (m) => { const msg = JSON.parse(m.data); if (pending.has(msg.id)) { pending.get(msg.id)(msg.result ?? msg); pending.delete(msg.id); } };\n  const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });\n  const evaluate = async (expr) => (await send(\"Runtime.evaluate\", { expression: expr, returnByValue: true, awaitPromise: true })).result?.value;\n  await send(\"Page.enable\");\n  await send(\"Page.addScriptToEvaluateOnNewDocument\", { source: \"class R { start() {} stop() { this.onend?.(); } } window.SpeechRecognition = R; window.webkitSpeechRecognition = R;\" });\n  await send(\"Emulation.setDeviceMetricsOverride\", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });\n  await send(\"Page.navigate\", { url: baseUrl });\n  await sleep(6000);\n  const box = await evaluate(`(() => { const r = document.querySelector('form').getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; })()`);\n  const shot = async (name) => {\n    const { data } = await send(\"Page.captureScreenshot\", { format: \"png\", clip: { ...box, scale: 1 } });\n    fs.writeFileSync(path.join(outDir, name), Buffer.from(data
+… [truncated 361 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:56:01.293Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\shot-composer.cjs (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:03.614Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "for i in $(seq 1 30); do curl -s -o /dev/null -w \"%{http_code}\" -m 5 http://localhost:3100/ 2>/dev/null | grep -q 200 && break; sleep 1; done; S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\"; node \"$S/shot-composer.cjs\" http://localhost:3100/ \"$S/layout\"",
+  "description": "Capture close-ups of the mic button",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:56:12.528Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+saved mic-rest.png
+saved mic-listening.png
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:15.567Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\layout\\mic-rest.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:56:15.758Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:17.209Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\layout\\mic-listening.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:56:17.402Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:21.155Z
+
+<details><summary>🔧 Tool call: <code>TaskStop</code></summary>
+
+```json
+{
+  "task_id": "bsquthb5u"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:56:21.345Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+{"message":"Successfully stopped task: bsquthb5u (npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -2 && node node_modules/next/dist/bin/next start -p 3100)","task_id":"bsquthb5u","task_type":"local_bash","command":"npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -2 && node node_modules/next/dist/bin/next start -p 3100"}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:56:27.508Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sleep 1; (netstat -ano 2>/dev/null | grep \":3100 \" | grep LISTEN || echo \"port free\"); npx vitest run 2>&1 | grep -E \"×|FAIL|Test Files|Tests \"; npm run session:export --silent -- ~/.claude/projects/~/8f798a35-9696-41b6-a5d9-4921a79fe27a.jsonl 2>&1 | tail -1 && node -e '\nconst fs=require(\"fs\");const env={};for(const l of fs.readFileSync(\".env.local\",\"utf8\").split(/\\r?\\n/)){const m=l.match(/^([A-Z_]+)=(.*)$/);if(m)env[m[1]]=m[2].trim();}\nconst t=fs.readFileSync(\"docs/session/transcript.jsonl\",\"utf8\")+fs.readFileSync(\"docs/session/transcript.md\",\"utf8\");\nconst bad=Object.entries(env).filter(([k,v])=>!/MODEL|URL|USERNAME/.test(k)&&((v.length>=6&&t.includes(v))||(v.length>=12&&t.includes(v.slice(0,10)))));console.log(bad.length?\"❌ LEAK: \"+bad.map(b=>b[0]).join(\",\"):\"✓ no .env.local value in the export\");' && git add -A && (git diff --cached --name-only | grep -i \"results/\\|\\.env\\.local\\|\\.vercel\" || echo \"-- nothing private staged\") && git commit -q -F - <<'EOF'\nfeat(step-15): voice, ask by microphone and hear answers (bonus)\n\n- Microphone button (SVG icon): speech fills the question box to check, then Ask\n- Answers to voice questions are read aloud automatically; Listen/Stop on every answer\n- Browser speech APIs only (no server, no cost); hidden where unsupported\n- speakableText turns Markdown and symbols into natural speech (tested)\n- Docs: D127, README, assumptions (browser support, Chrome/Edge send audio to Google/Microsoft)\n\nCo-Authored-By: Claude Opus 5.5 <[email removed]>\nEOF\ngit push -q -u origin step-15-voice 2>&1 | tail -1; git log --oneline -1 | cat",
+  "description": "Confirm server stopped; test, export session, commit and push",
+  "timeout": 300000
+}
+```
+</details>
+
+---

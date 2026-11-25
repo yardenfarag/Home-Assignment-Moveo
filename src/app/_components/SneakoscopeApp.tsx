@@ -11,6 +11,7 @@ import type { SneakoscopeDataParts, SneakoscopeUIMessage } from "@/core/api/chat
 import type { TranscriptTurn } from "@/core/db/chatTranscript";
 import { userError } from "@/core/errors/userErrors";
 import type { WidgetsData } from "@/core/widgets/widgetsData";
+import { speak, stopSpeaking } from "../_lib/speech";
 import { EMPTY_IDS, rememberSession, sessionIdsSnapshot, subscribeToStorage } from "../_lib/storage";
 import { AssistantMessage } from "./answer/AssistantMessage";
 import { ErrorCard } from "./answer/ErrorCard";
@@ -83,6 +84,8 @@ export function SneakoscopeApp() {
     },
   });
   const busy = status === "submitted" || status === "streaming";
+  /** True while the current question came from the mic (its answer will be read aloud). */
+  const voiceTurn = useRef(false);
 
   // Keep the newest message in view inside the conversation panel (the page itself never scrolls).
   useEffect(() => {
@@ -91,13 +94,24 @@ export function SneakoscopeApp() {
   }, [messages.length, status]);
 
   const ask = useCallback(
-    (question: string) => {
+    (question: string, byVoice = false) => {
       if (busy) return;
+      stopSpeaking();
+      voiceTurn.current = byVoice;
       clearError();
       void sendMessage({ text: question }, { body: { sessionId } });
     },
     [busy, clearError, sendMessage, sessionId],
   );
+
+  // A question asked by voice gets its answer read aloud once it's checked and complete (D127).
+  useEffect(() => {
+    if (status !== "ready" || !voiceTurn.current) return;
+    voiceTurn.current = false;
+    const last = messages.at(-1);
+    const answer = last?.role === "assistant" ? last.parts.find((part) => part.type === "data-answer") : undefined;
+    if (last && answer?.type === "data-answer") speak(last.id, answer.data.answer);
+  }, [status, messages]);
 
   const retryLast = useCallback(() => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -110,6 +124,7 @@ export function SneakoscopeApp() {
 
   const newChat = useCallback(() => {
     void stop();
+    stopSpeaking();
     clearError();
     setMessages([]);
     setSessionId(null);
@@ -119,6 +134,7 @@ export function SneakoscopeApp() {
   const openChat = useCallback(
     async (id: string) => {
       setTab("chat");
+      stopSpeaking();
       if (id === sessionId || busy) return;
       setLoadingChat(true);
       try {

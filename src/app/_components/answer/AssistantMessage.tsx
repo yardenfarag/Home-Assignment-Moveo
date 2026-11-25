@@ -39,7 +39,7 @@ export function AssistantMessage({ message, isStreaming, onAsk, onRetry }: Assis
   return (
     <article className="glass rounded-2xl p-5" aria-label="Sneakoscope's answer">
       {answer ? (
-        <FinalAnswerCard answer={answer} onAsk={onAsk} />
+        <FinalAnswerCard answer={answer} speechKey={message.id} onAsk={onAsk} />
       ) : error ? (
         <div className="space-y-3">
           <ProgressList items={progress} />
