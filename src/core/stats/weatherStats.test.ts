@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DailyWeather } from "../domain/weather";
-import { computeWeatherStat, resolvePeriod } from "./weatherStats";
+import { computeMonthlyCounts, computeWeatherStat, resolvePeriod } from "./weatherStats";
 
 const bounds = { earliest: "2021-01-01", latest: "2026-11-24" };
 
@@ -48,6 +48,19 @@ describe("computeWeatherStat", () => {
     { date: "2025-01-04", snowfallCm: null, tempMinC: 0, precipitationMm: 0, windGustMaxKmh: 10, apparentTempMaxC: 4 },
     { date: "2024-12-31", snowfallCm: 9, tempMinC: -5, precipitationMm: 9, windGustMaxKmh: 10, apparentTempMaxC: 0 },
   ];
+
+  it("breaks the count down by calendar month (for the seasonality strip)", () => {
+    const winter: DailyWeather[] = [
+      { date: "2025-01-15", snowfallCm: 3, tempMinC: -5, precipitationMm: 3, windGustMaxKmh: 30, apparentTempMaxC: 0 },
+      { date: "2025-01-16", snowfallCm: 0, tempMinC: -5, precipitationMm: 0, windGustMaxKmh: 30, apparentTempMaxC: 0 },
+      { date: "2025-02-01", snowfallCm: 5, tempMinC: -5, precipitationMm: 5, windGustMaxKmh: 30, apparentTempMaxC: 0 },
+    ];
+    expect(computeMonthlyCounts(winter, "snow_day", { start: "2025-01-01", end: "2025-03-31" })).toEqual([
+      { month: "2025-01", label: "Jan 2025", daysMeeting: 1, daysWithData: 2 },
+      { month: "2025-02", label: "Feb 2025", daysMeeting: 1, daysWithData: 1 },
+      { month: "2025-03", label: "Mar 2025", daysMeeting: 0, daysWithData: 0 },
+    ]);
+  });
 
   it("counts metric days in the period and reports % of days with data", () => {
     const stat = computeWeatherStat(days, "snow_day", { start: "2025-01-01", end: "2025-01-04" });

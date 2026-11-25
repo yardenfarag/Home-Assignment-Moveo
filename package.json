@@ -18,12 +18,14 @@
     "ask": "tsx --env-file=.env.local scripts/ask.ts"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.186",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@supabase/supabase-js": "^2.119.2",
     "ai": "^7.0.181",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

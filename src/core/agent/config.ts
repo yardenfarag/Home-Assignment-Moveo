@@ -24,3 +24,6 @@ export const HISTORY_TURNS = 10;
 /** Fixed disclaimer added by CODE to every recommendation (D8) — the LLM cannot weaken it. */
 export const RECOMMENDATION_DISCLAIMER =
   "Decision support based on weather exposure only. It does not include hub volume, upgrade costs or existing resilience. Final decisions belong to your team.";
+
+/** Start of the message sent back to the model when its answer fails validation (stored in history, hidden from users). */
+export const RETRY_FEEDBACK_PREFIX = "Your previous answer was rejected by validation:";

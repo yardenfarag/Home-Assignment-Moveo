@@ -88,3 +88,11 @@ export function toUserError(error: unknown): UserError {
   }
   return userError("internal_error");
 }
+
+/** Shown when a streamed answer stops before the validated answer arrives (e.g. the connection dropped). */
+export const STREAM_INTERRUPTED: Omit<UserError, "status"> = {
+  code: "internal_error",
+  message: "The answer stopped before it finished.",
+  hint: "Your connection may have dropped — please try again.",
+  retryable: true,
+};

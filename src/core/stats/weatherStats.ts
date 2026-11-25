@@ -111,3 +111,34 @@ export function computeWeatherStat(days: DailyWeather[], metricId: DayMetricId, 
     coverage: daysInPeriod === 0 ? 0 : Math.round((present / daysInPeriod) * 1000) / 1000,
   };
 }
+
+/** Hazard days in one calendar month. */
+export interface MonthlyCount {
+  /** `YYYY-MM`. */
+  month: string;
+  /** e.g. "Jan 2025". */
+  label: string;
+  daysMeeting: number;
+  daysWithData: number;
+}
+
+/**
+ * Counts metric days per calendar month across a period (every month in the
+ * period is listed, even with no data), for the seasonality strip.
+ * @param days - daily rows (rows outside the period are ignored).
+ * @param metricId - which hazard-day metric.
+ * @param period - the exact dates.
+ * @returns one entry per month, oldest first.
+ */
+export function computeMonthlyCounts(days: DailyWeather[], metricId: DayMetricId, period: DateWindow): MonthlyCount[] {
+  const months: MonthlyCount[] = [];
+  let cursor = `${period.start.slice(0, 7)}-01`;
+  while (cursor <= period.end) {
+    const month = cursor.slice(0, 7);
+    const inMonth = days.filter((d) => d.date.startsWith(month) && d.date >= period.start && d.date <= period.end);
+    const { hits, present } = countMetricDays(inMonth, metricId);
+    months.push({ month, label: `${MONTHS[Number(month.slice(5)) - 1].slice(0, 3)} ${month.slice(0, 4)}`, daysMeeting: hits, daysWithData: present });
+    cursor = addDays(lastDayOfMonth(Number(month.slice(0, 4)), Number(month.slice(5))), 1);
+  }
+  return months;
+}

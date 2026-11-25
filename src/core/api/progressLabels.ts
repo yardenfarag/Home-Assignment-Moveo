@@ -17,8 +17,12 @@ const METRIC_NAMES: Record<string, string> = {
   heat: "heat exposure",
 };
 
-/** "kansas-city" → "Kansas City". */
-function hubName(hubId: unknown): string {
+/**
+ * Turns a hub id into its display name: "kansas-city" → "Kansas City", "st-louis" → "St. Louis".
+ * @param hubId - hub id (anything else gives "the hub").
+ * @returns the display name.
+ */
+export function hubName(hubId: unknown): string {
   if (typeof hubId !== "string") return "the hub";
   return hubId
     .split("-")

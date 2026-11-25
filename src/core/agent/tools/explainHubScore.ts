@@ -30,64 +30,83 @@ export function buildExplainHubScoreTool(ctx: AgentContext, runtime: ToolRuntime
       "level, rank and confidence reasons. Use for 'why is X risky?' and BEFORE agreeing with any claim about a hub's level.",
     inputSchema: z.object({ hubId: hubIdSchema }),
     execute: (input) =>
-      runTool("explain_hub_score", input, runtime, () => {
-        const snapshot = ctx.snapshotByHub.get(input.hubId);
-        if (!snapshot) throw new Error(`No score available for hub "${input.hubId}".`);
-        const hub = ctx.hubById.get(input.hubId)!;
-        const all = [...ctx.snapshotByHub.values()];
-        const rankOf = (score: (s: StoredSnapshot) => number) =>
-          competitionRanks(all.map((s) => ({ id: s.hubId, score: score(s) }))).get(input.hubId);
-        const worst = snapshot.hazards[snapshot.topHazard].score;
-
-        return {
-          hubId: hub.id,
-          hub: hubLabel(hub),
-          county: hub.countyName ? `${hub.countyName} County (FIPS ${hub.countyFips})` : null,
-          overallScore: snapshot.overallScore,
-          level: snapshot.riskLevel,
-          levelCutoffs: `Low 0-${RISK_LEVEL_CUTOFFS.mediumFrom - 1}, Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}-${RISK_LEVEL_CUTOFFS.highFrom - 1}, High ${RISK_LEVEL_CUTOFFS.highFrom}-100`,
-          rankOverall: rankOf((s) => s.overallScore),
-          totalHubs: all.length,
-          topHazard: snapshot.topHazard,
-          formula: {
-            rule: `overall = ${OVERALL_MIX.weightedAverage} × weighted average of hazard scores + ${OVERALL_MIX.worstHazard} × worst hazard score`,
-            weightedAverage: snapshot.weightedAverage,
-            worstHazardScore: worst,
-            calculation: `${OVERALL_MIX.weightedAverage} × ${snapshot.weightedAverage} + ${OVERALL_MIX.worstHazard} × ${worst} = ${snapshot.overallScore}`,
-          },
-          hazards: HAZARDS.map((h) => {
-            const hz = snapshot.hazards[h];
-            return {
-              hazard: h,
-              weight: HAZARD_WEIGHTS[h],
-              score: hz.score,
-              level: riskLevelFor(hz.score),
-              rankAmongAll: rankOf((s) => s.hazards[h].score),
-              observedScore: hz.observedScore,
-              femaScore: hz.femaScore,
-              confidence: hz.confidence,
-              confidenceReason: hz.confidenceReason,
-              inputs: hz.inputs.map((i) => ({
-                signal: i.signal,
-                source: i.source === "fema" ? "FEMA National Risk Index" : "observed weather (Open-Meteo)",
-                valuePerYear: i.value === null ? null : Math.round(i.value * 100) / 100,
-                unit: i.unit,
-                valueThatScores100: i.anchor100,
-                score: i.score === null ? null : round1(i.score),
-              })),
-            };
-          }),
-          observedWindow: snapshot.window,
-          reportedOnlyStats: {
-            heavySnowDaysPerYear: snapshot.observedPerYear?.heavySnowDays ?? null,
-            warningGustDaysPerYear: snapshot.observedPerYear?.gustWarningDays ?? null,
-            note: "Reported for context only; modeled data undercounts these, so they are not scored.",
-          },
-          scoringVersion: snapshot.scoringVersion,
-          hubIds: [hub.id],
-          confidence: snapshot.confidence,
-          caveats: [...GENERAL_CAVEATS, ...HAZARDS.flatMap((h) => hazardCaveats(h, ctx.units))],
-        };
-      }),
+      runTool("explain_hub_score", input, runtime, () => explainHubScoreOutput(ctx, input as { hubId: string })),
   });
 }
+
+/**
+ * Builds the explain_hub_score result (pure; exported so the UI can import its type).
+ * @param ctx - agent context.
+ * @param input - validated tool input.
+ * @returns the tool result.
+ */
+export function explainHubScoreOutput(ctx: AgentContext, input: { hubId: string }) {
+  const snapshot = ctx.snapshotByHub.get(input.hubId);
+  if (!snapshot) throw new Error(`No score available for hub "${input.hubId}".`);
+  const hub = ctx.hubById.get(input.hubId)!;
+  const all = [...ctx.snapshotByHub.values()];
+  const rankOf = (score: (s: StoredSnapshot) => number) =>
+    competitionRanks(all.map((s) => ({ id: s.hubId, score: score(s) }))).get(input.hubId);
+  const worst = snapshot.hazards[snapshot.topHazard].score;
+
+  return {
+    hubId: hub.id,
+    hub: hubLabel(hub),
+    county: hub.countyName ? `${hub.countyName} County (FIPS ${hub.countyFips})` : null,
+    overallScore: snapshot.overallScore,
+    level: snapshot.riskLevel,
+    levelCutoffs: `Low 0-${RISK_LEVEL_CUTOFFS.mediumFrom - 1}, Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}-${RISK_LEVEL_CUTOFFS.highFrom - 1}, High ${RISK_LEVEL_CUTOFFS.highFrom}-100`,
+    rankOverall: rankOf((s) => s.overallScore),
+    totalHubs: all.length,
+    topHazard: snapshot.topHazard,
+    formula: {
+      rule: `overall = ${OVERALL_MIX.weightedAverage} × weighted average of hazard scores + ${OVERALL_MIX.worstHazard} × worst hazard score`,
+      weightedAverage: snapshot.weightedAverage,
+      worstHazardScore: worst,
+      calculation: `${OVERALL_MIX.weightedAverage} × ${snapshot.weightedAverage} + ${OVERALL_MIX.worstHazard} × ${worst} = ${snapshot.overallScore}`,
+      /** Points each hazard adds to the overall score (0.6 × weight × score), for the score-breakdown visual (U3b). */
+      contributions: HAZARDS.map((h) => ({
+        hazard: h,
+        points: round1(OVERALL_MIX.weightedAverage * HAZARD_WEIGHTS[h] * snapshot.hazards[h].score),
+      })),
+      /** Points added by the worst-hazard term (0.4 × worst hazard score). */
+      worstHazardBoost: round1(OVERALL_MIX.worstHazard * worst),
+    },
+    hazards: HAZARDS.map((h) => {
+      const hz = snapshot.hazards[h];
+      return {
+        hazard: h,
+        weight: HAZARD_WEIGHTS[h],
+        score: hz.score,
+        level: riskLevelFor(hz.score),
+        rankAmongAll: rankOf((s) => s.hazards[h].score),
+        observedScore: hz.observedScore,
+        femaScore: hz.femaScore,
+        confidence: hz.confidence,
+        confidenceReason: hz.confidenceReason,
+        inputs: hz.inputs.map((i) => ({
+          signal: i.signal,
+          source: i.source === "fema" ? "FEMA National Risk Index" : "observed weather (Open-Meteo)",
+          valuePerYear: i.value === null ? null : Math.round(i.value * 100) / 100,
+          unit: i.unit,
+          valueThatScores100: i.anchor100,
+          score: i.score === null ? null : round1(i.score),
+        })),
+      };
+    }),
+    observedWindow: snapshot.window,
+    reportedOnlyStats: {
+      heavySnowDaysPerYear: snapshot.observedPerYear?.heavySnowDays ?? null,
+      warningGustDaysPerYear: snapshot.observedPerYear?.gustWarningDays ?? null,
+      note: "Reported for context only; modeled data undercounts these, so they are not scored.",
+    },
+    scoringVersion: snapshot.scoringVersion,
+    hubIds: [hub.id],
+    confidence: snapshot.confidence,
+    caveats: [...GENERAL_CAVEATS, ...HAZARDS.flatMap((h) => hazardCaveats(h, ctx.units))],
+  };
+}
+
+/** Result of the explain_hub_score tool. */
+export type ExplainHubScoreOutput = ReturnType<typeof explainHubScoreOutput>;
+

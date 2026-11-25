@@ -30,52 +30,64 @@ export function buildCompareHubsTool(ctx: AgentContext, runtime: ToolRuntime, hu
       hazards: z.array(z.enum(HAZARDS)).nullable().describe("Hazards to include, or null for all six."),
     }),
     execute: (input) =>
-      runTool("compare_hubs", input, runtime, () => {
-        const hazards: Hazard[] = input.hazards?.length ? input.hazards : [...HAZARDS];
-        const all = [...ctx.snapshotByHub.values()];
-        const overallRanks = competitionRanks(all.map((s) => ({ id: s.hubId, score: s.overallScore })));
-        const hazardRanks = Object.fromEntries(
-          hazards.map((h) => [h, competitionRanks(all.map((s) => ({ id: s.hubId, score: s.hazards[h].score })))]),
-        ) as Record<Hazard, Map<string, number>>;
-
-        const hubs = input.hubIds.map((hubId) => {
-          const snapshot = ctx.snapshotByHub.get(hubId);
-          if (!snapshot) throw new Error(`No score available for hub "${hubId}".`);
-          return {
-            hubId,
-            hub: hubLabel(ctx.hubById.get(hubId)!),
-            overallScore: snapshot.overallScore,
-            level: snapshot.riskLevel,
-            rankOverall: overallRanks.get(hubId),
-            topHazard: snapshot.topHazard,
-            hazards: Object.fromEntries(
-              hazards.map((h) => {
-                const hz = snapshot.hazards[h];
-                return [
-                  h,
-                  {
-                    score: hz.score,
-                    level: riskLevelFor(hz.score),
-                    rankAmongAll: hazardRanks[h].get(hubId),
-                    observedScore: hz.observedScore,
-                    femaScore: hz.femaScore,
-                    confidence: hz.confidence,
-                    confidenceReason: hz.confidenceReason,
-                  },
-                ];
-              }),
-            ),
-          };
-        });
-        return {
-          totalHubs: all.length,
-          hubs,
-          hubIds: input.hubIds,
-          confidence: weakestConfidence(
-            input.hubIds.flatMap((id) => hazards.map((h) => ctx.snapshotByHub.get(id)!.hazards[h].confidence)),
-          ),
-          caveats: [...GENERAL_CAVEATS, ...hazards.flatMap((h) => hazardCaveats(h, ctx.units))],
-        };
-      }),
+      runTool("compare_hubs", input, runtime, () => compareHubsOutput(ctx, input as Parameters<typeof compareHubsOutput>[1])),
   });
 }
+
+/**
+ * Builds the compare_hubs result (pure; exported so the UI can import its type).
+ * @param ctx - agent context.
+ * @param input - validated tool input.
+ * @returns the tool result.
+ */
+export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; hazards: Hazard[] | null }) {
+  const hazards: Hazard[] = input.hazards?.length ? input.hazards : [...HAZARDS];
+  const all = [...ctx.snapshotByHub.values()];
+  const overallRanks = competitionRanks(all.map((s) => ({ id: s.hubId, score: s.overallScore })));
+  const hazardRanks = Object.fromEntries(
+    hazards.map((h) => [h, competitionRanks(all.map((s) => ({ id: s.hubId, score: s.hazards[h].score })))]),
+  ) as Record<Hazard, Map<string, number>>;
+
+  const hubs = input.hubIds.map((hubId) => {
+    const snapshot = ctx.snapshotByHub.get(hubId);
+    if (!snapshot) throw new Error(`No score available for hub "${hubId}".`);
+    return {
+      hubId,
+      hub: hubLabel(ctx.hubById.get(hubId)!),
+      overallScore: snapshot.overallScore,
+      level: snapshot.riskLevel,
+      rankOverall: overallRanks.get(hubId),
+      topHazard: snapshot.topHazard,
+      hazards: Object.fromEntries(
+        hazards.map((h) => {
+          const hz = snapshot.hazards[h];
+          return [
+            h,
+            {
+              score: hz.score,
+              level: riskLevelFor(hz.score),
+              rankAmongAll: hazardRanks[h].get(hubId),
+              observedScore: hz.observedScore,
+              femaScore: hz.femaScore,
+              confidence: hz.confidence,
+              confidenceReason: hz.confidenceReason,
+            },
+          ];
+        }),
+      ),
+    };
+  });
+  return {
+    totalHubs: all.length,
+    hubs,
+    hubIds: input.hubIds,
+    confidence: weakestConfidence(
+      input.hubIds.flatMap((id) => hazards.map((h) => ctx.snapshotByHub.get(id)!.hazards[h].confidence)),
+    ),
+    caveats: [...GENERAL_CAVEATS, ...hazards.flatMap((h) => hazardCaveats(h, ctx.units))],
+  };
+}
+
+/** Result of the compare_hubs tool. */
+export type CompareHubsOutput = ReturnType<typeof compareHubsOutput>;
+

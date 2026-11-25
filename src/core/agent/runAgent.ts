@@ -25,7 +25,7 @@ import { BoundaryError, describeUnknownError } from "../errors/boundaryError";
 export { AgentInputError };
 import { buildSystemPrompt } from "./systemPrompt";
 import { llmAnswerSchema, type FinalAnswer, type LlmAnswer } from "./answerSchema";
-import { AGENT_LIMITS } from "./config";
+import { AGENT_LIMITS, RETRY_FEEDBACK_PREFIX } from "./config";
 import type { AgentContext } from "./context";
 import { finalizeAnswer } from "./finalizeAnswer";
 import { ToolLedger } from "./ledger";
@@ -172,7 +172,7 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
       callbacks.onRetry?.(problems);
       newMessages.push({
         role: "user",
-        content: `Your previous answer was rejected by validation:\n- ${problems.join("\n- ")}\nFix these and answer again. Use only numbers and hubs returned by tools (call more tools if needed).`,
+        content: `${RETRY_FEEDBACK_PREFIX}\n- ${problems.join("\n- ")}\nFix these and answer again. Use only numbers and hubs returned by tools (call more tools if needed).`,
       });
     }
   }
