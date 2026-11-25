@@ -10,16 +10,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { SneakoscopeDataParts, SneakoscopeUIMessage } from "@/core/api/chatStream";
 import type { TranscriptTurn } from "@/core/db/chatTranscript";
 import { userError } from "@/core/errors/userErrors";
-import type { UnitSystem } from "@/core/utils/units";
 import type { WidgetsData } from "@/core/widgets/widgetsData";
-import { EMPTY_IDS, loadUnits, rememberSession, saveUnits, sessionIdsSnapshot, subscribeToStorage } from "../_lib/storage";
+import { EMPTY_IDS, rememberSession, sessionIdsSnapshot, subscribeToStorage } from "../_lib/storage";
 import { AssistantMessage } from "./answer/AssistantMessage";
 import { ErrorCard } from "./answer/ErrorCard";
 import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
+import { Pane } from "./Pane";
 import { SideNav } from "./SideNav";
+import { TabBar, type ShellTab } from "./TabBar";
 import { WidgetsRail } from "./WidgetsRail";
 
 /** Text of a user message. */
@@ -54,16 +55,15 @@ function messagesFromTurns(turns: TranscriptTurn[]): SneakoscopeUIMessage[] {
 /** The app. */
 export function SneakoscopeApp() {
   // Browser-remembered values, read hydration-safely (the server always renders the defaults).
-  const units = useSyncExternalStore<UnitSystem>(subscribeToStorage, loadUnits, () => "us");
   const sessionIds = useSyncExternalStore(subscribeToStorage, sessionIdsSnapshot, () => EMPTY_IDS);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [freshness, setFreshness] = useState<string | null>(null);
   const [hubCount, setHubCount] = useState<number | null>(null);
-  const [navOpen, setNavOpen] = useState(false);
+  const [tab, setTab] = useState<ShellTab>("chat");
   const [loadingChat, setLoadingChat] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // sessionId and units travel with each sendMessage call (see ask); the transport only adds the message text.
+  // sessionId travels with each sendMessage call (see ask); the transport only adds the message text. US units only (D126).
   const transport = useMemo(
     () =>
       new DefaultChatTransport<SneakoscopeUIMessage>({
@@ -84,17 +84,19 @@ export function SneakoscopeApp() {
   });
   const busy = status === "submitted" || status === "streaming";
 
+  // Keep the newest message in view inside the conversation panel (the page itself never scrolls).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const body = scrollRef.current;
+    body?.scrollTo({ top: body.scrollHeight, behavior: "smooth" });
   }, [messages.length, status]);
 
   const ask = useCallback(
     (question: string) => {
       if (busy) return;
       clearError();
-      void sendMessage({ text: question }, { body: { sessionId, units } });
+      void sendMessage({ text: question }, { body: { sessionId } });
     },
-    [busy, clearError, sendMessage, sessionId, units],
+    [busy, clearError, sendMessage, sessionId],
   );
 
   const retryLast = useCallback(() => {
@@ -103,20 +105,20 @@ export function SneakoscopeApp() {
     if (!question) return;
     setMessages(messages.slice(0, messages.lastIndexOf(lastUser!)));
     clearError();
-    void sendMessage({ text: question }, { body: { sessionId, units } });
-  }, [messages, setMessages, clearError, sendMessage, sessionId, units]);
+    void sendMessage({ text: question }, { body: { sessionId } });
+  }, [messages, setMessages, clearError, sendMessage, sessionId]);
 
   const newChat = useCallback(() => {
     void stop();
     clearError();
     setMessages([]);
     setSessionId(null);
-    setNavOpen(false);
+    setTab("chat");
   }, [stop, clearError, setMessages]);
 
   const openChat = useCallback(
     async (id: string) => {
-      setNavOpen(false);
+      setTab("chat");
       if (id === sessionId || busy) return;
       setLoadingChat(true);
       try {
@@ -135,7 +137,15 @@ export function SneakoscopeApp() {
     [busy, clearError, setMessages, sessionId],
   );
 
-  const changeUnits = useCallback((next: UnitSystem) => saveUnits(next), []);
+
+  /** Asking from the overview (or an alert) switches small screens to the conversation. */
+  const askFromElsewhere = useCallback(
+    (question: string) => {
+      setTab("chat");
+      ask(question);
+    },
+    [ask],
+  );
 
   const onStatus = useCallback((status: WidgetsData["dataStatus"]) => {
     setFreshness(`${status.hubCount} hubs · weather through ${status.weatherThrough}`);
@@ -145,24 +155,26 @@ export function SneakoscopeApp() {
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
   const completedAnswers = messages.filter((m) => m.parts.some((part) => part.type === "data-answer")).length;
 
+  // Small screens show one panel at a time (bottom tabs); desktop (xl, 1280 px+) shows all three (D125).
+  const show = (panel: ShellTab) => (tab === panel ? "flex" : "hidden xl:flex");
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header units={units} onUnitsChange={changeUnits} freshness={freshness} onToggleNav={() => setNavOpen((o) => !o)} />
+    <div className="flex h-dvh flex-col overflow-hidden">
+      <Header freshness={freshness} />
 
-      <div className="mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_22rem]">
-        <aside
-          className={`${navOpen ? "fixed inset-0 z-20 block bg-slate-950/95 p-6" : "hidden"} lg:static lg:block lg:bg-transparent lg:p-0`}
-        >
-          {navOpen && (
-            <button type="button" onClick={() => setNavOpen(false)} className="mb-4 text-sm text-slate-400 lg:hidden">
-              ✕ Close
-            </button>
-          )}
+      <div className="mx-auto grid min-h-0 w-full max-w-[1680px] flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-3 p-3 xl:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+        <Pane title="Your chats" className={show("chats")}>
           <SideNav sessionIds={sessionIds} activeId={sessionId} onOpen={(id) => void openChat(id)} onNew={newChat} refreshKey={completedAnswers} />
-        </aside>
+        </Pane>
 
-        <main className="flex min-w-0 flex-col gap-4">
-          <div className="flex-1 space-y-4" aria-busy={loadingChat}>
+        <Pane
+          title="Conversation"
+          className={show("chat")}
+          bodyRef={scrollRef}
+          busy={loadingChat}
+          footer={<Composer busy={busy} onSend={ask} onStop={() => void stop()} />}
+        >
+          <div className="space-y-4">
             {loadingChat && <p className="text-sm text-slate-400">Opening your chat…</p>}
             {messages.length === 0 && !loadingChat && <EmptyState onAsk={ask} hubCount={hubCount} />}
             {messages.map((message) =>
@@ -174,7 +186,6 @@ export function SneakoscopeApp() {
                 <AssistantMessage
                   key={message.id}
                   message={message}
-                  units={units}
                   isStreaming={busy && message.id === lastAssistantId}
                   onAsk={ask}
                   onRetry={retryLast}
@@ -187,18 +198,16 @@ export function SneakoscopeApp() {
               </div>
             )}
             {error && <ErrorCard error={requestError(error)} onRetry={retryLast} />}
-            <div ref={bottomRef} />
           </div>
-          <div className="sticky bottom-4">
-            <Composer busy={busy} onSend={ask} onStop={() => void stop()} />
-          </div>
-        </main>
+        </Pane>
 
-        <aside className="order-first min-w-0 lg:col-span-2 xl:order-none xl:col-span-1" aria-label="Overview">
-          <WidgetsRail onAsk={ask} onStatus={onStatus} />
-        </aside>
+        <Pane title="Overview" className={show("overview")}>
+          <WidgetsRail onAsk={askFromElsewhere} onStatus={onStatus} />
+          <Footer className="mt-3 px-1 xl:hidden" />
+        </Pane>
       </div>
-      <Footer />
+      <Footer className="hidden shrink-0 xl:block" />
+      <TabBar tab={tab} onChange={setTab} className="xl:hidden" />
     </div>
   );
 }

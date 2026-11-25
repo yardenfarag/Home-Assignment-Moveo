@@ -43,16 +43,14 @@ export function RecentChanges({ onAsk }: RecentChangesProps) {
   if (visible.length === 0) return null;
 
   return (
-    <section className="glass w-[85%] shrink-0 snap-start rounded-2xl border border-amber-400/30 p-4 lg:w-auto" aria-label="Recent changes">
-      <h2 className="flex items-center gap-2 text-sm font-medium text-amber-200">
+    <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.04] px-3 py-2.5" aria-label="Recent changes">
+      <h3 className="flex items-center gap-2 text-sm font-medium text-amber-200">
         <span aria-hidden="true">🔔</span> Recent changes
-      </h2>
-      <p className="mb-3 mt-1 text-xs leading-relaxed text-slate-400">
-        After each nightly update, hubs whose risk level changed or whose score moved 10+ points.
-      </p>
-      <ul className="space-y-2">
+      </h3>
+      <p className="mb-1.5 mt-0.5 text-[11px] leading-snug text-slate-400">Overnight: a risk level changed or a score moved 10+ points.</p>
+      <ul className="space-y-1.5">
         {visible.map((alert) => (
-          <li key={alert.id} className="flex items-start gap-2 rounded-lg bg-white/[0.03] p-2">
+          <li key={alert.id} className="flex items-start gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
             <button
               type="button"
               className="flex-1 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"

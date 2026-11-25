@@ -4,7 +4,6 @@
  */
 import type { FinalAnswer } from "@/core/agent/answerSchema";
 import { progressLabel } from "@/core/api/progressLabels";
-import type { UnitSystem } from "@/core/utils/units";
 import { CONFIDENCE_UI } from "../../_lib/labels";
 import { pickVisuals, type AnswerVisual } from "../../_lib/toolResults";
 import { ComparisonGrid } from "../visuals/ComparisonGrid";
@@ -19,27 +18,26 @@ import { RecommendationBox } from "./RecommendationBox";
 /** Props for {@link FinalAnswerCard}. */
 interface FinalAnswerCardProps {
   answer: FinalAnswer;
-  units: UnitSystem;
   /** Ask a follow-up question. */
   onAsk: (question: string) => void;
 }
 
 /** Renders one visual. */
-function Visual({ visual, units }: { visual: AnswerVisual; units: UnitSystem }) {
+function Visual({ visual }: { visual: AnswerVisual }) {
   switch (visual.kind) {
     case "breakdown":
       return <ScoreBreakdown data={visual.data} />;
     case "grid":
       return <ComparisonGrid data={visual.data} />;
     case "seasonality":
-      return <SeasonalityStrip data={visual.data} units={units} />;
+      return <SeasonalityStrip data={visual.data} />;
     case "ranking":
       return <RankedList data={visual.data} />;
   }
 }
 
 /** Renders the final answer card. */
-export function FinalAnswerCard({ answer, units, onAsk }: FinalAnswerCardProps) {
+export function FinalAnswerCard({ answer, onAsk }: FinalAnswerCardProps) {
   const visuals = pickVisuals(answer);
   const steps = [...new Set(answer.meta.toolCalls.map((c) => progressLabel(c.tool, c.input).replace(/…$/, "")))];
   const caveats = [...answer.assumptions, ...answer.limitations];
@@ -51,7 +49,7 @@ export function FinalAnswerCard({ answer, units, onAsk }: FinalAnswerCardProps) 
 
       {visuals.map((visual) => (
         <div key={visual.key} className="rounded-xl border border-white/5 bg-black/15 p-4">
-          <Visual visual={visual} units={units} />
+          <Visual visual={visual} />
         </div>
       ))}
 

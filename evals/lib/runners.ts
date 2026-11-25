@@ -56,7 +56,7 @@ export async function runRemote(evalCase: EvalCase, target: RemoteTarget): Promi
       const res = await fetch(new URL("/api/chat", target.baseUrl), {
         method: "POST",
         headers: { "Content-Type": "application/json", [OPERATOR_HEADER]: target.operatorKey },
-        body: JSON.stringify({ sessionId, message: question, units: "us" }),
+        body: JSON.stringify({ sessionId, message: question }),
         signal: AbortSignal.timeout(180_000),
       });
       const body = await res.text();

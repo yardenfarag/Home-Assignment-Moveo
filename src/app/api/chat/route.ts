@@ -1,6 +1,6 @@
 /**
  * POST /api/chat — the agent's API (requirement 6). The UI calls this, never the LLM.
- * Body: { sessionId: uuid | null, message: string, units: "us" | "metric" }.
+ * Body: { sessionId: uuid | null, message: string }. Answers use US units (D126).
  * Streams the AI SDK chat protocol: session, progress, answer text, validated answer (A1).
  * Rate-limited per visitor and per day before the agent runs (D114).
  */
@@ -32,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (limited) return errorResponse(limited);
     const deps = createAnswerQuestionDeps();
-    const stream = buildChatStream(body, (req, callbacks) => answerQuestion(req, deps, callbacks));
+    const stream = buildChatStream(body, (req, callbacks) => answerQuestion({ ...req, units: "us" }, deps, callbacks));
     return createUIMessageStreamResponse({ stream, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return failure(error, "POST /api/chat");

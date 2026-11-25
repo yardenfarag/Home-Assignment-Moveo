@@ -13,7 +13,6 @@ import type { FinalAnswer } from "../agent/answerSchema";
 import type { AgentCallbacks } from "../agent/runAgent";
 import { describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
 import { toUserError, type UserError } from "../errors/userErrors";
-import { UNIT_SYSTEMS } from "../utils/units";
 import { progressLabel } from "./progressLabels";
 
 /** Body of `POST /api/chat`. */
@@ -21,7 +20,6 @@ export const chatRequestSchema = z.object({
   sessionId: z.uuid().nullable(),
   /** Hard cap on the raw body; the agent's friendlier 1,000-character limit applies after this. */
   message: z.string().max(10_000),
-  units: z.enum(UNIT_SYSTEMS),
 });
 
 /** A validated chat request. */

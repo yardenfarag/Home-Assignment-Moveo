@@ -3,17 +3,16 @@
  * hazard days per month across the period. Numbers come from get_weather_stat.
  */
 import type { WeatherStatOutput } from "@/core/agent/tools/getWeatherStat";
-import { formatDual, type UnitSystem } from "@/core/utils/units";
+import { formatDual } from "@/core/utils/units";
 
 /** Props for {@link SeasonalityStrip}. */
 interface SeasonalityStripProps {
   data: WeatherStatOutput;
   /** The user's unit system — the threshold text flips instantly (U4). */
-  units: UnitSystem;
 }
 
 /** Renders the big number and the monthly strip. */
-export function SeasonalityStrip({ data, units }: SeasonalityStripProps) {
+export function SeasonalityStrip({ data }: SeasonalityStripProps) {
   const max = Math.max(1, ...data.byMonth.map((m) => m.daysMeeting));
   const singleYear = new Set(data.byMonth.map((m) => m.month.slice(0, 4))).size === 1;
   return (
@@ -23,7 +22,7 @@ export function SeasonalityStrip({ data, units }: SeasonalityStripProps) {
           {data.percentOfDays === null ? "—" : `${data.percentOfDays}%`}
         </span>
         <span className="text-sm text-slate-300">
-          {data.daysMeeting} of {data.daysWithData} days with {formatDual(data.thresholdBySystem, units)}
+          {data.daysMeeting} of {data.daysWithData} days with {formatDual(data.thresholdBySystem, "us")}
           <span className="text-slate-500"> · {data.hub} · {data.period.label}</span>
         </span>
       </figcaption>

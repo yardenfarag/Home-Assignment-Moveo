@@ -42,11 +42,10 @@ export function SideNav({ sessionIds, activeId, onOpen, onNew, refreshKey }: Sid
       >
         + New chat
       </button>
-      <h2 className="px-1 text-xs font-medium uppercase tracking-wide text-slate-500">Your chats</h2>
       {sessions.length === 0 ? (
         <p className="px-1 text-xs leading-relaxed text-slate-500">Your conversations will appear here. They&apos;re saved for this browser only.</p>
       ) : (
-        <ul className="-mx-1 space-y-0.5 overflow-y-auto">
+        <ul className="-mx-1 space-y-0.5">
           {sessions.map((session) => (
             <li key={session.id}>
               <button
