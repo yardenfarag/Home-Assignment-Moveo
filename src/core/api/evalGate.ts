@@ -13,7 +13,7 @@ import type { StoredEvent } from "../db/eventsRepository";
 export const EVAL_RUN_LIMITS = {
   minutesBetweenRuns: 30,
   runsPerDay: 4,
-  /** A start without a finish older than this is treated as abandoned (a run takes ~1–3 min). */
+  /** A start without a finish older than this is treated as abandoned (a run takes about 1–2 minutes). */
   runningWindowMinutes: 10,
 } as const;
 
@@ -34,24 +34,37 @@ export interface EvalGateStatus {
 }
 
 /**
- * Decides from today's starts and the recent finishes.
- * @param starts - today's `eval.ui_started` events, newest first.
- * @param finishes - `eval.finished` events of the last few minutes.
+ * Whether a finish event marks a run that never really ran (it lost a two-click race).
+ * @param finish - an `eval.finished` event.
+ * @returns true for a skipped run.
+ */
+function isSkipped(finish: StoredEvent): boolean {
+  return (finish.payload as { skipped?: unknown } | null)?.skipped === true;
+}
+
+/**
+ * Decides from the recent starts and finishes.
+ * @param starts - `eval.ui_started` events since the start of the UTC day or the last 30 minutes, whichever is earlier; newest first.
+ * @param finishes - `eval.finished` events from the same period.
  * @param now - the current time.
  * @returns the status.
  */
 export function decideEvalGate(starts: readonly StoredEvent[], finishes: readonly StoredEvent[], now: Date): EvalGateStatus {
+  /** Minutes between a timestamp and now. */
   const minutesAgo = (iso: string) => (now.getTime() - new Date(iso).getTime()) / 60_000;
   const finished = new Set(finishes.map((f) => f.correlationId));
-  const running = starts.some((s) => minutesAgo(s.createdAt) < EVAL_RUN_LIMITS.runningWindowMinutes && !finished.has(s.correlationId));
-  const runsLeftToday = Math.max(0, EVAL_RUN_LIMITS.runsPerDay - starts.length);
+  const skipped = new Set(finishes.filter(isSkipped).map((f) => f.correlationId));
+  const counted = starts.filter((s) => !skipped.has(s.correlationId)); // a run that lost the race didn't use a slot
+  const running = counted.some((s) => minutesAgo(s.createdAt) < EVAL_RUN_LIMITS.runningWindowMinutes && !finished.has(s.correlationId));
+  const startOfDay = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  const runsLeftToday = Math.max(0, EVAL_RUN_LIMITS.runsPerDay - counted.filter((s) => s.createdAt >= startOfDay).length);
   if (running) return { allowed: false, reason: "running", nextAvailableAt: null, runsLeftToday, running };
   if (runsLeftToday === 0) {
     const tomorrow = new Date(now);
     tomorrow.setUTCHours(24, 0, 0, 0);
     return { allowed: false, reason: "daily_limit", nextAvailableAt: tomorrow.toISOString(), runsLeftToday, running };
   }
-  const last = starts[0];
+  const last = counted[0]; // may be from just before midnight: the 30-minute gap still applies
   if (last && minutesAgo(last.createdAt) < EVAL_RUN_LIMITS.minutesBetweenRuns) {
     const next = new Date(new Date(last.createdAt).getTime() + EVAL_RUN_LIMITS.minutesBetweenRuns * 60_000);
     return { allowed: false, reason: "too_soon", nextAvailableAt: next.toISOString(), runsLeftToday, running };
@@ -71,8 +84,10 @@ export function decideEvalGate(starts: readonly StoredEvent[], finishes: readonl
 export function wonRunSlot(starts: readonly StoredEvent[], finishes: readonly StoredEvent[], runId: string, now: Date): boolean {
   const finished = new Set(finishes.map((f) => f.correlationId));
   const windowMs = EVAL_RUN_LIMITS.runningWindowMinutes * 60_000;
+  /** Whether a start is younger than the running window. */
+  const isRecent = (s: StoredEvent) => now.getTime() - new Date(s.createdAt).getTime() < windowMs;
   const running = starts
-    .filter((s) => s.correlationId === runId || (now.getTime() - new Date(s.createdAt).getTime() < windowMs && !finished.has(s.correlationId)))
+    .filter((s) => s.correlationId === runId || (isRecent(s) && !finished.has(s.correlationId)))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || String(a.correlationId).localeCompare(String(b.correlationId)));
   return running[0]?.correlationId === runId;
 }
@@ -95,17 +110,20 @@ export async function evalGateStatus(deps: EvalGateDeps): Promise<EvalGateStatus
 }
 
 /**
- * Reads today's starts and the recent finishes.
+ * Reads the starts and finishes the decision needs: since the start of the UTC day, or since
+ * the last 30 minutes when that's earlier (so a run just before midnight still counts as recent).
  * @param deps - event reader.
  * @param now - the current time.
  * @returns both lists, newest first.
  */
 export async function readRunEvents(deps: Pick<EvalGateDeps, "listEvents">, now: Date): Promise<{ starts: StoredEvent[]; finishes: StoredEvent[] }> {
   const startOfDay = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
-  const recent = new Date(now.getTime() - EVAL_RUN_LIMITS.runningWindowMinutes * 60_000).toISOString();
+  const lookbackMinutes = Math.max(EVAL_RUN_LIMITS.minutesBetweenRuns, EVAL_RUN_LIMITS.runningWindowMinutes);
+  const recent = new Date(now.getTime() - lookbackMinutes * 60_000).toISOString();
+  const since = recent < startOfDay ? recent : startOfDay;
   const [starts, finishes] = await Promise.all([
-    deps.listEvents({ eventType: EVAL_UI_STARTED, since: startOfDay, limit: 20 }),
-    deps.listEvents({ eventType: EVAL_FINISHED, since: recent, limit: 20 }),
+    deps.listEvents({ eventType: EVAL_UI_STARTED, since, limit: 50 }),
+    deps.listEvents({ eventType: EVAL_FINISHED, since, limit: 50 }),
   ]);
   return { starts, finishes };
 }

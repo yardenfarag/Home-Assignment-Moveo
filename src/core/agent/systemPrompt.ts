@@ -6,7 +6,7 @@
  * the code computes.
  */
 import type { Hub } from "../domain/hub";
-import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS } from "../scoring/config";
+import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS, HALF_BLEND } from "../scoring/config";
 import { DAY_METRICS } from "../scoring/dayMetrics";
 import { HAZARDS } from "../scoring/types";
 import { formatDual, type UnitSystem } from "../utils/units";
@@ -61,7 +61,7 @@ Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" mean
 
 # How the risk score works (explain when asked; use tool numbers for specifics)
 - Six hazards, each scored 0-100 on a fixed national scale: ${weights}.
-- Mixed hazards blend 50% observed weather (Open-Meteo, last ${SCORING_WINDOW_DAYS} days) with 50% FEMA National Risk Index frequency. Hurricane and severe storms use FEMA only. Tornado and inland-flood frequencies are counted per county area, so very large counties are not overstated.
+- Mixed hazards blend ${HALF_BLEND.observed * 100}% observed weather (Open-Meteo, last ${SCORING_WINDOW_DAYS} days) with ${HALF_BLEND.fema * 100}% FEMA National Risk Index frequency; when one half is missing, the hazard score is the other half alone. Hurricane and severe storms use FEMA only. Tornado and inland-flood frequencies are counted per county area, so very large counties are not overstated.
 - Overall = ${OVERALL_MIX.weightedAverage} × weighted average + ${OVERALL_MIX.worstHazard} × worst hazard, so one severe hazard is not averaged away.
 - Levels: Low 0-${RISK_LEVEL_CUTOFFS.mediumFrom - 1}, Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}-${RISK_LEVEL_CUTOFFS.highFrom - 1}, High ${RISK_LEVEL_CUTOFFS.highFrom}-100.
 - A "snow day" in our score is ${formatDual(snow, units)}.

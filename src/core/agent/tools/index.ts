@@ -10,6 +10,7 @@ import { buildCompareHubsTool } from "./compareHubs";
 import { buildExplainHubScoreTool } from "./explainHubScore";
 import { buildGetWeatherStatTool } from "./getWeatherStat";
 import { buildRankHubsTool } from "./rankHubs";
+import { hubName } from "../../api/progressLabels";
 import { makeHubIdSchema, type ToolRuntime } from "./shared";
 
 /**
@@ -18,7 +19,8 @@ import { makeHubIdSchema, type ToolRuntime } from "./shared";
  * @param runtime - ledger and callbacks.
  * @returns the tools, keyed by the names the model sees.
  */
-export function buildTools(ctx: AgentContext, runtime: ToolRuntime) {
+export function buildTools(ctx: AgentContext, baseRuntime: ToolRuntime) {
+  const runtime: ToolRuntime = { ...baseRuntime, hubName: (id) => ctx.hubById.get(id)?.name ?? hubName(id) };
   const ids = [...ctx.snapshotByHub.keys()].sort();
   if (ids.length === 0) throw new Error("No scored hubs available.");
   const hubIdSchema = makeHubIdSchema(ids);

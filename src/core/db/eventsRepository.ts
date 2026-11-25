@@ -114,9 +114,10 @@ export async function listEvents(query: { eventType: string; since: string; limi
  * @param db - database client (injectable for tests).
  * @returns true if stored, false if the insert failed.
  */
-export async function recordEvent(event: NewEvent, db: Db = getDb()): Promise<boolean> {
+export async function recordEvent(event: NewEvent, db?: Db): Promise<boolean> {
   try {
-    const { error } = await db.from("events").insert({
+    // The client is resolved inside the try: missing database settings must not make this throw.
+    const { error } = await (db ?? getDb()).from("events").insert({
       event_type: event.eventType,
       source: event.source,
       level: event.level ?? "info",

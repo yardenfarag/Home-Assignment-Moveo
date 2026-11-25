@@ -92,7 +92,7 @@ Five layers, each in code:
    the LLM must return: [`llmAnswerSchema`](../src/core/agent/answerSchema.ts#L28). It has the answer text, hubs
    mentioned, the numbers used, the premise claim, confidence, assumptions, limitations, follow-ups, an optional
    recommendation, and the out-of-scope flag. An answer that doesn't fit the shape is rejected.
-3. **A ledger records every tool result.** [`ToolLedger`](../src/core/agent/ledger.ts#L114) is the ground truth for one
+3. **A ledger records every tool result.** [`ToolLedger`](../src/core/agent/ledger.ts#L112) is the ground truth for one
    answer: which hubs and numbers the tools actually returned. In a follow-up it also includes the earlier turns' results
    (D65).
 4. **Code checks the answer against the ledger:** [`finalizeAnswer`](../src/core/agent/finalizeAnswer.ts#L40).
@@ -100,11 +100,11 @@ Five layers, each in code:
      in `dataUsed` must appear in the ledger. A recommendation needs data. A premise must be about a real hub.
    - *Soft check* (a warning, logged and counted by the evals): numbers in the free text that no tool returned.
    - If the retry also fails, the user gets a clear, friendly error, never an unchecked answer
-     ([`runAgent`](../src/core/agent/runAgent.ts#L146)).
+     ([`runAgent`](../src/core/agent/runAgent.ts#L171)).
 5. **Code, not the LLM, sets the sensitive fields.** Confidence is recomputed from the data. The premise verdict
    ("you said Dallas is high; the data says…") is decided by comparing against the real level. The standing data
    caveats are attached. Every recommendation gets a fixed disclaimer the LLM can't soften
-   ([`RECOMMENDATION_DISCLAIMER`](../src/core/agent/config.ts#L25)).
+   ([`RECOMMENDATION_DISCLAIMER`](../src/core/agent/config.ts#L27)).
 
 The evals then test all of this from the outside (section 10).
 
@@ -145,30 +145,30 @@ Step by step, with the code:
 1. **The browser sends the question.** [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L57) uses the AI SDK's
    `useChat` to `POST /api/chat` with `{ sessionId, message, units }`. The session id lives in the browser's
    localStorage, so earlier chats can be reopened from the side menu.
-2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L24) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L19)), and starts a
+2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L28) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L19)), and starts a
    stream ([`buildChatStream`](../src/core/api/chatStream.ts#L55)).
-3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L58) loads the latest score
+3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L71) loads the latest score
    for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 10 turns of this chat
-   ([`loadHistory`](../src/core/db/chatRepository.ts#L52)).
-4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L231)
+   ([`loadHistory`](../src/core/db/chatRepository.ts#L54)).
+4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L243)
    asks Jev, a small yes/no decision model, two questions: *is this about weather risk for our hubs* (for a follow-up,
    Jev also sees the last 2 turns, so "why that one?" counts), and *does it try to change the assistant's rules*. If
    it's off topic or manipulative, the person gets a friendly card with example questions
-   ([`guardDeclineAnswer`](../src/core/guard/jevGuard.ts#L166)) and the agent never runs. The check takes about 0.3 s;
+   ([`guardDeclineAnswer`](../src/core/guard/jevGuard.ts#L169)) and the agent never runs. The check takes about 0.3 s;
    if Jev is slow (over 2 s) or down, the message goes through (fail open).
-5. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L146) builds the system prompt
+5. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L171) builds the system prompt
    ([`buildSystemPrompt`](../src/core/agent/systemPrompt.ts#L27): rules, the scoring method, the hub list) and the
-   tools ([`buildTools`](../src/core/agent/tools/index.ts#L21)), then calls the LLM in
-   [`attempt`](../src/core/agent/runAgent.ts#L70). Limits: 6 tool steps, 25 s per step, 60 s in total
-   ([`AGENT_LIMITS`](../src/core/agent/config.ts#L8)).
-6. **Tools compute.** Every tool call goes through [`runTool`](../src/core/agent/tools/shared.ts#L44). It reports progress
+   tools ([`buildTools`](../src/core/agent/tools/index.ts#L22)), then calls the LLM in
+   [`attempt`](../src/core/agent/runAgent.ts#L86). Limits: 6 tool steps, 25 s per step, 60 s in total
+   ([`AGENT_LIMITS`](../src/core/agent/config.ts#L9)).
+6. **Tools compute.** Every tool call goes through [`runTool`](../src/core/agent/tools/shared.ts#L61). It reports progress
    to the browser, records the result in the ledger, and answers an exact repeat of an earlier call with a short "same as
    before" note instead of re-running it (D96).
 7. **The answer streams.** The LLM's answer text streams to the browser as it's written, so the analyst sees it appear.
 8. **Code checks it.** [`finalizeAnswer`](../src/core/agent/finalizeAnswer.ts#L40) runs the checks from section 3. If
    they fail, the browser shows "Double-checking my numbers…" while the LLM gets one retry.
 9. **Saved and logged.** The turn, including tool results, is saved for follow-ups
-   ([`saveTurn`](../src/core/db/chatRepository.ts#L94)), and an `agent.answered` event is logged with the tools used,
+   ([`saveTurn`](../src/core/db/chatRepository.ts#L108)), and an `agent.answered` event is logged with the tools used,
    tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L117)).
 10. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
    **from the tool results**, not from anything the LLM wrote ([src/app/_components/visuals/](../src/app/_components/visuals/)).
@@ -183,13 +183,13 @@ All numbers live in one file, [src/core/scoring/config.ts](../src/core/scoring/c
   - **Observed weather:** days over a threshold in the last 5 years, from Open-Meteo. Example: snow days ≥ 1 cm.
   - **FEMA's long-term frequency** for the hub's county.
 
-  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L107)).
+  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L110)).
   FEMA counts events per county, so big counties look riskier just for being big. Tornadoes are therefore counted per
   1,000 sq mi (D53), and so is inland flood since scoring v2, with the area never less than a typical county's (D123).
 - **Overall = 0.6 × weighted average + 0.4 × worst hazard** ([`computeOverall`](../src/core/scoring/overall.ts#L24)).
   This way one severe hazard isn't averaged away: a hurricane hub isn't "medium" just because it never snows.
 - **Levels:** Low 0–33, Medium 34–66, High 67–100 ([`riskLevelFor`](../src/core/scoring/overall.ts#L38)).
-- **Confidence** (High / Medium / Low) is computed, not guessed ([`hybridConfidence`](../src/core/scoring/confidence.ts#L27)).
+- **Confidence** (High / Medium / Low) is computed, not guessed ([`hybridConfidence`](../src/core/scoring/confidence.ts#L40)).
   It drops when data is missing, or when the two sources **disagree** by more than 40 points. The check compares like
   with like (D56).
 - **Putting it together:** [`scoreHub`](../src/core/scoring/scoreHub.ts#L23) returns a full, explainable breakdown, so
@@ -282,17 +282,20 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   `ErrorName || message || function || emoji`, with a fixed emoji per boundary: 🦉 LLM, 🐸 Open-Meteo, 🦡 FEMA,
   🐘 database, 🦄 API route, 🦔 config ([`BoundaryError`](../src/core/errors/boundaryError.ts#L56),
   [`BOUNDARY_EMOJI`](../src/core/errors/boundaryError.ts#L15)). A log line shows at a glance where something broke.
-- **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L94) turns any failure into
+- **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L121) turns any failure into
   `{ code, message, hint, retryable }` with friendly copy, e.g. *"I couldn't put together an answer I can stand behind
   this time."*
-- **Every external call has a timeout:** HTTP 30 s, database 15 s, each LLM step 25 s
-  ([src/core/config/timeouts.ts](../src/core/config/timeouts.ts)).
+- **Every external call has a timeout**, all in one file ([src/core/config/timeouts.ts](../src/core/config/timeouts.ts)):
+  HTTP 30 s, database 15 s, each LLM step 25 s, one model attempt 60 s, the whole turn 100 s (both attempts), the guard
+  2 s, the judge 45 s. The chat route's own limit (150 s) leaves room for the guard, database reads and saving.
+- **A tool failure never leaks internals:** the model gets a fixed friendly sentence and says it couldn't load that
+  data; the technical detail goes to the server log only. A failed save never costs the user a checked answer (D132).
 - **No login, on purpose** (D113). Anyone with the link can use the app, so testers don't need credentials. The
   **nightly job** is the one protected route: it needs the secret that only Vercel Cron sends
   ([`isCronAuthorized`](../src/core/security/auth.ts#L30)), compared in constant time. Chat history is private by
   obscurity only: a chat can be reopened by anyone who knows its random id.
 - **An out-of-scope and manipulation guard** (D118–D121). Every message is checked by Jev before the agent runs (see
-  step 4 of [section 4](#4-one-question-end-to-end)). Settings in [`GUARD_CONFIG`](../src/core/guard/jevGuard.ts#L24):
+  step 4 of [section 4](#4-one-question-end-to-end)). Settings in [`GUARD_CONFIG`](../src/core/guard/jevGuard.ts#L25):
   decline when the on-topic probability is below 0.15, or the manipulation probability is above 0.6. Those cutoffs were
   tuned on the [guard eval set](guard-evals.md) (32 messages: brief questions, terse questions, follow-ups like "why
   that one?", off-topic requests, and attempts to change the rules). All 32 were decided right in 3 of 3 runs, with
@@ -300,7 +303,7 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   if Jev is down or slow, the agent still answers, and it already declines off-topic questions itself.
 - **Request limits instead of a login** (D114). Two layers:
   - **In our code, on `POST /api/chat`** (the only route that costs money):
-    [`checkChatGate`](../src/core/api/chatGate.ts#L45) runs before the agent. Limits
+    [`checkChatGate`](../src/core/api/chatGate.ts#L85) runs before the agent. Limits
     ([`RATE_LIMITS`](../src/core/security/rateLimit.ts#L16)): **20 questions per 10 minutes and 100 per day per
     visitor**, and **300 per day for everyone together** (about $3).
     - It counts `chat.request` events in the database, so the limits hold across Vercel's many function instances.
@@ -326,12 +329,12 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   - The checks are concrete: the right tool with the right input, the right top hub, numbers that match, the premise
     verdict.
 - **An independent judge** (an LLM from a different provider, `google/gemini-3.5-flash-lite`) grades each answer
-  against the exact tool results ([`judgeAnswer`](../src/core/judge/judgeAnswer.ts#L122)). It's tested before every run
+  against the exact tool results ([`judgeAnswer`](../src/core/judge/judgeAnswer.ts#L121)). It's tested before every run
   with planted good and bad answers ([`judgeSelfTest`](../evals/lib/judging.ts#L96)).
 - **Evals can also run from the app** (D130): the overview's *Answer quality* line opens a dialog, and after a
   confirmation [`runEvalSuite`](../evals/lib/suite.ts#L130) runs the same cases 3 at a time and streams each result.
   Runs are limited for everyone together ([`EVAL_RUN_LIMITS`](../src/core/api/evalGate.ts#L13), decided by
-  [`decideEvalGate`](../src/core/api/evalGate.ts#L43)), counted from events, with no new table.
+  [`decideEvalGate`](../src/core/api/evalGate.ts#L52)), counted from events, with no new table.
 - **The model was picked by measurement.** 9 models were screened, then 4 finalists ran 3 times each, with the rule
   *never wrong on data → most accurate → cheapest → fastest*. `openai/gpt-6.1-terra` won: 39/39, about $0.01 per answer
   ([bakeoff.md](bakeoff.md)). The latest results are in [evals.md](evals.md), and real answers in [examples.md](examples.md).

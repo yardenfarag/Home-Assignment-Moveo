@@ -26,11 +26,15 @@ export function buildCompareHubsTool(ctx: AgentContext, runtime: ToolRuntime, hu
       "Compare 2-5 hubs side by side: overall score, level, rank, and per-hazard scores with both halves " +
       "(observed weather vs FEMA) and confidence. Optionally restrict to some hazards.",
     inputSchema: z.object({
-      hubIds: z.array(hubIdSchema).min(2).max(5),
+      hubIds: z
+        .array(hubIdSchema)
+        .min(2)
+        .max(5)
+        .refine((ids) => new Set(ids).size === ids.length, "List each hub once."),
       hazards: z.array(z.enum(HAZARDS)).nullable().describe("Hazards to include, or null for all six."),
     }),
-    execute: (input) =>
-      runTool("compare_hubs", input, runtime, () => compareHubsOutput(ctx, input as Parameters<typeof compareHubsOutput>[1])),
+    execute: (input, { toolCallId }) =>
+      runTool("compare_hubs", input, runtime, () => compareHubsOutput(ctx, input as Parameters<typeof compareHubsOutput>[1]), toolCallId),
   });
 }
 
@@ -77,6 +81,7 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
       ),
     };
   });
+  /** Points between the highest and lowest of the compared hubs on some score. */
   const spreadOf = (pick: (hubId: string) => number) => scoreSpread(input.hubIds.map((hubId) => ({ hubId, score: pick(hubId) })));
   return {
     totalHubs: all.length,

@@ -11,10 +11,14 @@ import { checkChatGate } from "@/core/api/chatGate";
 import { buildChatStream, chatRequestSchema } from "@/core/api/chatStream";
 import { getCronEnv } from "@/core/config/env";
 import { countEvents, recordEvent } from "@/core/db/eventsRepository";
+import { userError } from "@/core/errors/userErrors";
 import { errorResponse, failure } from "../_lib/http";
 
-/** Upper bound for one turn (the agent's own total timeout is 60 s; a validation retry may follow). */
-export const maxDuration = 120;
+/**
+ * Upper bound for one request. The agent's whole turn is capped at `AGENT_TIMEOUTS.turnMs` (100 s,
+ * both attempts); the rest covers the guard, database reads and saving the turn. (Must be a literal.)
+ */
+export const maxDuration = 150;
 
 /**
  * Answers one chat message as a stream.
@@ -23,7 +27,9 @@ export const maxDuration = 120;
  */
 export async function POST(request: Request): Promise<Response> {
   try {
-    const body = chatRequestSchema.parse(await request.json());
+    const raw: unknown = await request.json().catch(() => undefined);
+    if (raw === undefined) return errorResponse(userError("invalid_request")); // not JSON: the caller's mistake, not a 500
+    const body = chatRequestSchema.parse(raw);
     const limited = await checkChatGate(request.headers, {
       countEvents,
       recordEvent,

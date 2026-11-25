@@ -64,7 +64,8 @@ describe("runAgent", () => {
       { onToolStart, onAnswerDelta: (delta) => (streamed += delta) },
     );
 
-    expect(onToolStart).toHaveBeenCalledWith("explain_hub_score", { hubId: "dallas" });
+    // The SDK's call id keeps parallel calls apart; the label uses the hub's real name from the context.
+    expect(onToolStart).toHaveBeenCalledWith("explain_hub_score", { hubId: "dallas" }, expect.any(String), `Breaking down ${ctx.hubById.get("dallas")!.name}'s risk score…`);
     expect(result.answer.premiseCheck).toMatchObject({ claimedLevel: "high", holds: score.riskLevel === "high" });
     expect(result.answer.meta.toolCalls.map((c) => c.tool)).toEqual(["explain_hub_score"]);
     expect(result.answer.limitations.length).toBeGreaterThan(0); // standing caveats added by code
@@ -144,5 +145,33 @@ describe("runAgent", () => {
       runAgent({ message: "x".repeat(1001), history: [] }, { model, modelId: "mock/model", context: ctx }),
     ).rejects.toThrow(/too long/);
     expect(model.doStreamCalls).toHaveLength(0);
+  });
+});
+
+describe("runAgent streaming across steps", () => {
+  it("starts the answer text over when the model begins a new step (no garbled text)", async () => {
+    // Step 1 writes some answer text and then calls a tool; step 2 writes the real answer from scratch.
+    const firstStep = {
+      stream: simulateReadableStream({
+        chunks: [
+          { type: "text-start" as const, id: "t0" },
+          { type: "text-delta" as const, id: "t0", delta: '{"answer":"Let me check Dallas' },
+          { type: "text-end" as const, id: "t0" },
+          { type: "tool-call" as const, toolCallId: "call-1", toolName: "explain_hub_score", input: JSON.stringify({ hubId: "dallas" }) },
+          { type: "finish" as const, finishReason: { unified: "tool-calls" as const, raw: undefined }, usage },
+        ],
+      }),
+    };
+    const model = new MockLanguageModelV4({ doStream: [firstStep, answerStep(goodAnswer)] });
+    const segments: string[] = [""];
+    const result = await runAgent(
+      { message: "Why is the Dallas hub's risk high?", history: [] },
+      { model, modelId: "mock/model", context: ctx },
+      { onAnswerDelta: (delta) => (segments[segments.length - 1] += delta), onAnswerRestart: () => segments.push("") },
+    );
+    expect(segments.length).toBe(2); // one restart
+    expect(segments[0]).toBe("Let me check Dallas");
+    expect(segments[1]).toBe(goodAnswer.answer); // the final text part is exactly the answer
+    expect(result.answer.answer).toBe(goodAnswer.answer);
   });
 });

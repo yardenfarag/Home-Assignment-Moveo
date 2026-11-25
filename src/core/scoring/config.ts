@@ -83,6 +83,12 @@ export const HAZARD_WEIGHTS: Record<Hazard, number> = {
   heat: 0.1,
 };
 
+/**
+ * How a mixed hazard blends its two halves when both exist (D49). When one half is missing
+ * (no FEMA record, or no observed data), the hazard score is the other half alone.
+ */
+export const HALF_BLEND = { observed: 0.5, fema: 0.5 } as const;
+
 /** Overall = 60% weighted average + 40% worst hazard (D19). */
 export const OVERALL_MIX = { weightedAverage: 0.6, worstHazard: 0.4 } as const;
 

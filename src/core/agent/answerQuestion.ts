@@ -9,7 +9,8 @@
 import { randomUUID } from "node:crypto";
 import type { ModelMessage } from "ai";
 import type { NewEvent } from "../db/eventsRepository";
-import { describeUnknownError } from "../errors/boundaryError";
+import { AgentInputError } from "../errors/agentInputError";
+import { boundaryLogLine, describeUnknownError } from "../errors/boundaryError";
 import type { UnitSystem } from "../utils/units";
 import type { FinalAnswer } from "./answerSchema";
 import { guardDeclineAnswer, recentTurnsFromHistory, type GuardInput, type GuardVerdict } from "../guard/jevGuard";
@@ -17,22 +18,31 @@ import { AGENT_LIMITS, HISTORY_TURNS } from "./config";
 import type { AgentContext } from "./context";
 import type { AgentModel } from "./model";
 import { runAgent, type AgentCallbacks, type AgentResult } from "./runAgent";
+import { hubLabel } from "./tools/shared";
 
 /** A chat message from the user. */
 export interface QuestionInput {
   /** Existing session id from the browser, or null to start a new conversation. */
   sessionId: string | null;
+  /** The question as typed. */
   message: string;
+  /** Unit system for the answer (the app always sends "us", D126). */
   units: UnitSystem;
 }
 
 /** Everything answerQuestion needs (injectable for tests). */
 export interface AnswerQuestionDeps {
+  /** The answering model. */
   agentModel: AgentModel;
+  /** Hubs, latest scores and data access for one request. */
   loadContext: (options: { today: string; units: UnitSystem }) => Promise<AgentContext>;
+  /** Returns the session id, creating a session when the browser has none. */
   ensureSession: (sessionId: string | null) => Promise<string>;
+  /** The last `turns` turns of the conversation. */
   loadHistory: (sessionId: string, turns: number) => Promise<ModelMessage[]>;
+  /** Stores the turn's messages and the checked answer. */
   saveTurn: (sessionId: string, messages: ModelMessage[], answer: FinalAnswer, model: string) => Promise<void>;
+  /** Writes to the events log (never throws). */
   recordEvent: (event: NewEvent) => Promise<boolean>;
   /** The out-of-scope guard (D118). Must not throw: it fails open itself. */
   guard: (input: GuardInput) => Promise<GuardVerdict>;
@@ -42,8 +52,11 @@ export interface AnswerQuestionDeps {
 
 /** The result returned to the caller. */
 export interface QuestionResult {
+  /** The conversation's id (new or existing). */
   sessionId: string;
+  /** The checked answer. */
   answer: FinalAnswer;
+  /** Tokens used (0 when the guard declined). */
   usage: AgentResult["usage"];
 }
 
@@ -53,7 +66,7 @@ export interface QuestionResult {
  * @param deps - model, data access and logging.
  * @param callbacks - live progress hooks, plus `onSession` (called as soon as the session id is known).
  * @returns the session id, the checked answer and token usage.
- * @throws AgentInputError / BoundaryError — also logged as an `agent.failed` event.
+ * @throws AgentInputError (logged as `agent.rejected_input`) / BoundaryError (logged as `agent.failed`).
  */
 export async function answerQuestion(
   input: QuestionInput,
@@ -61,9 +74,22 @@ export async function answerQuestion(
   callbacks: AgentCallbacks & { onSession?: (sessionId: string) => void } = {},
 ): Promise<QuestionResult> {
   const correlationId = randomUUID();
-  const sessionId = await deps.ensureSession(input.sessionId);
-  callbacks.onSession?.(sessionId);
+  let sessionId: string | undefined;
+  /**
+   * Saves the turn. A failure here must not cost the user an answer that's already checked:
+   * it's logged and recorded, and the answer is still returned.
+   */
+  const save = async (id: string, messages: ModelMessage[], answer: FinalAnswer, model: string) => {
+    try {
+      await deps.saveTurn(id, messages, answer, model);
+    } catch (error) {
+      console.error(boundaryLogLine(error, "answerQuestion", "database"));
+      await deps.recordEvent({ eventType: "chat.save_failed", source: "agent", level: "error", correlationId, sessionId: id, message: describeUnknownError(error) });
+    }
+  };
   try {
+    sessionId = await deps.ensureSession(input.sessionId);
+    callbacks.onSession?.(sessionId);
     const [context, history] = await Promise.all([
       deps.loadContext({ today: deps.today(), units: input.units }),
       deps.loadHistory(sessionId, HISTORY_TURNS),
@@ -76,7 +102,7 @@ export async function answerQuestion(
       const verdict = await deps.guard({
         message,
         history: recentTurnsFromHistory(history),
-        hubNames: context.hubs.map((hub) => `${hub.name}, ${hub.state}`),
+        hubNames: context.hubs.map(hubLabel),
       });
       await deps.recordEvent({
         eventType: "guard.decision",
@@ -98,7 +124,7 @@ export async function answerQuestion(
       });
       if (verdict.decision === "decline" && verdict.reason) {
         const answer = guardDeclineAnswer(verdict.reason, context.hubs.length);
-        await deps.saveTurn(sessionId, [{ role: "user", content: message }, { role: "assistant", content: answer.answer }], answer, verdict.model);
+        await save(sessionId, [{ role: "user", content: message }, { role: "assistant", content: answer.answer }], answer, verdict.model);
         return { sessionId, answer, usage: { inputTokens: 0, outputTokens: 0 } };
       }
     }
@@ -122,7 +148,7 @@ export async function answerQuestion(
         },
       },
     );
-    await deps.saveTurn(sessionId, result.newMessages, result.answer, deps.agentModel.modelId);
+    await save(sessionId, result.newMessages, result.answer, deps.agentModel.modelId);
     await deps.recordEvent({
       eventType: "agent.answered",
       source: "agent",
@@ -145,10 +171,12 @@ export async function answerQuestion(
     });
     return { sessionId, answer: result.answer, usage: result.usage };
   } catch (error) {
+    // An empty or too-long message is the user's input, not a failure of ours.
+    const rejected = error instanceof AgentInputError;
     await deps.recordEvent({
-      eventType: "agent.failed",
+      eventType: rejected ? "agent.rejected_input" : "agent.failed",
       source: "agent",
-      level: "error",
+      level: rejected ? "warn" : "error",
       correlationId,
       sessionId,
       message: describeUnknownError(error),

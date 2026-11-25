@@ -19,10 +19,9 @@ import {
   type LanguageModel,
   type ModelMessage,
 } from "ai";
+import { AGENT_TIMEOUTS } from "../config/timeouts";
 import { AgentInputError } from "../errors/agentInputError";
 import { BoundaryError, describeUnknownError } from "../errors/boundaryError";
-
-export { AgentInputError };
 import { buildSystemPrompt } from "./systemPrompt";
 import { llmAnswerSchema, type FinalAnswer, type LlmAnswer } from "./answerSchema";
 import { AGENT_LIMITS, RETRY_FEEDBACK_PREFIX } from "./config";
@@ -31,6 +30,9 @@ import { finalizeAnswer } from "./finalizeAnswer";
 import { ToolLedger } from "./ledger";
 import { buildTools } from "./tools";
 import type { ToolCallbacks } from "./tools/shared";
+
+/** Re-exported so callers can tell bad input from a failed turn without importing the errors folder. */
+export { AgentInputError };
 
 /** The user's question plus the conversation so far. */
 export interface AgentRequest {
@@ -41,8 +43,11 @@ export interface AgentRequest {
 
 /** What the agent needs to run. */
 export interface AgentDeps {
+  /** The answering model. */
   model: LanguageModel;
+  /** Its OpenRouter id (recorded on the answer). */
   modelId: string;
+  /** Hubs, latest scores and data access for this request. */
   context: AgentContext;
 }
 
@@ -50,6 +55,11 @@ export interface AgentDeps {
 export interface AgentCallbacks extends ToolCallbacks {
   /** New characters of the answer text as the model writes it. */
   onAnswerDelta?: (delta: string) => void;
+  /**
+   * The answer text started over (the model began a new step, or the stream was retried):
+   * the text sent so far is replaced by what follows.
+   */
+  onAnswerRestart?: () => void;
   /** The first answer failed validation; a retry is starting. */
   onRetry?: (problems: string[]) => void;
 }
@@ -65,6 +75,12 @@ export interface AgentResult {
 
 /**
  * Runs one model attempt and streams the answer text.
+ * @param messages - history plus this turn's messages so far.
+ * @param system - the system prompt.
+ * @param deps - model and context.
+ * @param tools - the tools for this request.
+ * @param callbacks - progress hooks.
+ * @param deadline - aborts when the whole turn runs out of time.
  * @returns the raw structured answer (or the reason it's missing) and the response messages.
  */
 async function attempt(
@@ -73,6 +89,7 @@ async function attempt(
   deps: AgentDeps,
   tools: ReturnType<typeof buildTools>,
   callbacks: AgentCallbacks,
+  deadline: AbortSignal,
 ): Promise<{ raw: LlmAnswer | null; problem: string | null; responseMessages: ModelMessage[]; usage: AgentResult["usage"] }> {
   let streamError: unknown = null;
   const result = streamText({
@@ -82,7 +99,8 @@ async function attempt(
     tools,
     output: Output.object({ schema: llmAnswerSchema }),
     stopWhen: isStepCount(AGENT_LIMITS.maxToolSteps + 1),
-    timeout: AGENT_LIMITS.timeouts,
+    timeout: { totalMs: AGENT_TIMEOUTS.attemptMs, stepMs: AGENT_TIMEOUTS.stepMs, toolMs: AGENT_TIMEOUTS.toolMs },
+    abortSignal: deadline,
     maxOutputTokens: AGENT_LIMITS.maxOutputTokens,
     maxRetries: 1,
     onError: ({ error }) => {
@@ -103,13 +121,20 @@ async function attempt(
       cause,
     });
 
-  let sent = 0;
+  // The SDK restarts its partial output at every new step and stream retry, so the text can start
+  // over. When it no longer continues what was sent, tell the caller and send it from the start.
+  let sent = "";
   try {
     for await (const partial of result.partialOutputStream) {
       const text = (partial as Partial<LlmAnswer> | undefined)?.answer;
-      if (typeof text === "string" && text.length > sent) {
-        callbacks.onAnswerDelta?.(text.slice(sent));
-        sent = text.length;
+      if (typeof text !== "string") continue;
+      if (!text.startsWith(sent)) {
+        callbacks.onAnswerRestart?.();
+        sent = "";
+      }
+      if (text.length > sent.length) {
+        callbacks.onAnswerDelta?.(text.slice(sent.length));
+        sent = text;
       }
     }
   } catch (error) {
@@ -159,11 +184,12 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
   const tools = buildTools(deps.context, { ledger, callbacks });
   const system = buildSystemPrompt(deps.context);
   const newMessages: ModelMessage[] = [{ role: "user", content: message }];
+  const deadline = AbortSignal.timeout(AGENT_TIMEOUTS.turnMs); // one budget for both attempts
   const usage = { inputTokens: 0, outputTokens: 0 };
   let problems: string[] = [];
 
   for (let attemptNo = 0; attemptNo <= AGENT_LIMITS.validationRetries; attemptNo++) {
-    const run = await attempt([...request.history, ...newMessages], system, deps, tools, callbacks);
+    const run = await attempt([...request.history, ...newMessages], system, deps, tools, callbacks, deadline);
     newMessages.push(...run.responseMessages);
     usage.inputTokens += run.usage.inputTokens;
     usage.outputTokens += run.usage.outputTokens;
@@ -192,7 +218,7 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
 
   throw new BoundaryError({
     name: "AgentAnswerValidationError",
-    message: `The answer failed validation twice: ${problems.join(" | ")}`,
+    message: `The answer failed validation ${AGENT_LIMITS.validationRetries + 1} times: ${problems.join(" | ")}`,
     functionName: "runAgent",
     boundary: "llm",
   });

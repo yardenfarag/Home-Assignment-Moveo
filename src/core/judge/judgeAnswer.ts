@@ -13,6 +13,7 @@ import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
 import type { FinalAnswer, ToolCallRecord } from "../agent/answerSchema";
 import { getJudgeEnv, type EnvSource } from "../config/env";
+import { JUDGE_TIMEOUT_MS } from "../config/timeouts";
 import { BoundaryError, describeUnknownError } from "../errors/boundaryError";
 
 /** Score from 1 (bad) to 5 (excellent). */
@@ -50,9 +51,7 @@ export interface JudgeModel {
  */
 export const MAX_EVIDENCE_CHARS = 60_000;
 
-/** Per-judgment timeout (CLAUDE.md: every external call has one). */
-const JUDGE_TIMEOUT_MS = 45_000;
-
+/** The judge's instructions: grade only against the tool results and the agent's briefing. */
 const JUDGE_SYSTEM = `You are a strict, fair reviewer of answers from a weather-risk analytics assistant for a logistics company.
 You receive the analyst's question, the assistant's answer, the premise verdict computed by code, and the exact tool results the assistant had.
 Judge ONLY against those tool results and the assistant's briefing (its hub list and method) — not your own knowledge.

@@ -13,6 +13,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { getJevEnv } from "../src/core/config/env";
+import { GUARD_TIMEOUT_MS } from "../src/core/config/timeouts";
 import { listActiveHubs } from "../src/core/db/hubsRepository";
 import { GUARD_CONFIG, runGuard, type GuardVerdict } from "../src/core/guard/jevGuard";
 import { GUARD_CASES, type GuardCase } from "../evals/guardCases";
@@ -66,7 +67,7 @@ async function main(): Promise<void> {
   const summary = [
     `${passed}/${rows.length} cases got the right decision${repeat > 1 ? ` in all ${repeat} runs` : ""}.`,
     `Margins: lowest on-topic score of a message that must pass = ${lowestAllowed.toFixed(2)} (cutoff ${GUARD_CONFIG.inScopeCutoff}); highest manipulation score of a message that must pass = ${highestAllowedManip.toFixed(2)} (cutoff ${GUARD_CONFIG.manipulationCutoff}).`,
-    `Latency: median ${ms[Math.floor(ms.length / 2)]} ms, p95 ${p95} ms (timeout ${GUARD_CONFIG.timeoutMs} ms).`,
+    `Latency: median ${ms[Math.floor(ms.length / 2)]} ms, p95 ${p95} ms (timeout ${GUARD_TIMEOUT_MS} ms).`,
   ];
   console.log(`\n${passed === rows.length ? "🏆" : "⚠️ "} ${summary.join("\n   ")}`);
 

@@ -74,6 +74,20 @@ export class BoundaryError extends Error {
 }
 
 /**
+ * The log line for something caught at an outer boundary (an API route, a stream). A BoundaryError
+ * is logged as it is (it's already formatted, and names where it really failed); anything else
+ * is formatted for the outer boundary.
+ * @param error - what was caught.
+ * @param functionName - the catching function.
+ * @param boundary - the catching boundary.
+ * @returns one formatted log line.
+ */
+export function boundaryLogLine(error: unknown, functionName: string, boundary: Boundary): string {
+  if (error instanceof BoundaryError) return `${error.message} (caught in ${functionName})`;
+  return formatBoundaryMessage({ name: error instanceof Error ? error.name : "UnknownError", message: describeUnknownError(error), functionName, boundary });
+}
+
+/**
  * Turns any thrown value into a readable string (errors thrown by libraries
  * are not always `Error` instances).
  * @param error - whatever was thrown.

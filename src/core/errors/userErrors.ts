@@ -8,6 +8,7 @@
  * ALL user-facing error copy lives in this one file.
  */
 import { ZodError } from "zod";
+import { EVAL_RUN_LIMITS, type EvalGateStatus } from "../api/evalGate";
 import { AgentInputError } from "./agentInputError";
 import { BoundaryError } from "./boundaryError";
 
@@ -77,14 +78,40 @@ export const USER_ERRORS: Record<UserErrorCode, Omit<UserError, "code">> = {
 };
 
 /**
- * Builds the user-facing error for a code (optionally with a more specific message).
+ * Builds the user-facing error for a code, optionally with a more specific message and hint.
  * @param code - the error code.
  * @param message - a specific friendly message to use instead of the default.
+ * @param hint - a specific next step to use instead of the default.
  * @returns the user error.
  */
-export function userError(code: UserErrorCode, message?: string): UserError {
-  return { code, ...USER_ERRORS[code], ...(message ? { message } : {}) };
+export function userError(code: UserErrorCode, message?: string, hint?: string): UserError {
+  return { code, ...USER_ERRORS[code], ...(message ? { message } : {}), ...(hint ? { hint } : {}) };
 }
+
+/** A message and hint for one specific situation (refines a code's default copy). */
+export interface ErrorCopy {
+  message: string;
+  hint: string;
+}
+
+/** A chat link or saved chat id that isn't valid (code `invalid_request`). */
+export const INVALID_CHAT_LINK: ErrorCopy = {
+  message: "That chat couldn't be opened.",
+  hint: "Start a new chat, or pick one from Your chats.",
+};
+
+/** Why an eval run from the app can't start now (code `too_many_requests`, D130). */
+export const EVAL_RUN_REFUSALS: Record<NonNullable<EvalGateStatus["reason"]>, ErrorCopy> = {
+  running: { message: "An eval run is already in progress.", hint: "Its results will show up here in a few minutes." },
+  too_soon: {
+    message: "The evals ran just a little while ago.",
+    hint: `To keep costs sane, they can run once every ${EVAL_RUN_LIMITS.minutesBetweenRuns} minutes.`,
+  },
+  daily_limit: { message: `The evals have run ${EVAL_RUN_LIMITS.runsPerDay} times today.`, hint: "The daily limit resets at midnight UTC." },
+};
+
+/** Streamed when an eval run from the app fails partway. */
+export const EVAL_RUN_STOPPED = "The eval run stopped before it finished. Please try again later.";
 
 /**
  * Classifies any thrown value into a friendly user error.

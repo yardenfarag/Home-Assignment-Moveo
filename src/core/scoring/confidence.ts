@@ -15,6 +15,19 @@ export interface ConfidenceResult {
 }
 
 /**
+ * Confidence from data coverage alone: a weather stat's, and the coverage part of a hazard's.
+ * @param coverage - share of days with weather data (0..1).
+ * @param span - what the days belong to, for the reason ("window", "period").
+ * @returns level and reason.
+ */
+export function coverageConfidence(coverage: number, span = "period"): ConfidenceResult {
+  const percentMissing = Math.round((1 - coverage) * 100);
+  if (coverage < CONFIDENCE_RULES.minimumCoverage) return { confidence: "low", reason: `${percentMissing}% of days in the ${span} have no weather data.` };
+  if (coverage < CONFIDENCE_RULES.completeCoverage) return { confidence: "medium", reason: `${percentMissing}% of days in the ${span} have no weather data.` };
+  return { confidence: "high", reason: `Every day in the ${span} has weather data.` };
+}
+
+/**
  * Confidence for a hazard scored from observed weather AND FEMA.
  *
  * The "sources disagree" check compares LIKE WITH LIKE (D56): `comparableFemaScore`
@@ -33,18 +46,12 @@ export function hybridConfidence(input: {
 }): ConfidenceResult {
   const { observedScore, femaScore, coverage } = input;
   const comparable = input.comparableFemaScore === undefined ? femaScore : input.comparableFemaScore;
-  const percentMissing = Math.round((1 - coverage) * 100);
 
   if (observedScore === null || femaScore === null) {
     const missing = observedScore === null ? "observed weather" : "FEMA";
     return { confidence: "low", reason: `Only one of two sources is available (${missing} data is missing).` };
   }
-  if (coverage < CONFIDENCE_RULES.minimumCoverage) {
-    return { confidence: "low", reason: `${percentMissing}% of days in the window have no weather data.` };
-  }
-  if (coverage < CONFIDENCE_RULES.completeCoverage) {
-    return { confidence: "medium", reason: `${percentMissing}% of days in the window have no weather data.` };
-  }
+  if (coverage < CONFIDENCE_RULES.completeCoverage) return coverageConfidence(coverage, "window");
   if (comparable === "not-comparable") {
     return {
       confidence: "high",

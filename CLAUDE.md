@@ -114,3 +114,5 @@ Each one: *next time you see X → do Y*.
    v4's Turbopack loader silently dropped our custom base block, while `@layer components` survived.
 26. **A leak check passes** → make sure it can't share the scrubber's blind spot. Ours used the same literal path, so a
    path escaped twice (`C:\\Users\\…`) passed both. Scrub parsed string values, not raw JSON lines, and check for the bare username.
+27. **Streaming the AI SDK's `partialOutputStream`** → it starts over at every new step and stream retry. Don't assume the
+   text only grows: when it no longer starts with what you sent, open a new text part (`onAnswerRestart`).

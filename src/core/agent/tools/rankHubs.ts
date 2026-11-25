@@ -30,10 +30,10 @@ export function buildRankHubsTool(ctx: AgentContext, runtime: ToolRuntime) {
       metric: z.enum(["overall", ...HAZARDS]).describe("'overall' or a hazard: hurricane, winter, flood, severeStorms, wind, heat."),
       region: z.enum(CENSUS_REGIONS).nullable().describe("US Census region filter, or null for all hubs."),
       order: z.enum(["most", "least"]).describe("'most' = most exposed first."),
-      limit: z.number().int().min(1).max(36).describe("How many hubs to return (default 5)."),
+      limit: z.number().int().min(1).max(Math.max(1, ctx.hubs.length)).describe("How many hubs to return (5 is a good default)."),
     }),
-    execute: (input) =>
-      runTool("rank_hubs", input, runtime, () => rankHubsOutput(ctx, input as Parameters<typeof rankHubsOutput>[1])),
+    execute: (input, { toolCallId }) =>
+      runTool("rank_hubs", input, runtime, () => rankHubsOutput(ctx, input as Parameters<typeof rankHubsOutput>[1]), toolCallId),
   });
 }
 
@@ -69,13 +69,14 @@ export function rankHubsOutput(ctx: AgentContext, input: { metric: RankMetric; r
       confidenceReason: hazard ? hazard.confidenceReason : undefined,
     };
   });
-  const any = ctx.snapshotByHub.values().next().value!;
+  // Report the newest scoring run among the snapshots (they normally all come from one run).
+  const newest = [...ctx.snapshotByHub.values()].reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
   return {
     metric,
     region: input.region,
     order: input.order,
-    scoringVersion: any.scoringVersion,
-    scoredWindow: any.window,
+    scoringVersion: newest.scoringVersion,
+    scoredWindow: newest.window,
     results,
     /** Points between the first and last hub listed — quote this instead of subtracting (E10). */
     spread: scoreSpread(results.map((r) => ({ hubId: r.hubId, score: r.score }))),

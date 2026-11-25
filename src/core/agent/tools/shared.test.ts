@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ToolLedger } from "../ledger";
-import { runTool } from "./shared";
+import { TOOL_FAILED_MESSAGE, runTool } from "./shared";
 
 const output = { hubIds: ["dallas"], confidence: "high" as const, caveats: ["c"], overallScore: 72.4 };
 
@@ -36,5 +36,18 @@ describe("runTool — duplicate calls in one answer (E8)", () => {
     await runTool("explain_hub_score", { hubId: "dallas" }, runtime, body);
     await runTool("explain_hub_score", { hubId: "miami" }, runtime, body);
     expect(body).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("runTool failure", () => {
+  it("gives the model a fixed friendly sentence, never the internal error text", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const output = await runTool("explain_hub_score", { hubId: "dallas" }, { ledger: new ToolLedger(), callbacks: {} }, () => {
+      throw new Error("SupabaseQueryError || relation weather_daily timed out || getWeatherDays || 🐘");
+    });
+    expect(output).toMatchObject({ error: TOOL_FAILED_MESSAGE });
+    expect(JSON.stringify(output)).not.toContain("Supabase");
+    expect(error).toHaveBeenCalled(); // the detail goes to the server log
+    error.mockRestore();
   });
 });
