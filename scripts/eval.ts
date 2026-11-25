@@ -174,9 +174,10 @@ async function main(): Promise<void> {
       judge: judge?.modelId ?? null,
       judgeSelfTest: selfTest ? `${selfTest.correct}/${selfTest.total}` : null,
       // The same summary the app saves, so the "Answer quality" card shows CLI runs too (D130).
-      // Saved only for a single, live, in-process run: that's what the card describes.
+      // Saved only for a single, live, in-process run of the WHOLE set: that's what the card describes
+      // (a --case subset would show e.g. "2/2 passed" as if it were the full eval).
       summary:
-        repeat === 1 && !url && !saved
+        repeat === 1 && !url && !saved && !only
           ? (evalRunSummary(runs, { model: label, trigger: "cli", judge: judge?.modelId ?? null, selfTest, seconds: (Date.now() - startedAt) / 1000 }) as unknown as Json)
           : null,
     },

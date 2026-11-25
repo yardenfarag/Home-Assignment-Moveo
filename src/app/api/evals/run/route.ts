@@ -21,6 +21,13 @@ import { errorResponse, failure } from "../../_lib/http";
 /** A run takes about 1–2 minutes (13 cases, 3 at a time); Vercel Hobby allows up to 300 s. */
 export const maxDuration = 300;
 
+/**
+ * Time budget for the cases (D133): no new case starts after this, so the summary is saved before
+ * Vercel's 300 s limit. A case started just before it can still take ~145 s (agent turn 100 s +
+ * judge 45 s). Normal runs take 1–2 minutes, so this rarely skips anything.
+ */
+const SUITE_DEADLINE_MS = 150_000;
+
 /** The function name used in log lines. */
 const ROUTE = "POST /api/evals/run";
 
@@ -107,7 +114,7 @@ export async function POST(): Promise<Response> {
 
     const run = (async () => {
       try {
-        const { summary } = await runEvalSuite({ agent: deps.agentModel, context, judge, onEvent: send });
+        const { summary } = await runEvalSuite({ agent: deps.agentModel, context, judge, onEvent: send, deadlineMs: SUITE_DEADLINE_MS });
         const failed = summary.cases.filter((c) => !c.pass).map((c) => c.caseId);
         await recordEvent({
           eventType: EVAL_FINISHED,
