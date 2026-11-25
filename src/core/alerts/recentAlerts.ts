@@ -11,6 +11,8 @@ import type { NewEvent, StoredEvent } from "../db/eventsRepository";
 import type { StoredSnapshot } from "../db/scoresRepository";
 import { riskLevelFor } from "../scoring/overall";
 import { RISK_LEVELS } from "../scoring/types";
+import { MS_PER_DAY } from "../utils/dates";
+import { round } from "../utils/stats";
 import { ALERT_EVENT, ALERT_RULES, alertEvent, type ScoreChangeAlert } from "./scoreChanges";
 
 /** An alert as the app receives it. */
@@ -39,13 +41,14 @@ export interface RecentAlertsDeps {
 }
 
 /**
- * The alerts of the last 30 days, newest first. Malformed rows are skipped.
+ * The alerts of the last `ALERT_RULES.showDays` days (at most `ALERT_RULES.showLimit`), newest
+ * first. Malformed rows are skipped.
  * @param deps - event reader and clock.
  * @returns the alerts.
  */
 export async function loadRecentAlerts(deps: RecentAlertsDeps): Promise<RecentAlert[]> {
-  const since = new Date(deps.now().getTime() - ALERT_RULES.showDays * 86_400_000).toISOString();
-  const events = await deps.listEvents({ eventType: ALERT_EVENT, since, limit: 20 });
+  const since = new Date(deps.now().getTime() - ALERT_RULES.showDays * MS_PER_DAY).toISOString();
+  const events = await deps.listEvents({ eventType: ALERT_EVENT, since, limit: ALERT_RULES.showLimit });
   return events.flatMap((event) => {
     const parsed = alertPayloadSchema.safeParse(event.payload);
     return parsed.success ? [{ ...parsed.data, id: event.id, createdAt: event.createdAt }] : [];
@@ -60,15 +63,15 @@ export async function loadRecentAlerts(deps: RecentAlertsDeps): Promise<RecentAl
  * @returns the event to record, or null when there are no scores yet.
  */
 export function testAlertEvent(snapshots: readonly StoredSnapshot[], hubName: (hubId: string) => string): NewEvent | null {
-  const top = [...snapshots].sort((a, b) => b.overallScore - a.overallScore)[0];
+  const top = [...snapshots].sort((a, b) => b.overallScore - a.overallScore || a.hubId.localeCompare(b.hubId))[0];
   if (!top) return null;
-  const fromScore = Math.max(0, Math.round((top.overallScore - ALERT_RULES.scoreChangePoints) * 10) / 10);
+  const fromScore = Math.max(0, round(top.overallScore - ALERT_RULES.scoreChangePoints, 1));
   const alert: ScoreChangeAlert = {
     hubId: top.hubId,
     hubName: hubName(top.hubId),
     fromScore,
     toScore: top.overallScore,
-    change: Math.round((top.overallScore - fromScore) * 10) / 10,
+    change: round(top.overallScore - fromScore, 1),
     fromLevel: riskLevelFor(fromScore),
     toLevel: top.riskLevel,
     test: true,

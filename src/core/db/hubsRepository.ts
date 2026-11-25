@@ -9,7 +9,8 @@ import { hubSchema, type Hub } from "../domain/hub";
 import type { Database } from "./database.types";
 import { getDb, type Db } from "./client";
 
-type HubRow = Database["public"]["Tables"]["hubs"]["Row"];
+/** A stored `hubs` row (snake_case, as the database returns it). */
+type HubRow =Database["public"]["Tables"]["hubs"]["Row"];
 
 /**
  * Converts a database row into a validated Hub.

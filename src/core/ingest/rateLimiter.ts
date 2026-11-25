@@ -23,8 +23,11 @@ export interface CallRecord {
   weight: number;
 }
 
+/** One minute in ms. */
 const MINUTE = 60_000;
+/** One hour in ms. */
 const HOUR = 60 * MINUTE;
+/** One day in ms. */
 const DAY = 24 * HOUR;
 
 /**
@@ -38,14 +41,14 @@ const DAY = 24 * HOUR;
  * @throws Error when a single request is heavier than a whole window allows.
  */
 export function computeWaitMs(history: CallRecord[], now: number, weight: number, limits: RateLimits): number {
-  const windows: [number, number][] = [
-    [MINUTE, limits.perMinute],
-    [HOUR, limits.perHour],
-    [DAY, limits.perDay],
+  const windows: [number, number, string][] = [
+    [MINUTE, limits.perMinute, "per-minute"],
+    [HOUR, limits.perHour, "hourly"],
+    [DAY, limits.perDay, "daily"],
   ];
   let wait = 0;
-  for (const [length, limit] of windows) {
-    if (weight > limit) throw new Error(`Request weight ${weight} exceeds the ${length / MINUTE}-minute limit ${limit}`);
+  for (const [length, limit, label] of windows) {
+    if (weight > limit) throw new Error(`Request weight ${weight} exceeds the ${label} limit of ${limit}`);
     // Oldest first: drop calls until the remaining ones leave room for this request.
     const inWindow = history.filter((call) => call.at > now - length).sort((a, b) => a.at - b.at);
     let used = inWindow.reduce((sum, call) => sum + call.weight, 0);
@@ -60,6 +63,7 @@ export function computeWaitMs(history: CallRecord[], now: number, weight: number
 
 /** Stateful limiter used by the ingest run. */
 export class WeightedRateLimiter {
+  /** Every request made through this limiter (this process only). */
   private readonly history: CallRecord[] = [];
 
   /**

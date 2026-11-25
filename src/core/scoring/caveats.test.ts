@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { hazardCaveats, metricCaveats, WEATHER_DATA_CAVEAT } from "./caveats";
+import { hazardCaveats, metricCaveats, staleDataCaveat, WEATHER_DATA_CAVEAT } from "./caveats";
 import { DAY_METRICS } from "./dayMetrics";
+import { dataFreshness } from "./staleness";
 import { HAZARDS } from "./types";
+
+describe("stale data", () => {
+  it("finds hubs more than 2 days behind the newest, and names them in a caveat", () => {
+    const freshness = dataFreshness([
+      { hubId: "miami", windowEnd: "2026-11-24" },
+      { hubId: "tampa", windowEnd: "2026-11-22" }, // 2 days behind: still fresh
+      { hubId: "denver", windowEnd: "2026-11-20" },
+    ]);
+    expect(freshness).toEqual({ newestWindowEnd: "2026-11-24", oldestWindowEnd: "2026-11-20", staleHubs: [{ hubId: "denver", windowEnd: "2026-11-20", daysBehind: 4 }] });
+    expect(staleDataCaveat("Denver", "2026-11-20", "2026-11-24")).toMatch(/^Denver's weather data ends 2026-11-20, earlier than the other hubs' \(2026-11-24\)/);
+    expect(dataFreshness([])).toBeNull();
+  });
+});
 
 describe("caveats", () => {
   it("every hazard has at least one standing caveat", () => {

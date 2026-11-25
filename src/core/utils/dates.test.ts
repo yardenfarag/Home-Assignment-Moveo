@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysInclusive, minDate, toIsoDate } from "./dates";
+import { addDays, daysInclusive, isoDateInTimeZone, minDate, toIsoDate } from "./dates";
 
 describe("dates", () => {
   it("adds days across month and leap-year boundaries", () => {
@@ -22,5 +22,20 @@ describe("dates", () => {
   it("rejects malformed dates", () => {
     expect(() => addDays("2025-13-01", 1)).toThrow(/Invalid ISO date/);
     expect(() => addDays("25-01-01", 1)).toThrow(/Invalid ISO date/);
+  });
+
+  it("rejects impossible calendar dates instead of rolling them over", () => {
+    expect(() => addDays("2025-02-30", 0)).toThrow(/Invalid ISO date: 2025-02-30/);
+    expect(() => daysInclusive("2025-04-31", "2025-05-01")).toThrow(/Invalid ISO date/);
+    expect(() => addDays("2025-02-29", 0)).toThrow(/Invalid ISO date/); // 2025 is not a leap year
+    expect(addDays("2024-02-29", 0)).toBe("2024-02-29");
+  });
+
+  it("gives the local calendar date in a timezone", () => {
+    const sixUtc = new Date("2026-11-25T06:00:00Z");
+    expect(isoDateInTimeZone(sixUtc, "America/New_York")).toBe("2026-11-25"); // 01:00 local
+    expect(isoDateInTimeZone(sixUtc, "America/Denver")).toBe("2026-11-24"); // 23:00 the evening before
+    expect(isoDateInTimeZone(sixUtc, "America/Los_Angeles")).toBe("2026-11-24");
+    expect(isoDateInTimeZone(sixUtc, "UTC")).toBe("2026-11-25");
   });
 });

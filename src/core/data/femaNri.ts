@@ -9,13 +9,18 @@
  * Data page: https://hazards.fema.gov/nri/data-resources
  */
 import { z } from "zod";
-import { BoundaryError } from "../errors/boundaryError";
-import { fetchJsonWithRetry, type FetchLike, type SleepFn } from "./http";
+import { BoundaryError, describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
+import { fetchJsonWithRetry, type HttpDeps } from "./http";
 
+/** FEMA's public ArcGIS query endpoint for the NRI county layer. */
 const COUNTY_LAYER_URL =
   "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Counties/FeatureServer/0/query";
 
-/** FEMA hazard codes we use, mapped to our column names. */
+/**
+ * THE list of FEMA hazard fields we use (single source of truth), mapped to the
+ * {@link FemaCountyRecord} key. The `fema_nri` column is the field in lower case
+ * (see {@link femaHazardColumn}); the scoring name lives in femaRepository's typed map.
+ */
 export const FEMA_HAZARD_FIELDS = {
   HRCN_AFREQ: "hrcnAfreq", // hurricane
   TRND_AFREQ: "trndAfreq", // tornado
@@ -29,8 +34,20 @@ export const FEMA_HAZARD_FIELDS = {
   SWND_AFREQ: "swndAfreq", // strong wind
 } as const;
 
-type FemaFieldName = keyof typeof FEMA_HAZARD_FIELDS;
-type FemaHazardKey = (typeof FEMA_HAZARD_FIELDS)[FemaFieldName];
+/** A FEMA hazard field name, e.g. `HRCN_AFREQ`. */
+export type FemaFieldName = keyof typeof FEMA_HAZARD_FIELDS;
+
+/** The matching key on {@link FemaCountyRecord}, e.g. `hrcnAfreq`. */
+export type FemaHazardKey = (typeof FEMA_HAZARD_FIELDS)[FemaFieldName];
+
+/**
+ * The `fema_nri` column for a FEMA field (`HRCN_AFREQ` → `hrcn_afreq`).
+ * @param field - the FEMA field name.
+ * @returns the column name.
+ */
+export function femaHazardColumn<F extends FemaFieldName>(field: F): Lowercase<F> {
+  return field.toLowerCase() as Lowercase<F>;
+}
 
 /** FEMA NRI record for the county containing a hub. `null` frequency = hazard not applicable there. */
 export type FemaCountyRecord = {
@@ -44,8 +61,10 @@ export type FemaCountyRecord = {
   rawAttributes: Record<string, unknown>;
 } & Record<FemaHazardKey, number | null>;
 
+/** Non-hazard fields we request: county FIPS, county name, state, NRI version, county area. */
 const ID_FIELDS = ["STCOFIPS", "COUNTY", "STATEABBRV", "NRI_VER", "AREA"] as const;
 
+/** The attributes of one county feature (extra fields are kept, not rejected). */
 const attributesSchema = z
   .object({
     STCOFIPS: z.string().regex(/^\d{5}$/),
@@ -59,6 +78,7 @@ const attributesSchema = z
   })
   .loose();
 
+/** The ArcGIS query response: a list of matching county features. */
 const queryResponseSchema = z.object({
   features: z.array(z.object({ attributes: z.record(z.string(), z.unknown()) })),
 });
@@ -83,7 +103,8 @@ export function buildCountyQueryUrl(latitude: number, longitude: number): string
 }
 
 /**
- * Validates the ArcGIS response and extracts the county record.
+ * Validates the ArcGIS response and extracts the county record. A point lies in one
+ * county, so more than one match is unexpected: the first is used and the caller logs it.
  * @param json - the raw response body.
  * @returns the county record.
  * @throws Error when no county contains the point (e.g. outside the US).
@@ -117,15 +138,11 @@ export function parseCountyResponse(json: unknown): FemaCountyRecord {
  * Fetches the FEMA NRI record for the county containing a point.
  * @param latitude - point latitude.
  * @param longitude - point longitude.
- * @param deps - injectable fetch/sleep for tests.
+ * @param deps - injectable fetch/sleep/log and an optional deadline.
  * @returns the county record.
  * @throws BoundaryError (fema) on HTTP failure, no county, or an unexpected response.
  */
-export async function fetchFemaCountyByPoint(
-  latitude: number,
-  longitude: number,
-  deps: { fetchImpl?: FetchLike; sleepImpl?: SleepFn } = {},
-): Promise<FemaCountyRecord> {
+export async function fetchFemaCountyByPoint(latitude: number, longitude: number, deps: HttpDeps = {}): Promise<FemaCountyRecord> {
   const json = await fetchJsonWithRetry({
     url: buildCountyQueryUrl(latitude, longitude),
     boundary: "fema",
@@ -134,11 +151,23 @@ export async function fetchFemaCountyByPoint(
     ...deps,
   });
   try {
-    return parseCountyResponse(json);
+    const record = parseCountyResponse(json);
+    const matches = (json as { features: unknown[] }).features.length;
+    if (matches > 1) {
+      (deps.log ?? console.warn)(
+        formatBoundaryMessage({
+          name: "FemaMultipleCountiesWarning",
+          message: `${matches} counties contain point ${latitude},${longitude}; using the first (${record.countyName}, ${record.stateCode}, ${record.countyFips})`,
+          functionName: "fetchFemaCountyByPoint",
+          boundary: "fema",
+        }),
+      );
+    }
+    return record;
   } catch (cause) {
     throw new BoundaryError({
       name: "FemaResponseError",
-      message: `Unexpected FEMA NRI response for point ${latitude},${longitude}: ${cause instanceof Error ? cause.message : "invalid"}`,
+      message: `Unexpected FEMA NRI response for point ${latitude},${longitude}: ${describeUnknownError(cause)}`,
       functionName: "fetchFemaCountyByPoint",
       boundary: "fema",
       cause,

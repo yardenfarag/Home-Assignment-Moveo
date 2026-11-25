@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { WEATHER_VARIABLES, type WeatherVariable } from "../config/ingestConfig";
+import type { DailyWeather } from "../domain/weather";
 import { buildArchiveUrl, estimateCallWeight, fetchDailyWeather, parseArchiveResponse } from "./openMeteo";
 
 /** Trimmed copy of a real response (Denver, Nov 2026). */
@@ -37,6 +39,18 @@ describe("parseArchiveResponse", () => {
   it("rejects arrays of different lengths", () => {
     const broken = { ...realResponse, daily: { ...realResponse.daily, snowfall_sum: [0] } };
     expect(() => parseArchiveResponse(broken)).toThrow(/expected 3/);
+  });
+});
+
+describe("WEATHER_VARIABLES (single source of truth)", () => {
+  it("covers every DailyWeather field, so parsing and the empty-day check can't forget one", () => {
+    expectTypeOf<Exclude<Exclude<keyof DailyWeather, "date">, WeatherVariable["field"]>>().toEqualTypeOf<never>();
+    expect(new Set(WEATHER_VARIABLES.map((v) => v.field)).size).toBe(WEATHER_VARIABLES.length);
+  });
+
+  it("keeps a day that has only one value", () => {
+    const oneValue = { ...realResponse, daily: { ...realResponse.daily, apparent_temperature_max: [13.1, 2.7, 5] } };
+    expect(parseArchiveResponse(oneValue)).toHaveLength(3);
   });
 });
 

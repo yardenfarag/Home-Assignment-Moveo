@@ -12,7 +12,10 @@ import { addDays, daysInclusive, minDate } from "../utils/dates";
 export interface PlanInput {
   /** Newest date already stored for the hub, or null if none. */
   latestStoredDate: string | null;
-  /** Today's date (UTC) `YYYY-MM-DD`. We fetch up to yesterday. */
+  /**
+   * Today's date `YYYY-MM-DD` in the HUB's timezone (the archive's days are the hub's local
+   * days). We fetch up to yesterday, the newest day that has fully ended there.
+   */
   today: string;
   /** First day of history we keep. */
   historyStart: string;
@@ -22,7 +25,9 @@ export interface PlanInput {
 
 /** A date range to fetch, both ends included. */
 export interface DateRange {
+  /** First day `YYYY-MM-DD`. */
   startDate: string;
+  /** Last day `YYYY-MM-DD`. */
   endDate: string;
 }
 

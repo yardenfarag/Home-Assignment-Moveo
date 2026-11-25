@@ -7,7 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CENSUS_REGIONS } from "../domain/hub";
-import { CONFIDENCE_LEVELS, RISK_LEVELS } from "../scoring/types";
+import { CONFIDENCE_LEVELS, HAZARDS, RISK_LEVELS } from "../scoring/types";
 import { EVENT_LEVELS, EVENT_SOURCES } from "./eventsRepository";
 
 const MIGRATIONS_DIR = resolve(__dirname, "../../../supabase/migrations");
@@ -51,5 +51,9 @@ describe("DB check constraints match TypeScript constants", () => {
 
   it("score_snapshots.confidence ↔ CONFIDENCE_LEVELS", () => {
     expect(checkConstraintValues("confidence")).toEqual([...CONFIDENCE_LEVELS]);
+  });
+
+  it("score_snapshots.top_hazard ↔ HAZARDS", () => {
+    expect(checkConstraintValues("top_hazard")).toEqual([...HAZARDS]);
   });
 });

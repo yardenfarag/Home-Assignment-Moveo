@@ -21,6 +21,18 @@ export const WEATHER_DATA_CAVEAT =
   "Observed weather is modeled reanalysis (Open-Meteo), not station measurements, so it smooths out extremes.";
 
 /**
+ * Caveat for a hub whose weather data ends noticeably earlier than the other hubs'
+ * (see scoring/staleness.ts), so its score is older than theirs.
+ * @param hubName - the hub's display name.
+ * @param windowEnd - the hub's newest weather day in its score.
+ * @param newestWindowEnd - the newest day any hub has.
+ * @returns the plain-language caveat.
+ */
+export function staleDataCaveat(hubName: string, windowEnd: string, newestWindowEnd: string): string {
+  return `${hubName}'s weather data ends ${windowEnd}, earlier than the other hubs' (${newestWindowEnd}), most likely because its recent data updates failed. Its score is older and may not reflect the latest days.`;
+}
+
+/**
  * Standing caveats for one hazard.
  * @param hazard - the hazard.
  * @param units - which unit system leads in the text.

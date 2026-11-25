@@ -5,6 +5,7 @@
  * hubs are added. Rank 1 = most exposed. Ties share a rank ("1, 2, 2, 4").
  */
 import type { CensusRegion } from "../domain/hub";
+import { round } from "../utils/stats";
 import type { Hazard } from "./types";
 
 /** What to rank by: the overall score or one hazard. */
@@ -30,12 +31,12 @@ export interface RankedRow {
 }
 
 /**
- * Standard competition ranking on score, highest first.
+ * Standard competition ranking on score, highest first. Equal scores share a rank.
  * @param items - ids with scores.
  * @returns id → rank.
  */
 export function competitionRanks(items: { id: string; score: number }[]): Map<string, number> {
-  const sorted = [...items].sort((a, b) => b.score - a.score);
+  const sorted = [...items].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   const ranks = new Map<string, number>();
   sorted.forEach((item, index) => {
     const previous = sorted[index - 1];
@@ -68,7 +69,8 @@ export function rankHubs(
       rankInSelection: selectionRanks.get(row.hubId)!,
       selectionSize: selection.length,
     }))
-    .sort((a, b) => (options.order === "most" ? b.score - a.score : a.score - b.score));
+    // Equal scores (many hubs sit at 100) are listed by hub id, so the order never depends on the input order.
+    .sort((a, b) => (options.order === "most" ? b.score - a.score : a.score - b.score) || a.hubId.localeCompare(b.hubId));
   return ranked.slice(0, options.limit);
 }
 
@@ -88,8 +90,8 @@ export interface ScoreSpread {
  */
 export function scoreSpread(entries: { hubId: string; score: number }[]): ScoreSpread | null {
   if (entries.length < 2) return null;
-  const sorted = [...entries].sort((a, b) => b.score - a.score);
+  const sorted = [...entries].sort((a, b) => b.score - a.score || a.hubId.localeCompare(b.hubId));
   const highest = sorted[0];
   const lowest = sorted[sorted.length - 1];
-  return { highestHubId: highest.hubId, lowestHubId: lowest.hubId, spread: Math.round((highest.score - lowest.score) * 10) / 10 };
+  return { highestHubId: highest.hubId, lowestHubId: lowest.hubId, spread: round(highest.score - lowest.score, 1) };
 }

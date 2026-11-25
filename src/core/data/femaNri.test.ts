@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildCountyQueryUrl, fetchFemaCountyByPoint, parseCountyResponse } from "./femaNri";
+import { buildCountyQueryUrl, femaHazardColumn, fetchFemaCountyByPoint, parseCountyResponse } from "./femaNri";
 
 /** Real response for Denver's city-center point (NRI v1.20). */
 const denverResponse = {
@@ -70,5 +70,20 @@ describe("fetchFemaCountyByPoint", () => {
     await expect(fetchFemaCountyByPoint(0, 0, { fetchImpl })).rejects.toThrow(
       /FemaResponseError \|\| .*No FEMA county.* \|\| fetchFemaCountyByPoint \|\| 🦡/,
     );
+  });
+
+  it("uses the first county but logs it when more than one contains the point", async () => {
+    const twoCounties = { features: [denverResponse.features[0], { attributes: { ...denverResponse.features[0].attributes, STCOFIPS: "08005" } }] };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(twoCounties), { status: 200 }));
+    const log = vi.fn();
+    const record = await fetchFemaCountyByPoint(39.7, -105, { fetchImpl, log });
+    expect(record.countyFips).toBe("08031");
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/^FemaMultipleCountiesWarning \|\| 2 counties contain point .*using the first \(Denver, CO, 08031\) \|\| fetchFemaCountyByPoint \|\| 🦡$/));
+  });
+});
+
+describe("femaHazardColumn", () => {
+  it("derives the fema_nri column from the FEMA field", () => {
+    expect(femaHazardColumn("HRCN_AFREQ")).toBe("hrcn_afreq");
   });
 });
