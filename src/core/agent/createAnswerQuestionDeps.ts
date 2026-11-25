@@ -9,6 +9,7 @@ import { recordEvent } from "../db/eventsRepository";
 import { listActiveHubs } from "../db/hubsRepository";
 import { getLatestSnapshots } from "../db/scoresRepository";
 import { getWeatherBounds, getWeatherDays } from "../db/weatherRepository";
+import { createGuard } from "../guard/jevGuard";
 import { toIsoDate } from "../utils/dates";
 import type { AnswerQuestionDeps } from "./answerQuestion";
 import { loadAgentContext } from "./context";
@@ -37,6 +38,7 @@ export function createAnswerQuestionDeps(options: { modelOverride?: string } = {
     loadHistory: (sessionId, turns) => loadHistory(sessionId, turns),
     saveTurn: (sessionId, messages, answer, model) => saveTurn(sessionId, messages, answer, model),
     recordEvent: (event) => recordEvent(event),
+    guard: createGuard(),
     today: () => toIsoDate(new Date()),
   };
 }

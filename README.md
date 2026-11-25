@@ -44,7 +44,8 @@ The four questions from the brief, all answered by the agent (see the real answe
 
 It also handles follow-ups (*"Why that one?"*), pushes back on false premises (*"Why is Seattle's hurricane risk
 so high?"* → it isn't), gives careful recommendations (*"Should we prioritize Houston or Denver?"*), and politely
-declines what it can't answer (cities that aren't hubs, off-topic requests).
+declines what it can't answer (cities that aren't hubs, off-topic requests). A guard checks every message first, so
+off-topic requests and attempts to change its rules get a friendly reply without running the AI agent at all.
 
 ## How it works, in one minute
 1. The chat page sends your question to **our own API** (`POST /api/chat`), never straight to an AI.
@@ -89,6 +90,7 @@ cp .env.example .env.local     # then fill in the values
 | `OPENROUTER_API_KEY` | the agent, evals | openrouter.ai → Keys (set a credit limit) |
 | `OPENROUTER_MODEL` | the agent | keep `openai/gpt-6.1-terra` (chosen by the [bakeoff](docs/bakeoff.md)) |
 | `JUDGE_MODEL` | evals | keep `google/gemini-3.5-flash-lite` (must be a different provider than the model) |
+| `JEV_MODEL` | the out-of-scope guard | keep `typesafe/jev-1.14-20261014` (the cutoffs were tuned on this exact version) |
 | `CRON_SECRET` | the nightly job | 16+ random characters |
 | `SESSION_LOG_PATHS`, `SESSION_SCRUB_TERMS` | optional: session log export | see [.env.example](.env.example) |
 
@@ -114,7 +116,8 @@ npm run dev
 1. **Import** the repo in Vercel (it's detected as Next.js through [vercel.json](vercel.json), which also pins the
    region next to the database and schedules the nightly job).
 2. **Environment variables** (Production): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENROUTER_API_KEY`,
-   `OPENROUTER_MODEL`, `CRON_SECRET`. Mark the secret ones as *sensitive*. `JUDGE_MODEL` is only needed for evals.
+   `OPENROUTER_MODEL`, `JEV_MODEL`, `CRON_SECRET`. Mark the secret ones as *sensitive*. `JUDGE_MODEL` is only needed
+   for evals.
 3. **Firewall rule** (flood protection for every route, D114). In the Vercel dashboard: your project → **Firewall** →
    **Configure** → **+ New Rule**:
    - *Name:* `flood shield`
@@ -136,6 +139,7 @@ npm run dev
 | `npm run score` | Re-score all hubs from the stored data (no API calls) |
 | `npm run ask -- "question"` | Ask the real agent from the terminal. Add `--session=<id>` for a follow-up, `--metric` for metric units |
 | `npm run eval` | Run the 13 eval cases ([Evals](#evals)) |
+| `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |
 | `npm run bakeoff -- <results.json …>` | Compare models from saved eval runs → [docs/bakeoff.md](docs/bakeoff.md) |
 | `npm run fema:anchors` | Recompute the national FEMA reference values, to review before changing the scoring config |
 | `npm run session:export -- <file.jsonl>` | Export the AI coding session to [docs/session/](docs/session/), with private details removed |
@@ -182,6 +186,11 @@ npm run eval -- --publish                      # also write docs/evals.md
 - Prints pass/fail per case and a total, and exits 1 on any failure. Latest results: [docs/evals.md](docs/evals.md).
   How the model was chosen: [docs/bakeoff.md](docs/bakeoff.md).
 
+**The guard has its own eval:** `npm run eval:guard` (add `-- --repeat=3` to check stability, `-- --publish` to write
+[docs/guard-evals.md](docs/guard-evals.md)). It runs 32 messages through the real guard: the brief's questions, terse
+and follow-up questions that must pass, and off-topic requests and attempts to change the assistant's rules that must
+be declined. It also reports how far the scores sit from the cutoffs.
+
 ## Project docs
 | Doc | What's in it |
 |---|---|
@@ -189,7 +198,7 @@ npm run eval -- --publish                      # also write docs/evals.md
 | [Assumptions & limits](docs/assumptions.md) | What the score means and doesn't, data limits, thresholds, what's out of scope |
 | [Decision log](docs/decisions.md) | Every choice made while building, and why (D1–D111) |
 | [Example answers](docs/examples.md) | Real, unedited answers to the brief's questions |
-| [Eval results](docs/evals.md) · [Model bakeoff](docs/bakeoff.md) | How well it answers, and how the model was picked |
+| [Eval results](docs/evals.md) · [Model bakeoff](docs/bakeoff.md) · [Guard evals](docs/guard-evals.md) | How well it answers, how the model was picked, and how well off-topic and manipulative messages are caught |
 | [Plan](docs/plan.md) | The build steps and what comes next |
 | [AI session log](docs/session/) | The full conversation with the AI coding agent that built this |
 

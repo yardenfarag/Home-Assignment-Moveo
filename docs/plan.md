@@ -67,7 +67,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 8 | Model bakeoff (9 models screened, 4 finalists × 3 runs: gate → accuracy → cost → speed), lock in the winner (done: gpt-6.1-terra, D107–D111) | `OPENROUTER_MODEL`, `JUDGE_MODEL` (new values) |
 | 9 | README, design doc, final assumptions (done: D112) | — |
 | 10 | Deploy to Vercel, env vars, cron, run evals against live URL. Site login removed (D113), request limits (D114). **Done: https://sneakoscope.vercel.app** (D116) | (same, in Vercel; no `APP_USERNAME` / `APP_PASSWORD`) |
-| 11 | Phase 1.5: Jev guard (`typesafe/jev-1.14`, cutoff 0.4, 2 s fail-open, last 2 turns) + guard evals + cutoff tuning | `JEV_MODEL` |
+| 11 | Jev guard: topic + manipulation on every message, follow-ups judged with the last 2 turns, tuned cutoffs 0.15 / 0.6, 2 s fail-open, guard evals (done: D118–D121) | `JEV_MODEL` |
 
 ## Later (order to be chosen)
 Themed login page · dust storm hazard (NOAA Storm Events) · US map widget · abuse/off-topic

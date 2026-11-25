@@ -27,3 +27,11 @@ export const RECOMMENDATION_DISCLAIMER =
 
 /** Start of the message sent back to the model when its answer fails validation (stored in history, hidden from users). */
 export const RETRY_FEEDBACK_PREFIX = "Your previous answer was rejected by validation:";
+
+/** The brief's four example questions: shown on the start screen and on the guard's decline card. */
+export const EXAMPLE_QUESTIONS = [
+  "Which hubs in the Midwest are most exposed to winter disruption?",
+  "Compare Miami and Houston in terms of hurricane and flood exposure.",
+  "What percentage of days in Denver last year had snowfall?",
+  "Why is the Dallas hub's weather disruption risk high?",
+] as const;

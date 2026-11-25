@@ -48,6 +48,7 @@ flowchart TB
   cron([Vercel Cron, daily 06:00 UTC])
   db[(Supabase Postgres)]
   llm[OpenRouter: gpt-6.1-terra]
+  jev[OpenRouter: Jev guard]
   meteo[Open-Meteo weather archive]
   fema[FEMA National Risk Index]
 
@@ -55,6 +56,7 @@ flowchart TB
   ui -->|"POST /api/chat, GET /api/widgets, …"| api
   api --> agent
   agent <-->|"chooses tools, writes the answer"| llm
+  agent -->|"on topic? manipulative?"| jev
   agent --> tools --> scoring
   tools --> repos
   cron -->|"GET /api/cron/ingest"| api
@@ -69,6 +71,7 @@ flowchart TB
 |---|---|---|---|
 | **Chat UI** | [src/app/_components/](../src/app/_components/) | The page: chat, the list of earlier chats, the overview widgets. Entry: [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L55) | Only our own API routes, never the LLM |
 | **API routes** | [src/app/api/](../src/app/api/) | Thin: validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
+| **Guard** | [src/core/guard/](../src/core/guard/) | Checks each message with Jev before the agent runs; declines off-topic or manipulative ones | OpenRouter (Jev) |
 | **Agent** | [src/core/agent/](../src/core/agent/) | Runs the LLM with tools, checks the answer, retries once | OpenRouter, the tools |
 | **Tools** | [src/core/agent/tools/](../src/core/agent/tools/) | `rank_hubs`, `compare_hubs`, `get_weather_stat`, `explain_hub_score`. They compute; the LLM only calls them | Scoring, stats, database |
 | **Scoring and stats** | [src/core/scoring/](../src/core/scoring/), [src/core/stats/](../src/core/stats/) | Pure functions: weather days → hazard scores → overall score, level, confidence | Nothing (pure) |
@@ -117,9 +120,12 @@ sequenceDiagram
   participant L as LLM (OpenRouter)
   participant T as Tools
   participant D as Database
+  participant G as Jev guard
   B->>R: { sessionId, message, units }
   R->>Q: login + Zod check passed
   Q->>D: load latest scores + this chat's history
+  Q->>G: on topic? trying to change the rules?
+  G-->>Q: allow (or a friendly decline card, and stop)
   Q->>A: question, history, hub data
   loop up to 6 tool steps
     A->>L: system prompt + messages + tool list
@@ -141,24 +147,30 @@ Step by step, with the code:
    localStorage, so earlier chats can be reopened from the side menu.
 2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L24) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L20)), and starts a
    stream ([`buildChatStream`](../src/core/api/chatStream.ts#L57)).
-3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L54) loads the latest score
+3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L58) loads the latest score
    for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 10 turns of this chat
    ([`loadHistory`](../src/core/db/chatRepository.ts#L52)).
-4. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L146) builds the system prompt
+4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L231)
+   asks Jev, a small yes/no decision model, two questions: *is this about weather risk for our hubs* (for a follow-up,
+   Jev also sees the last 2 turns, so "why that one?" counts), and *does it try to change the assistant's rules*. If
+   it's off topic or manipulative, the person gets a friendly card with example questions
+   ([`guardDeclineAnswer`](../src/core/guard/jevGuard.ts#L166)) and the agent never runs. The check takes about 0.3 s;
+   if Jev is slow (over 2 s) or down, the message goes through (fail open).
+5. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L146) builds the system prompt
    ([`buildSystemPrompt`](../src/core/agent/systemPrompt.ts#L27): rules, the scoring method, the hub list) and the
    tools ([`buildTools`](../src/core/agent/tools/index.ts#L21)), then calls the LLM in
    [`attempt`](../src/core/agent/runAgent.ts#L70). Limits: 6 tool steps, 25 s per step, 60 s in total
    ([`AGENT_LIMITS`](../src/core/agent/config.ts#L8)).
-5. **Tools compute.** Every tool call goes through [`runTool`](../src/core/agent/tools/shared.ts#L44). It reports progress
+6. **Tools compute.** Every tool call goes through [`runTool`](../src/core/agent/tools/shared.ts#L44). It reports progress
    to the browser, records the result in the ledger, and answers an exact repeat of an earlier call with a short "same as
    before" note instead of re-running it (D96).
-6. **The answer streams.** The LLM's answer text streams to the browser as it's written, so the analyst sees it appear.
-7. **Code checks it.** [`finalizeAnswer`](../src/core/agent/finalizeAnswer.ts#L40) runs the checks from section 3. If
+7. **The answer streams.** The LLM's answer text streams to the browser as it's written, so the analyst sees it appear.
+8. **Code checks it.** [`finalizeAnswer`](../src/core/agent/finalizeAnswer.ts#L40) runs the checks from section 3. If
    they fail, the browser shows "Double-checking my numbers…" while the LLM gets one retry.
-8. **Saved and logged.** The turn, including tool results, is saved for follow-ups
+9. **Saved and logged.** The turn, including tool results, is saved for follow-ups
    ([`saveTurn`](../src/core/db/chatRepository.ts#L94)), and an `agent.answered` event is logged with the tools used,
    tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L84)).
-9. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
+10. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
    **from the tool results**, not from anything the LLM wrote ([src/app/_components/visuals/](../src/app/_components/visuals/)).
 
 ## 5. How a hub's risk score is computed
@@ -246,6 +258,7 @@ src/
     domain/              core types (Hub)
     errors/              BoundaryError (log format) and the friendly user errors
     ingest/, pipeline/   incremental ingest, rate limiting, ingest → score
+    guard/               the Jev out-of-scope and manipulation guard
     judge/               the independent answer judge used by the evals
     scoring/             hazard scores, overall, levels, confidence, caveats (pure)
     security/            the nightly job's secret check (constant-time)
@@ -271,6 +284,13 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   **nightly job** is the one protected route: it needs the secret that only Vercel Cron sends
   ([`isCronAuthorized`](../src/core/security/auth.ts#L30)), compared in constant time. Chat history is private by
   obscurity only: a chat can be reopened by anyone who knows its random id.
+- **An out-of-scope and manipulation guard** (D118–D121). Every message is checked by Jev before the agent runs (see
+  step 4 of [section 4](#4-one-question-end-to-end)). Settings in [`GUARD_CONFIG`](../src/core/guard/jevGuard.ts#L24):
+  decline when the on-topic probability is below 0.15, or the manipulation probability is above 0.6. Those cutoffs were
+  tuned on the [guard eval set](guard-evals.md) (32 messages: brief questions, terse questions, follow-ups like "why
+  that one?", off-topic requests, and attempts to change the rules). All 32 were decided right in 3 of 3 runs, with
+  wide margins. Each decision is logged as a `guard.decision` event with both probabilities. The guard fails open:
+  if Jev is down or slow, the agent still answers, and it already declines off-topic questions itself.
 - **Request limits instead of a login** (D114). Two layers:
   - **In our code, on `POST /api/chat`** (the only route that costs money):
     [`checkChatGate`](../src/core/api/chatGate.ts#L45) runs before the agent. Limits
