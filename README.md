@@ -215,7 +215,7 @@ be declined. It also reports how far the scores sit from the cutoffs.
 |---|---|
 | [Design](docs/design.md) | Architecture, one question end to end, scoring, data pipeline, storage, repo structure: with links to the code |
 | [Assumptions & limits](docs/assumptions.md) | What the score means and doesn't, data limits, thresholds, what's out of scope |
-| [Decision log](docs/decisions.md) | Every choice made while building, and why (D1–D111) |
+| [Decision log](docs/decisions.md) | Every choice made while building, and why (D1–D138) |
 | [Example answers](docs/examples.md) | Real, unedited answers to the brief's questions |
 | [Eval results](docs/evals.md) · [Model bakeoff](docs/bakeoff.md) · [Guard evals](docs/guard-evals.md) | How well it answers, how the model was picked, and how well off-topic and manipulative messages are caught |
 | [Plan](docs/plan.md) | The build steps and what comes next |
