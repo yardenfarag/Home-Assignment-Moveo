@@ -169,7 +169,7 @@ The app has no login, so every route is open, except the nightly job, which need
 | `POST /api/alerts/test` | Records one clearly marked test alert (for demos). Needs `Authorization: Bearer <CRON_SECRET>` |
 | `GET /api/evals/latest` | The latest eval run (from the app or `npm run eval`) and whether a new run can start now |
 | `POST /api/evals/run` | Run the evals from the app. Streams one JSON line per event (start, judge self-test, each question, done). Limited for everyone together: 1 run per 30 minutes, 4 per day, never two at once (429 with the time the next run is possible) |
-| `GET /api/cron/ingest` | The nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>` |
+| `GET /api/cron/ingest` | The nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>`. Answers 409 when another run is still in progress, 207 when some hubs failed or ran out of time |
 
 Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`. A body that isn't valid
 JSON gets **400** `invalid_request`. `POST /api/chat` answers **429** with code `too_many_requests` or `daily_limit` when a
