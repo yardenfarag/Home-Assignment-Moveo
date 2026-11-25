@@ -45,6 +45,8 @@ export interface IngestOptions {
   hubIds?: string[];
   /** Who triggered the run, stored on events. */
   trigger: "cli" | "cron";
+  /** Re-fetch FEMA records even for hubs that already have one (e.g. a new NRI version, or a new field). */
+  refreshFema?: boolean;
 }
 
 /** What happened to one hub. */
@@ -133,7 +135,7 @@ export async function runIngest(options: IngestOptions, deps: IngestDeps): Promi
     eventType: "ingest.started",
     source: "ingest",
     correlationId: runId,
-    payload: { trigger: options.trigger, hubIds: options.hubIds ?? "all" },
+    payload: { trigger: options.trigger, hubIds: options.hubIds ?? "all", refreshFema: options.refreshFema ?? false },
   });
 
   const allHubs = await deps.listActiveHubs();
@@ -141,7 +143,7 @@ export async function runIngest(options: IngestOptions, deps: IngestDeps): Promi
   const unknown = (options.hubIds ?? []).filter((id) => !allHubs.some((hub) => hub.id === id));
   if (unknown.length > 0) deps.log(`⚠️  Unknown or inactive hub ids skipped: ${unknown.join(", ")}`);
 
-  const withFema = await deps.listHubIdsWithFema();
+  const withFema = options.refreshFema ? new Set<string>() : await deps.listHubIdsWithFema();
   const results: HubIngestResult[] = [];
 
   for (const [index, hub] of hubs.entries()) {

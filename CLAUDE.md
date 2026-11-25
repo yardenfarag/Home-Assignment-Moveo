@@ -70,3 +70,9 @@ Each one: *next time you see X → do Y*.
    before concluding "safe". Gusts ≥93 km/h were 0–1/yr even in windy hubs, so we score on ≥72 km/h.
 6. **"Untracked working tree files would be overwritten" after switching to an older `main`** → compare file
    hashes against the target commit before any reset. The files were identical and nothing was lost.
+7. **Vitest is green** → still run `npm run typecheck`. Vitest strips types without checking them. A wrong field
+   name (`reason` vs `confidenceReason`) passed every test and was only caught by `tsc`.
+8. **Reading more than 1,000 rows from Supabase** → paginate with `.range()`. PostgREST caps each response at
+   1,000 rows by default and silently returns the first page (a 1,826-day window would have been cut off).
+9. **A rule-based label fires on almost everything (32 of 36 hubs "Medium")** → check whether it's flagging
+   *structural* differences (two sources that measure different things) rather than real problems. Compare like with like (D56).

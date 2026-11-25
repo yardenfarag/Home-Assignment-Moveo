@@ -61,7 +61,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 4 | Agent: tools, answer schema + validation + retry, recommendation rules, chat history | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` |
 | 5 | Streaming `POST /api/chat`, `/api/widgets`, cron route, Basic Auth | `APP_USERNAME`, `APP_PASSWORD`, `CRON_SECRET` |
 | 6 | UI: chat, 3 widgets, per-answer charts | — |
-| 7 | Eval set (13 cases) + `npm run eval` (`--url` for deployed) | — |
+| 7 | Eval set (13 cases) + `npm run eval` (`--url` for deployed). **Revisit D57** (FEMA flood half capped for 15 hubs) if flood rankings look off | — |
 | 8 | Model bakeoff (3–4 models: accuracy → cost → speed), lock in the winner | — |
 | 9 | README, design doc, final assumptions | — |
 | 10 | Deploy to Vercel, env vars, cron, run evals against live URL | (same, in Vercel) |

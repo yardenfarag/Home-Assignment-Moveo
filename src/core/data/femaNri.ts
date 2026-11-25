@@ -38,11 +38,13 @@ export type FemaCountyRecord = {
   countyName: string;
   stateCode: string;
   nriVersion: string;
+  /** County area in square miles (FEMA `AREA`). Used to score tornado per area (D53). */
+  countyAreaSqMi: number;
   /** Every attribute FEMA returned, kept for traceability. */
   rawAttributes: Record<string, unknown>;
 } & Record<FemaHazardKey, number | null>;
 
-const ID_FIELDS = ["STCOFIPS", "COUNTY", "STATEABBRV", "NRI_VER"] as const;
+const ID_FIELDS = ["STCOFIPS", "COUNTY", "STATEABBRV", "NRI_VER", "AREA"] as const;
 
 const attributesSchema = z
   .object({
@@ -50,6 +52,7 @@ const attributesSchema = z
     COUNTY: z.string().min(1),
     STATEABBRV: z.string().length(2),
     NRI_VER: z.string().min(1),
+    AREA: z.number().positive(),
     ...Object.fromEntries(
       Object.keys(FEMA_HAZARD_FIELDS).map((field) => [field, z.number().min(0).nullable()]),
     ),
@@ -104,6 +107,7 @@ export function parseCountyResponse(json: unknown): FemaCountyRecord {
     countyName: attributes.COUNTY as string,
     stateCode: attributes.STATEABBRV as string,
     nriVersion: attributes.NRI_VER as string,
+    countyAreaSqMi: attributes.AREA as number,
     rawAttributes: raw,
     ...hazards,
   };

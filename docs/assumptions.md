@@ -24,6 +24,26 @@ The agent repeats the relevant parts in its answers (the `assumptions` and `limi
 | [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) | Daily snowfall, min temperature, precipitation, max wind gust, max apparent temperature, 2021-01-01 → yesterday, in each hub's local calendar day | It's **modeled reanalysis, not station measurements**: it smooths peaks, so wind gusts in particular are underestimated. The last few days are **preliminary** and get revised, so we re-fetch the last 7 every night. The free tier is **non-commercial**: a real deployment needs a paid plan. Data is licensed CC-BY 4.0 (attribution shown in the UI). |
 | [FEMA National Risk Index v1.20 (Dec 2025)](https://hazards.fema.gov/nri/data-resources) via its public [ArcGIS county service](https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Counties/FeatureServer/0) | Annualized frequency of hurricane, tornado, hail, inland and coastal flooding, ice storm, winter weather, cold wave, heat wave, strong wind | County-level. Built from long historical records, so it **changes slowly** and won't reflect last year's events. Riverine flood is now called `IFLD` (Inland Flooding). |
 
+## Known scoring limitations (Step 3)
+How these are handled is in [decisions.md](decisions.md) D47–D58. The numbers are in
+[`src/core/scoring/config.ts`](../src/core/scoring/config.ts).
+- **County-level FEMA data depends on county shape and size.**
+  - **Tornado:** FEMA spreads frequency by county area (within-state rank correlation +0.62), so we score **per 1,000 sq mi** (D53).
+  - **Inland flood:** a mild size effect (+0.21) that we do not correct. Huge counties (Maricopa/Phoenix 9,319 sq mi, Clark/Las Vegas,
+    Los Angeles) likely have an overstated FEMA flood half.
+  - **Mountains:** King County (Seattle) includes the Cascades and Salt Lake County the Wasatch, which inflates FEMA winter weather.
+    Seattle's winter is flagged **Medium confidence** because the sources disagree (D52).
+- **The FEMA flood half caps at 100 for 15 of 36 hubs** (metros issue many flood warnings), so FEMA alone can't separate
+  them. The observed half still does. **To revisit in Step 7** (D57).
+- **Heavy rain ≠ flooding.** The flood score blends heavy-rain days with FEMA's flood warnings but doesn't cross-check them (D56).
+- **Ice storms come from FEMA only.** Observed weather has no ice signal (D56).
+- **Heavy-snow days (≥15 cm) and warning-level gusts (≥93 km/h) are reported, not scored.** The modeled data barely
+  registers them (D20a, D50).
+- **FEMA anchors are national 95th percentiles** among counties where FEMA rates the hazard. Coastal flooding is
+  rated for only 588 coastal counties, so its anchor compares coastal counties with each other (D47).
+- **Heat:** FEMA heat waves follow local NWS heat-alert criteria (lower thresholds up north), while our observed heat days
+  use one national ≥40 °C feels-like threshold. Disagreement there is real and is flagged (e.g. New York, Kansas City).
+
 ## Time window
 - Scores use a **rolling 5-year window** ending at the newest available day, so they move slightly every night.
 - "Last year" means **calendar 2025** unless the user says otherwise. The agent states the period it used.

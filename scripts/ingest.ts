@@ -4,9 +4,12 @@
  * CLI for the data ingest: `npm run ingest` (all active hubs) or
  * `npm run ingest -- --hub=dallas,denver` (only some).
  * Incremental: re-running only fetches what's missing + the last 7 days.
+ * Then re-scores every hub under the same run id (D54).
+ * `--refresh-fema` re-fetches FEMA records for all hubs.
  */
 import { createIngestDeps } from "../src/core/ingest/createIngestDeps";
-import { runIngest } from "../src/core/ingest/runIngest";
+import { runIngestThenScore } from "../src/core/pipeline/runIngestThenScore";
+import { createScoringDeps } from "../src/core/scoring/createScoringDeps";
 
 /**
  * Reads `--hub=a,b` from the command line. On PowerShell, npm swallows the `--`
@@ -18,16 +21,21 @@ function parseHubIds(): string[] | undefined {
   return arg ? arg.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
 }
 
-/** Runs the ingest and prints a summary. Exit code 1 if any hub failed. */
+/** Runs ingest + scoring and prints a summary. Exit code 1 if any hub failed. */
 async function main(): Promise<void> {
   const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`);
   log("🦉 Ingest started");
-  const summary = await runIngest({ trigger: "cli", hubIds: parseHubIds() }, createIngestDeps(log));
-  log(
-    `🏁 Done — ${summary.hubsProcessed} hubs, ${summary.hubsFailed} failed, ` +
-      `${summary.weatherRowsSaved} weather rows, ${summary.femaRecordsSaved} FEMA records (run ${summary.runId})`,
+  const refreshFema = process.argv.includes("--refresh-fema") || process.env.npm_config_refresh_fema === "true";
+  const { ingest, scoring } = await runIngestThenScore(
+    { trigger: "cli", hubIds: parseHubIds(), refreshFema },
+    { ingest: createIngestDeps(log), scoring: createScoringDeps(log) },
   );
-  if (summary.hubsFailed > 0) process.exit(1);
+  log(
+    `🏁 Done — ${ingest.hubsProcessed} hubs, ${ingest.hubsFailed} failed, ` +
+      `${ingest.weatherRowsSaved} weather rows, ${ingest.femaRecordsSaved} FEMA records; ` +
+      `${scoring.hubsScored} hubs scored (run ${ingest.runId})`,
+  );
+  if (ingest.hubsFailed > 0 || scoring.hubsFailed > 0) process.exit(1);
 }
 
 main().catch((error: unknown) => {
