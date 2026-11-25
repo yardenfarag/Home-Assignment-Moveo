@@ -8,10 +8,10 @@ interface MarkdownProps {
   text: string;
 }
 
-/** Renders Markdown with readable spacing on the dark theme. */
+/** Renders Markdown with readable spacing on the dark theme (long words and URLs wrap instead of scrolling sideways). */
 export function Markdown({ text }: MarkdownProps) {
   return (
-    <div className="space-y-3 text-[15px] leading-relaxed text-slate-200">
+    <div className="space-y-3 text-[15px] leading-relaxed text-slate-200 wrap-anywhere">
       <ReactMarkdown
         components={{
           p: ({ children }) => <p>{children}</p>,

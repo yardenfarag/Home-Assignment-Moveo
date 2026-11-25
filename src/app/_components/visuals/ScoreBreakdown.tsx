@@ -1,11 +1,19 @@
 /**
  * Score breakdown (U3b): WHERE a hub's score comes from, in one strip —
- * each hazard's points (0.6 × weight × score) plus the worst-hazard boost.
- * All numbers come from the explain_hub_score tool (computed in code).
+ * each hazard's share of the weighted average plus the worst-hazard boost (the mix is
+ * `OVERALL_MIX` in core/scoring/config.ts). All numbers come from the explain_hub_score
+ * tool (computed in code).
  */
 import type { ExplainHubScoreOutput } from "@/core/agent/tools/explainHubScore";
 import { HAZARD_UI } from "../../_lib/labels";
 import { LevelChip } from "../LevelChip";
+
+/**
+ * The striped fill that marks the worst-hazard boost (the bar and its legend swatch use the same one).
+ * @param color - the worst hazard's color.
+ * @returns a CSS background.
+ */
+const boostStripe = (color: string) => `repeating-linear-gradient(135deg, ${color}, ${color} 4px, transparent 4px, transparent 8px)`;
 
 /** Props for {@link ScoreBreakdown}. */
 interface ScoreBreakdownProps {
@@ -40,7 +48,7 @@ export function ScoreBreakdown({ data }: ScoreBreakdownProps) {
         <div
           style={{
             width: pct(worstHazardBoost),
-            background: `repeating-linear-gradient(135deg, ${worst.color}, ${worst.color} 4px, transparent 4px, transparent 8px)`,
+            background: boostStripe(worst.color),
           }}
           title={`Worst-hazard boost (${worst.label}): +${worstHazardBoost}`}
         />
@@ -56,7 +64,7 @@ export function ScoreBreakdown({ data }: ScoreBreakdownProps) {
           </li>
         ))}
         <li className="flex items-center gap-2 text-slate-300">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/40" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: boostStripe(worst.color) }} aria-hidden="true" />
           <span className="flex-1">Worst-hazard boost ({worst.label})</span>
           <span className="w-12 text-right tabular-nums text-slate-200">+{worstHazardBoost}</span>
         </li>

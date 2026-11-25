@@ -65978,3 +65978,550 @@ Doc links are fixed (12 moved). Now the build, then commit and push PR 3:
 </details>
 
 ---
+
+### ⚙️ Tool output · 2026-11-25T20:01:53.297Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+🔒 Leak check passed: no emails, tokens, secret values, username or home path left.
+e818b42 Review 3/5: docs (D133), migration renamed to 20261126000001 and applied, doc links, session log
+bba9cb3 Review 3/5: data pipeline fixes
+802aade Merge pull request #23 from yardenfarag/review-2-agent-api
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:01:55.429Z
+
+PR 3 is pushed. Now **PR 4: frontend**, rebased on top of PR 3:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:01:56.931Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git checkout -q review-4-frontend && git rebase review-3-data 2>&1 | tail -2; git log --oneline -4; npx tsc --noEmit 2>&1 | head -3; npx eslint . 2>&1 | tail -3; npx vitest run 2>&1 | grep -E \"×|Test Files|Tests \"",
+  "description": "Rebase PR 4 onto PR 3 and run checks",
+  "timeout": 400000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:02:42.275Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Rebasing (1/1)Successfully rebased and updated refs/heads/review-4-frontend.
+ea22749 Review 4/5: frontend fixes
+e818b42 Review 3/5: docs (D133), migration renamed to 20261126000001 and applied, doc links, session log
+bba9cb3 Review 3/5: data pipeline fixes
+802aade Merge pull request #23 from yardenfarag/review-2-agent-api
+     × every relative link exists, and every [`symbol`](file#L…) link still points at that symbol 78ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 65 passed (66)
+      Tests  1 failed | 346 passed (347)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:02:50.132Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "wc -l src/app/_lib/clientErrors.ts; grep -n \"🦋\\|export const\\|message:\" src/app/_lib/clientErrors.ts src/app/_components/RenderBoundary.tsx src/app/_components/ErrorScreen.tsx | head -30; grep -rn \"🦋\" src --include=*.ts --include=*.tsx | grep -v clientErrors | head",
+  "description": "Inspect client error copy and butterfly logging"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:02:50.597Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+126 src/app/_lib/clientErrors.ts
+src/app/_lib/clientErrors.ts:16:export const CONNECTION_FAILED: ChatError = {
+src/app/_lib/clientErrors.ts:18:  message: "I couldn't reach Sneakoscope just now. 🙀",
+src/app/_lib/clientErrors.ts:24:export const ANSWER_STALLED: ChatError = {
+src/app/_lib/clientErrors.ts:26:  message: "The answer stalled, so I stopped waiting.",
+src/app/_lib/clientErrors.ts:32:export const CHAT_OPEN_FAILED = "Couldn't open that chat. Try again.";
+src/app/_lib/clientErrors.ts:35:export const SESSIONS_FAILED = "Couldn't load your chats right now.";
+src/app/_lib/clientErrors.ts:38:export const VISUAL_FAILED = "This chart couldn't be drawn. The answer above is unaffected.";
+src/app/_lib/clientErrors.ts:41:export const MESSAGE_FAILED = "I couldn't show this answer. Try asking the question again.";
+src/app/_lib/clientErrors.ts:44:export const EVAL_COPY = {
+src/app/_lib/clientErrors.ts:53:export const UI_BOUNDARY_EMOJI = "🦋";
+src/app/_lib/clientErrors.ts:102:      message: body.message,
+src/app/_components/RenderBoundary.tsx:14:  message: string;
+src/app/_components/RenderBoundary.tsx:45:export const RenderBoundary = catchError(Fallback);
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:02:52.962Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 1,60p src/app/_lib/clientErrors.ts; grep -rn \"UI_BOUNDARY_EMOJI\\|clientErrors\" src --include=*.ts --include=*.tsx | grep -v \"^src/app/_lib/clientErrors.ts\" | head",
+  "description": "Read client error module and its users"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:02:53.385Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+/**
+ * @module app/_lib/clientErrors
+ *
+ * Friendly copy for problems that happen in the BROWSER (no connection, a hung request, a chart
+ * that can't be drawn), and the mapping from a failed chat request to one friendly card (B5).
+ * The API's own error copy stays in `core/errors/userErrors.ts`; this file only adds what the
+ * server can't know about. Never shows raw error text.
+ */
+import type { SneakoscopeDataParts } from "@/core/api/chatStream";
+import { STREAM_INTERRUPTED, USER_ERROR_CODES, USER_ERRORS, userError, type UserErrorCode } from "@/core/errors/userErrors";
+
+/** The error card's content (same shape as the stream's `data-error` part). */
+export type ChatError = SneakoscopeDataParts["error"];
+
+/** The request never reached us (offline, DNS, the network dropped before the answer began). */
+export const CONNECTION_FAILED: ChatError = {
+  code: "internal_error",
+  message: "I couldn't reach Sneakoscope just now. 🙀",
+  hint: "Check your internet connection, then try again.",
+  retryable: true,
+};
+
+/** Nothing new arrived for a long while (the watchdog stopped waiting) or the request timed out. */
+export const ANSWER_STALLED: ChatError = {
+  code: "internal_error",
+  message: "The answer stalled, so I stopped waiting.",
+  hint: "Please try again in a moment.",
+  retryable: true,
+};
+
+/** A saved chat couldn't be loaded (B2). */
+export const CHAT_OPEN_FAILED = "Couldn't open that chat. Try again.";
+
+/** The chat list couldn't be loaded (S4). */
+export const SESSIONS_FAILED = "Couldn't load your chats right now.";
+
+/** One chart under an answer couldn't be drawn (S11). The answer text itself was already checked. */
+export const VISUAL_FAILED = "This chart couldn't be drawn. The answer above is unaffected.";
+
+/** A whole saved answer couldn't be shown (e.g. it was stored in an older format). */
+export const MESSAGE_FAILED = "I couldn't show this answer. Try asking the question again.";
+
+/** Eval run (D130): copy for a run streamed in this browser. */
+export const EVAL_COPY = {
+  couldNotStart: "The evals couldn't start right now. Please try again later.",
+  noConnection: "The evals couldn't start right now. Please check your connection and try again.",
+  dropped: "The connection dropped before the run finished. The results may still show up here in a few minutes.",
+  stalled: "I haven't heard from the run for a while, so I stopped watching. The results may still show up here in a few minutes.",
+  unreadable: "Some progress updates couldn't be read. Th
+… [truncated 1479 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:02:59.056Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 53,72p src/app/_lib/clientErrors.ts; tail -12 src/core/errors/userErrors.ts",
+  "description": "Read logUiError and end of userErrors"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:02:59.402Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+export const UI_BOUNDARY_EMOJI = "🦋";
+
+/**
+ * Logs a UI rendering failure in the project's format: `ErrorName || message || where || emoji`.
+ * @param error - what was thrown.
+ * @param where - the part of the UI that failed.
+ */
+export function logUiError(error: unknown, where: string): void {
+  const name = error instanceof Error ? error.name : "RenderError";
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`${name} || ${message} || ${where} || ${UI_BOUNDARY_EMOJI}`);
+}
+
+/**
+ * True for a browser network failure (fetch throws a TypeError such as "Failed to fetch",
+ * "NetworkError when attempting to fetch resource" or Safari's "Load failed").
+ * @param error - what the request threw.
+ * @returns whether it was the connection.
+ */
+export function isNetworkError(error: unknown): boolean {
+    if (error.boundary === "llm") return userError("agent_failed");
+  }
+  return userError("internal_error");
+}
+
+/** Shown when a streamed answer stops before the validated answer arrives (e.g. the connection dropped). */
+export const STREAM_INTERRUPTED: Omit<UserError, "status"> = {
+  code: "internal_error",
+  message: "The answer stopped before it finished.",
+  hint: "Your connection may have dropped — please try again.",
+  retryable: true,
+};
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:03:13.256Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst p=\"src/app/_lib/clientErrors.ts\";let t=fs.readFileSync(p,\"utf8\");\nconst start=t.indexOf(\"/** The request never reached us\");\nconst end=t.indexOf(\"/**\\n * True for a browser network failure\");\nconst moved=t.slice(start,end);\n// Pull the copy constants (everything before the UI emoji) into userErrors.ts.\nconst copy=moved.slice(0,moved.indexOf(\"/** Fixed animal emoji for errors caught while drawing the UI\"));\nlet u=fs.readFileSync(\"src/core/errors/userErrors.ts\",\"utf8\");\nu+=`\n// ---------------------------------------------------------------------------\n// Problems only the BROWSER can see (no connection, a hung request, a chart that can't be drawn).\n// Kept here with the rest of the copy; app/_lib/clientErrors.ts maps failures to them.\n// ---------------------------------------------------------------------------\n\n/** The error card's content in the browser (a UserError without the HTTP status). */\nexport type ChatError = Omit<UserError, \"status\">;\n\n`+copy.replace(/: ChatError = \\{/g,\": ChatError = {\");\nfs.writeFileSync(\"src/core/errors/userErrors.ts\",u);\nt=t.slice(0,start)+`/** Fixed animal emoji for errors caught while drawing the UI (the server's boundaries have theirs in \\`boundaryError.ts\\`). */\n// (moved: the copy itself now lives in core/errors/userErrors.ts, re-exported below)\n\n/**\n * Logs a UI rendering failure in the project's format: \\`ErrorName || message || where || 🦋\\`.\n * @param error - what was thrown.\n * @param where - the part of the UI that failed.\n */\nexport function logUiError(error: unknown, where: string): void {\n  console.error(boundaryLogLine(error, where, \"ui\"));\n}\n\n`+t.slice(end);\nt=t.replace(`/** Fixed animal emoji for errors caught while drawing the UI (the server's boundaries have theirs in \\`boundaryError.ts\\`). */\n// (moved: the copy itself now lives in core/errors/userErrors.ts, re-exported below)\n\n`,\"\");\nt=t.replace('import type { SneakoscopeDataParts } from \"@/core/api/chatStream\";\\nimport { STREAM_INTERRUPTED, USER_ERROR_CODES, USER_ERRORS, userError, type UserErrorCode } from \"@/core/errors/userErrors\";\\n\\n/** The error card\\'s content (same shape as the stream\\'s `data-error` part). */\\nexport type ChatError = SneakoscopeDataParts[\"error\"];\\n',\n`import { boundaryLogLine } from \"@/core/errors/boundaryError\";\nimport {\n  ANSWER_STALLED,\n  CONNECTION_FAILED,\n  STREAM_INTERRU
+… [truncated 1617 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:03:22.387Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+24:  ui: "🦋",
+/**
+ * @module app/_lib/clientErrors
+ *
+ * Friendly copy for problems that happen in the BROWSER (no connection, a hung request, a chart
+ * that can't be drawn), and the mapping from a failed chat request to one friendly card (B5).
+ * All the copy lives in `core/errors/userErrors.ts` (single source); this file maps browser
+ * failures to it and logs UI errors (🦋). Never shows raw error text.
+ */
+import { boundaryLogLine } from "@/core/errors/boundaryError";
+import {
+  ANSWER_STALLED,
+  CONNECTION_FAILED,
+  STREAM_INTERRUPTED,
+  USER_ERROR_CODES,
+  USER_ERRORS,
+  userError,
+  type ChatError,
+  type UserErrorCode,
+} from "@/core/errors/userErrors";
+
+// The browser-side copy lives with the rest in core/errors/userErrors.ts; re-exported for the UI.
+export { ANSWER_STALLED, CHAT_OPEN_FAILED, CONNECTION_FAILED, EVAL_COPY, MESSAGE_FAILED, SESSIONS_FAILED, VISUAL_FAILED, type ChatError } from "@/core/errors/userErrors";
+
+/**
+ * Logs a UI rendering failure in the project's format: `ErrorName || message || where || 🦋`.
+ * @param error - what was thrown.
+ * @param where - the part of the UI that failed.
+ */
+export function logUiError(error: unknown, where: string): void {
+  console.error(boundaryLogLine(error, where, "ui"));
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:03:27.648Z
+
+Typecheck is clean after the move. Now the agent's browser checklist against a real production build. Building and starting the server:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:03:28.799Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run build 2>&1 | grep -E \"Compiled|rror|Generating static\"; netstat -ano | grep \":3100 .*LISTEN\"",
+  "description": "Build PR 4",
+  "timeout": 400000
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:03:29.651Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node node_modules/next/dist/bin/next start -p 3100",
+  "description": "Start production server for PR 4",
+  "run_in_background": true
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:03:51.926Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+✓ Compiled successfully in 4.4s
+  Generating static pages using 14 workers (0/13) ...
+  Generating static pages using 14 workers (3/13) 
+  Generating static pages using 14 workers (6/13) 
+  Generating static pages using 14 workers (9/13) 
+✓ Generating static pages using 14 workers (13/13) in 1499ms
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:03:52.099Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Command running in background with ID: bk3atdosp. Output is being written to: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\tasks\bk3atdosp.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:04:17.581Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\drive-pr4.cjs",
+  "content": "// PR 4 browser checks: storage blocked, offline ask, stop mid-answer, open chat A→B race, mobile focus, fit.\nconst fs = require(\"fs\"), path = require(\"path\"), os = require(\"os\"), { spawn } = require(\"child_process\");\nconst [baseUrl, outDir] = process.argv.slice(2);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\nasync function browser(port) {\n  const profile = fs.mkdtempSync(path.join(os.tmpdir(), \"sneakoscope-chrome-\"));\n  const chrome = spawn(\"C:/Program Files/Google/Chrome/Application/chrome.exe\",\n    [\"--headless=new\", \"--disable-gpu\", \"--hide-scrollbars\", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, \"about:blank\"], { stdio: \"ignore\" });\n  let targets = [];\n  for (let i = 0; i < 40 && !targets.length; i++) {\n    await sleep(250);\n    try { targets = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).filter((t) => t.type === \"page\"); } catch {}\n  }\n  const ws = new WebSocket(targets[0].webSocketDebuggerUrl);\n  await new Promise((r) => (ws.onopen = r));\n  let id = 0; const pending = new Map(); const consoleErrors = [];\n  ws.onmessage = (m) => {\n    const msg = JSON.parse(m.data);\n    if (pending.has(msg.id)) { pending.get(msg.id)(msg.result ?? msg); pending.delete(msg.id); }\n    if (msg.method === \"Runtime.exceptionThrown\") consoleErrors.push(msg.params.exceptionDetails.exception?.description?.slice(0, 200));\n  };\n  const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });\n  const evaluate = async (expr) => (await send(\"Runtime.evaluate\", { expression: expr, returnByValue: true, awaitPromise: true })).result?.value;\n  const shot = async (name) => { const { data } = await send(\"Page.captureScreenshot\", { format: \"png\" }); fs.writeFileSync(path.join(outDir, name), Buffer.from(data, \"base64\")); };\n  await send(\"Page.enable\"); await send(\"Runtime.enable\"); await send(\"Network.enable\");\n  return { send, evaluate, shot, consoleErrors, close: () => { ws.close(); chrome.kill(); } };\n}\n\nconst clickText = (b, text, root = \"document\") => b.evaluate(`(() => { const el = [...${root}.querySelectorAll(\"button\")].find((x) => x.textContent.includes(${JSON.stringify(text)})); if (!el) return \"missing\"; el.click(); return \"ok\"
+… [truncated 5228 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:04:17.827Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\drive-pr4.cjs (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:04:20.533Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3100/ 2>/dev/null | grep -q 200 && break; node -e \"setTimeout(()=>{},1000)\"; done; S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\"; mkdir -p \"$S/pr4\"; node \"$S/drive-pr4.cjs\" http://localhost:3100 \"$S/pr4\"",
+  "description": "Drive the PR 4 browser checklist",
+  "timeout": 300000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:05:15.802Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+1) storage blocked → app renders: true | errors: 0
+2) offline ask → alert cards: 1 | CONVERSATION Which hubs are most exposed to flooding? I couldn't reach Sneakoscope just now. 🙀 Check your internet connection, then try again. Try again Your question Ask
+   stop click: ok
+3) after Stop: CONVERSATION Compare Miami and Houston in terms of hurricane and flood exposure. Stopped before an answer was ready. Ask again Your question Ask
+4) remembered sessions: ["803018a7-19f0-421f-a796-4d5820408a7e"]
+5) fit: page fits | overview fits
+   overview tab: ok
+   click a hub: 1 New Orleans, LA 74.6 · High
+6) mobile focus: DIV in Conversation | busy item aria-disabled: 12
+   console exceptions: []
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:21.557Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\pr4\\pr4-desktop.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:05:21.747Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:23.002Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\pr4\\pr4-mobile.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:05:23.387Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:28.227Z
+
+Both look right: the desktop layout is unchanged, and on the phone, asking from the overview jumps to the chat. Wrapping up PR 4: stop the server, add docs, fix doc links, commit and push.
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:28.573Z
+
+<details><summary>🔧 Tool call: <code>TaskStop</code></summary>
+
+```json
+{
+  "task_id": "bk3atdosp"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:05:28.778Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+{"message":"Successfully stopped task: bk3atdosp (node node_modules/next/dist/bin/next start -p 3100)","task_id":"bk3atdosp","task_type":"local_bash","command":"node node_modules/next/dist/bin/next start -p 3100"}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:37.824Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,a,b)=>{let t=fs.readFileSync(p,\"utf8\");if(!t.includes(a))throw new Error(p+\" missing \"+a.slice(0,60));fs.writeFileSync(p,t.replace(a,b));};\nconst d134=\"| D134 | **Frontend fixes** (code review, PR 4 of 5). **One error card, the right one:** a dropped connection, a stall and a server error each map to one friendly card (no more two contradictory cards); offline shows \\\"I couldn't reach Sneakoscope just now.\\\" **Stop is honest:** a stopped draft is dimmed and labelled \\\"Stopped — this draft wasn't checked against the data.\\\", unfinished progress steps say they didn't finish. **Retry asks the right question:** only the last message offers Try again. **Opening a past chat** can't race any more (each open cancels the previous one, 20 s timeout, sending waits while a chat opens, a friendly line on failure). **Nothing waits forever:** every browser request has a timeout; the chat stops after 90 s without progress (\\\"The answer stalled…\\\"), the eval dialog after 150 s without a progress line. **Storage that's blocked or full can't crash the app** (it falls back to memory), only UUID-shaped chat ids are kept, and there's a friendly error page (`error.tsx`, `global-error.tsx`) plus a small boundary around each chart and answer. **Smaller:** the side nav has loading / failed / empty states; long text and URLs wrap; the question box grows; scrolling follows a streaming answer only while you're at the bottom and never past its first line; the seasonality strip shows months without data as \\\"no data\\\" (not zero) and labels long ranges with years; one live status line for screen readers; the panel switcher uses plain buttons with `aria-current` (the panels are all visible on desktop, so full tabs behaviour would mislead); clickable items say \\\"Wait for the current answer to finish.\\\" while busy. All error copy, including the browser's, lives in `userErrors.ts`; UI errors are logged with a new 🦋 `ui` boundary. | The review's frontend findings, all fixed. **Verified in a real browser** (production build): blocked storage → the app still renders; offline → exactly one connection card; Stop → the stopped label; the overview still fits at 1440×900; on a phone, asking from the overview moves focus to the conversation; no console exceptions. 346 tests. |\\n\";\nedit(\"docs/decisions.md\",\"| D88 | **No Markdown tables in answers**\",d134+\"| D88 | **No Markdown tables in answers*
+… [truncated 273 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:05:38.923Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+docs/design.md:283:  🐘 database, 🦄 API route, 🦔 config ([`BoundaryError`](../src/core/errors/boundaryError.ts#L56),
+docs/decisions.md:186:| D35 | Errors at boundaries use **`ErrorName \|\| message \|\| function \|\| emoji`**, with a fixed emoji per boundary: 🦉 LLM, 🐸 Open-Meteo, 🦡 FEMA, 🐘 database, 🦄 API route, 🐍 Jev, 🦔 config. Users only see a clean `{error:{code,message}}`. (Q17) | Your format. A fixed emoji makes logs searchable by origin. |
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:05:43.718Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,a,b)=>{let t=fs.readFileSync(p,\"utf8\");if(!t.includes(a))throw new Error(p+\" missing \"+a.slice(0,60));fs.writeFileSync(p,t.replace(a,b));};\nedit(\"docs/design.md\",\"  🐘 database, 🦄 API route, 🦔 config (\",\"  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page) (\");\nEOF\nnode \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\" 2>&1 | tail -3; npx tsc --noEmit 2>&1 | head -3; npx eslint . 2>&1 | tail -2; npx vitest run 2>&1 | grep -E \"×|Test Files|Tests \"",
+  "description": "Update emoji list, fix links, rerun checks",
+  "timeout": 400000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:06:23.314Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+docs/design.md: SneakoscopeApp L57 → L43
+docs/design.md: BoundaryError L56 → L58
+fixed 3
+ Test Files  66 passed (66)
+      Tests  347 passed (347)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:06:26.764Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run session:export -- \"~/.claude/projects/~/8f798a35-9696-41b6-a5d9-4921a79fe27a.jsonl\" 2>&1 | tail -1 && git add -A && git commit -q -m \"Review 4/5: browser error copy moved to userErrors.ts, ui boundary (🦋), docs (D134), doc links, session log\n\nCo-Authored-By: Claude Opus 5.5 <[email removed]>\" && git push -q -u origin review-4-frontend 2>&1 | grep -v \"^remote:\" | tail -1; git log --oneline -4",
+  "description": "Export session, commit and push PR 4",
+  "timeout": 200000
+}
+```
+</details>
+
+---

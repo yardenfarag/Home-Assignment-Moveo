@@ -37,12 +37,31 @@ export { EXAMPLE_QUESTIONS } from "@/core/agent/config";
  * Formats an ISO timestamp as a short relative time ("just now", "3 h ago", "Nov 24").
  * @param iso - ISO timestamp.
  * @param now - current time (injectable).
- * @returns short text.
+ * @returns short text, or "—" when the timestamp can't be read.
  */
 export function relativeTime(iso: string, now: Date = new Date()): string {
-  const minutes = Math.round((now.getTime() - new Date(iso).getTime()) / 60_000);
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return "—";
+  const minutes = Math.round((now.getTime() - time) / 60_000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
   if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(time).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/**
+ * The question asked when someone selects a hub in the overview or an alert.
+ * @param hub - the hub's display name.
+ * @param level - its current risk level.
+ * @returns e.g. "Why is Dallas, TX's weather risk high?".
+ */
+export function whyLevelQuestion(hub: string, level: RiskLevel): string {
+  return `Why is ${hub}'s weather risk ${LEVEL_UI[level].label.toLowerCase()}?`;
+}
+
+/**
+ * A progress label without its trailing "…" (for finished steps).
+ * @param label - e.g. "Ranking hubs…".
+ * @returns e.g. "Ranking hubs".
+ */
+export const withoutEllipsis = (label: string): string => label.replace(/…$/, "");

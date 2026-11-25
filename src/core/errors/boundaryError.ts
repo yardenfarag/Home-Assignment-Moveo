@@ -20,6 +20,8 @@ export const BOUNDARY_EMOJI = {
   apiRoute: "🦄",
   jev: "🐍",
   config: "🦔",
+  /** Something that failed while drawing the UI in the browser (caught by an error boundary). */
+  ui: "🦋",
 } as const;
 
 /** Name of a system boundary where errors are caught and wrapped. */

@@ -6,12 +6,17 @@
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { RecentAlert } from "@/core/alerts/recentAlerts";
-import { LEVEL_UI, relativeTime } from "../_lib/labels";
+import { BUSY_HINT } from "../_lib/copy";
+import { fetchJson } from "../_lib/fetchJson";
+import { LEVEL_UI, relativeTime, whyLevelQuestion } from "../_lib/labels";
 import { EMPTY_IDS, dismissAlert, dismissedAlertsSnapshot, subscribeToStorage } from "../_lib/storage";
+import { FOCUS_RING, WAITING } from "../_lib/styles";
 
 /** Props for {@link RecentChanges}. */
 interface RecentChangesProps {
   onAsk: (question: string) => void;
+  /** True while an answer is on its way (asking waits, and says so). */
+  busy: boolean;
 }
 
 /** One alert in plain words, e.g. "rose 8.2 points to 72.4 (now High)". */
@@ -22,21 +27,18 @@ function describe(alert: RecentAlert): string {
 }
 
 /** Renders the card, or nothing when there's nothing new. */
-export function RecentChanges({ onAsk }: RecentChangesProps) {
+export function RecentChanges({ onAsk, busy }: RecentChangesProps) {
   const [alerts, setAlerts] = useState<RecentAlert[]>([]);
   const dismissed = useSyncExternalStore(subscribeToStorage, dismissedAlertsSnapshot, () => EMPTY_IDS);
 
   useEffect(() => {
-    let alive = true;
-    fetch("/api/alerts")
-      .then((res) => (res.ok ? (res.json() as Promise<{ alerts: RecentAlert[] }>) : Promise.reject(new Error(String(res.status)))))
-      .then((json) => alive && setAlerts(json.alerts))
+    const controller = new AbortController();
+    fetchJson<{ alerts: RecentAlert[] }>("/api/alerts", { signal: controller.signal })
+      .then((json) => setAlerts(Array.isArray(json.alerts) ? json.alerts : []))
       .catch(() => {
         // Quiet on failure: alerts are extra information, the rest of the overview still works.
       });
-    return () => {
-      alive = false;
-    };
+    return () => controller.abort();
   }, []);
 
   const visible = alerts.filter((alert) => !dismissed.includes(alert.id));
@@ -53,8 +55,10 @@ export function RecentChanges({ onAsk }: RecentChangesProps) {
           <li key={alert.id} className="flex items-start gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
             <button
               type="button"
-              className="flex-1 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
-              onClick={() => onAsk(`Why is ${alert.hubName}'s weather risk ${LEVEL_UI[alert.toLevel].label.toLowerCase()}?`)}
+              className={`flex-1 text-left text-sm ${FOCUS_RING} ${WAITING}`}
+              onClick={() => !busy && onAsk(whyLevelQuestion(alert.hubName, alert.toLevel))}
+              aria-disabled={busy || undefined}
+              title={busy ? BUSY_HINT : undefined}
             >
               <span className="text-slate-100">{alert.hubName}</span>{" "}
               {alert.test && <span className="ml-1 rounded bg-slate-600/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">test</span>}
@@ -66,7 +70,7 @@ export function RecentChanges({ onAsk }: RecentChangesProps) {
             <button
               type="button"
               aria-label={`Dismiss the ${alert.hubName} alert`}
-              className="rounded px-1.5 text-slate-500 transition hover:bg-white/10 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+              className={`rounded px-1.5 text-slate-500 transition hover:bg-white/10 hover:text-slate-200 ${FOCUS_RING}`}
               onClick={() => dismissAlert(alert.id)}
             >
               ✕

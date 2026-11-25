@@ -2,6 +2,7 @@
  * First screen: the Sneakoscope mark, a plain-language intro, and the brief's example questions.
  */
 import { EXAMPLE_QUESTIONS } from "../_lib/labels";
+import { FOCUS_RING } from "../_lib/styles";
 import { SneakoscopeIcon } from "./SneakoscopeIcon";
 
 /** Props for {@link EmptyState}. */
@@ -20,7 +21,7 @@ export function EmptyState({ onAsk, hubCount }: EmptyStateProps) {
         <h2 className="text-xl font-medium text-slate-100">Weather risk across our hubs</h2>
         <p className="text-sm leading-relaxed text-slate-400">
           Ask me about weather risk across our {hubCount ? `${hubCount} ` : ""}hubs. I can rank them, compare them, look at past weather,
-          or explain a hub&apos;s score. All numbers come straight from the data, with a confidence level on every answer.
+          or explain a hub&apos;s score. All numbers come straight from the data, and I tell you how confident I am whenever the data allows it.
         </p>
       </div>
       <ul className="grid gap-2 text-left sm:grid-cols-2">
@@ -29,7 +30,7 @@ export function EmptyState({ onAsk, hubCount }: EmptyStateProps) {
             <button
               type="button"
               onClick={() => onAsk(question)}
-              className="glass h-full w-full rounded-xl px-4 py-3 text-sm text-slate-200 transition hover:border-sky-300/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+              className={`glass h-full w-full rounded-xl px-4 py-3 text-sm text-slate-200 transition hover:border-sky-300/30 ${FOCUS_RING}`}
             >
               {question}
             </button>

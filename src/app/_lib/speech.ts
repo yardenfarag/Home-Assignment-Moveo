@@ -7,8 +7,9 @@
  * the browser can't do it.
  *
  * Also a tiny "what is being read aloud right now" store, so every speaker button
- * shows the right state (useSyncExternalStore).
+ * shows the right state (useSyncExternalStore), and the hooks components use to read it all.
  */
+import { useSyncExternalStore } from "react";
 
 /** The parts of the Web Speech recognition API we use (not in every TS DOM lib). */
 interface RecognitionResultEvent {
@@ -31,6 +32,7 @@ export interface RecognizerHandlers {
   onError: (message: string, code: string) => void;
 }
 
+/** The browser's speech-recognition class (standard or webkit-prefixed), with the members we use. */
 type RecognitionCtor = new () => {
   lang: string;
   interimResults: boolean;
@@ -118,6 +120,7 @@ export function speakableText(markdown: string): string {
 
 let speakingKey: string | null = null;
 const listeners = new Set<() => void>();
+/** Tells every subscriber that what's being read aloud changed. */
 const emit = () => listeners.forEach((listener) => listener());
 
 /** @returns the key of the answer being read aloud, or null. */
@@ -150,6 +153,7 @@ export function speak(key: string, markdown: string): void {
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(speakableText(markdown));
   utterance.lang = "en-US";
+  /** Clears the state when THIS answer finishes (or fails) — not when a newer one took over. */
   const done = () => {
     if (speakingKey === key) {
       speakingKey = null;
@@ -161,4 +165,24 @@ export function speak(key: string, markdown: string): void {
   speakingKey = key;
   emit();
   window.speechSynthesis.speak(utterance);
+}
+
+// --- Hooks for components --------------------------------------------------------------
+
+/** Support never changes during a visit, so there's nothing to subscribe to. */
+const noSubscribe = () => () => {};
+
+/** @returns true when this browser can listen (false on the server, so hydration matches). */
+export function useCanListen(): boolean {
+  return useSyncExternalStore(noSubscribe, canListen, () => false);
+}
+
+/** @returns true when this browser can read aloud (false on the server, so hydration matches). */
+export function useCanSpeak(): boolean {
+  return useSyncExternalStore(noSubscribe, canSpeak, () => false);
+}
+
+/** @returns the key of the answer being read aloud right now, or null. */
+export function useSpeakingKey(): string | null {
+  return useSyncExternalStore(subscribeSpeaking, speakingSnapshot, () => null);
 }

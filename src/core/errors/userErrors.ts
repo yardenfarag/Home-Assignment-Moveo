@@ -135,3 +135,49 @@ export const STREAM_INTERRUPTED: Omit<UserError, "status"> = {
   hint: "Your connection may have dropped — please try again.",
   retryable: true,
 };
+
+// ---------------------------------------------------------------------------
+// Problems only the BROWSER can see (no connection, a hung request, a chart that can't be drawn).
+// Kept here with the rest of the copy; app/_lib/clientErrors.ts maps failures to them.
+// ---------------------------------------------------------------------------
+
+/** The error card's content in the browser (a UserError without the HTTP status). */
+export type ChatError = Omit<UserError, "status">;
+
+/** The request never reached us (offline, DNS, the network dropped before the answer began). */
+export const CONNECTION_FAILED: ChatError = {
+  code: "internal_error",
+  message: "I couldn't reach Sneakoscope just now. 🙀",
+  hint: "Check your internet connection, then try again.",
+  retryable: true,
+};
+
+/** Nothing new arrived for a long while (the watchdog stopped waiting) or the request timed out. */
+export const ANSWER_STALLED: ChatError = {
+  code: "internal_error",
+  message: "The answer stalled, so I stopped waiting.",
+  hint: "Please try again in a moment.",
+  retryable: true,
+};
+
+/** A saved chat couldn't be loaded (B2). */
+export const CHAT_OPEN_FAILED = "Couldn't open that chat. Try again.";
+
+/** The chat list couldn't be loaded (S4). */
+export const SESSIONS_FAILED = "Couldn't load your chats right now.";
+
+/** One chart under an answer couldn't be drawn (S11). The answer text itself was already checked. */
+export const VISUAL_FAILED = "This chart couldn't be drawn. The answer above is unaffected.";
+
+/** A whole saved answer couldn't be shown (e.g. it was stored in an older format). */
+export const MESSAGE_FAILED = "I couldn't show this answer. Try asking the question again.";
+
+/** Eval run (D130): copy for a run streamed in this browser. */
+export const EVAL_COPY = {
+  couldNotStart: "The evals couldn't start right now. Please try again later.",
+  noConnection: "The evals couldn't start right now. Please check your connection and try again.",
+  dropped: "The connection dropped before the run finished. The results may still show up here in a few minutes.",
+  stalled: "I haven't heard from the run for a while, so I stopped watching. The results may still show up here in a few minutes.",
+  unreadable: "Some progress updates couldn't be read. The results may still show up here in a few minutes.",
+} as const;
+

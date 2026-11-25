@@ -26,8 +26,8 @@ export function RecommendationBox({ recommendation }: RecommendationBoxProps) {
       <p className="mt-1 text-sm text-slate-100">{recommendation.summary}</p>
       {recommendation.reasons.length > 0 && (
         <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-slate-300">
-          {recommendation.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
+          {recommendation.reasons.map((reason, index) => (
+            <li key={`${index}-${reason}`}>{reason}</li>
           ))}
         </ul>
       )}

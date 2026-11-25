@@ -3,6 +3,7 @@
  * button when retrying can help.
  */
 import type { SneakoscopeDataParts } from "@/core/api/chatStream";
+import { FOCUS_RING } from "../../_lib/styles";
 
 /** Props for {@link ErrorCard}. */
 interface ErrorCardProps {
@@ -20,7 +21,7 @@ export function ErrorCard({ error, onRetry }: ErrorCardProps) {
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-slate-100 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+          className={`mt-3 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-slate-100 transition hover:bg-white/10 ${FOCUS_RING}`}
         >
           Try again
         </button>
