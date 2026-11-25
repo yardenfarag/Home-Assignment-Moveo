@@ -7,8 +7,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EVAL_RUN_LIMITS, type EvalGateStatus } from "@/core/api/evalGate";
+// Types only (erased at build time): the event and summary shapes are defined once, by the eval suite.
 import type { CaseOutcome, EvalRunSummary, SuiteEvent } from "../../../evals/lib/suite";
+import { EVAL_COPY } from "../_lib/clientErrors";
+import { fetchJson } from "../_lib/fetchJson";
 import { relativeTime } from "../_lib/labels";
+import { readNdjson } from "../_lib/ndjson";
+import { FOCUS_RING } from "../_lib/styles";
 
 /** What GET /api/evals/latest returns. */
 interface LatestRun {
@@ -29,6 +34,50 @@ interface LiveRun {
 
 /** How often to re-check while someone else's run is in progress. */
 const POLL_MS = 15_000;
+
+/** Longest wait for the run to answer at all (it sets up the agent and claims the run slot first). */
+const START_TIMEOUT_MS = 45_000;
+
+/**
+ * Longest silence between progress lines before we stop watching. One case can take up to the
+ * agent's 100-second turn limit plus judging, so this is generous; the run itself keeps going.
+ */
+const IDLE_TIMEOUT_MS = 150_000;
+
+/** A run that has just started streaming: nothing reported yet. */
+const EMPTY_LIVE_RUN: LiveRun = { cases: [], done: {}, selfTest: null, summary: null, error: null };
+
+/** One progress event from the stream (the suite's events, or the route's own error line). */
+type RunEvent = SuiteEvent | { type: "error"; message: string };
+
+/**
+ * Applies one progress event to the live run.
+ * @param state - the run so far.
+ * @param event - the event.
+ * @returns the updated run.
+ */
+function applyEvent(state: LiveRun, event: RunEvent): LiveRun {
+  if (event.type === "start") return { ...state, cases: event.cases };
+  if (event.type === "selftest") return { ...state, selfTest: { correct: event.correct, total: event.total } };
+  if (event.type === "case") return { ...state, done: { ...state.done, [event.outcome.caseId]: event.outcome } };
+  if (event.type === "done") return { ...state, summary: event.summary };
+  return { ...state, error: event.message };
+}
+
+/**
+ * True when a parsed line looks like one of the run's events.
+ * @param value - a parsed JSON line.
+ * @returns whether it has a known `type`.
+ */
+const isRunEvent = (value: unknown): value is RunEvent =>
+  typeof value === "object" && value !== null && ["start", "selftest", "case", "done", "error"].includes((value as { type?: unknown }).type as string);
+
+/**
+ * Marks a live run as ended early (unless it already has a result or an error).
+ * @param message - why it ended.
+ * @returns the state updater.
+ */
+const endedEarly = (message: string) => (current: LiveRun | null) => (current && !current.summary && !current.error ? { ...current, error: message } : current);
 
 /**
  * Formats a time of day for "next run at …".
@@ -54,40 +103,11 @@ function blockedReason(status: EvalGateStatus): string | null {
 }
 
 /**
- * Reads the NDJSON progress stream line by line.
- * @param response - the streaming response.
- * @param onEvent - called for each event.
- */
-async function readEvents(response: Response, onEvent: (event: SuiteEvent | { type: "error"; message: string }) => void): Promise<void> {
-  const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
-  let buffer = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += value;
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) if (line.trim()) onEvent(JSON.parse(line));
-  }
-}
-
-/**
  * The status line of a run.
  * @param summary - the run.
  * @returns e.g. "12 of 13 passed".
  */
 const passedText = (summary: EvalRunSummary) => `${summary.passed} of ${summary.total} passed`;
-
-/**
- * Loads the last run and the limit status.
- * @returns the data.
- * @throws when the request fails.
- */
-async function fetchLatest(): Promise<LatestRun> {
-  const res = await fetch("/api/evals/latest", { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(String(res.status));
-  return (await res.json()) as LatestRun;
-}
 
 /** One line in the overview's "About the data", opening the dialog. */
 export function EvalQualityRow() {
@@ -95,28 +115,29 @@ export function EvalQualityRow() {
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
 
+  /**
+   * Loads the last run and the limit status (with a timeout); a failure shows "Couldn't load".
+   * @param signal - cancels the request (e.g. on unmount).
+   */
   const load = useCallback(
-    () =>
-      fetchLatest().then(
+    (signal?: AbortSignal) =>
+      fetchJson<LatestRun>("/api/evals/latest", { signal }).then(
         (latest) => {
           setData(latest);
           setFailed(false);
         },
-        () => setFailed(true),
+        () => {
+          if (!signal?.aborted) setFailed(true);
+        },
       ),
     [],
   );
 
   useEffect(() => {
-    let alive = true;
-    fetchLatest().then(
-      (latest) => alive && setData(latest),
-      () => alive && setFailed(true),
-    );
-    return () => {
-      alive = false;
-    };
-  }, []);
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   // While someone's run is in progress (and this browser isn't streaming it), check back now and then.
   useEffect(() => {
@@ -141,7 +162,7 @@ export function EvalQualityRow() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex w-full items-center justify-between gap-2 rounded-md px-1 text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+          className={`flex w-full items-center justify-between gap-2 rounded-md px-1 text-left transition hover:bg-white/5 ${FOCUS_RING}`}
           aria-haspopup="dialog"
         >
           <span>Answer quality</span>
@@ -183,40 +204,52 @@ function EvalRunDialog({ data, onClose, onFinished }: EvalRunDialogProps) {
   /** "Run evals" first asks for confirmation and lists the limits; only "Yes, start" runs. */
   const [confirming, setConfirming] = useState(false);
 
+  /** Cancels this dialog's run stream when the dialog closes (the run itself goes on, server-side). */
+  const stream = useRef<AbortController | null>(null);
+
   useEffect(() => {
     const dialog = ref.current;
     if (dialog && !dialog.open) dialog.showModal();
+    return () => stream.current?.abort();
   }, []);
 
+  /**
+   * Starts a run and streams its progress (S3): a timeout until the run answers, then an
+   * inactivity watchdog between progress lines. A refusal (limits) or a failure to start is
+   * shown in the footer; a stream that ends early says why (dropped, stalled, unreadable).
+   */
   const run = async () => {
     setConfirming(false);
     setStarting(true);
     setRefused(null);
+    const controller = new AbortController();
+    stream.current = controller;
+    const startTimer = setTimeout(() => controller.abort(), START_TIMEOUT_MS);
     let streaming = false;
     try {
-      const res = await fetch("/api/evals/run", { method: "POST" });
+      const res = await fetch("/api/evals/run", { method: "POST", signal: controller.signal });
+      clearTimeout(startTimer);
       if (!res.ok || !res.body) {
         const body = (await res.json().catch(() => null)) as { error?: { message?: string; hint?: string }; status?: EvalGateStatus } | null;
-        setRefused({ message: [body?.error?.message, body?.error?.hint].filter(Boolean).join(" ") || "The evals couldn't start right now. Please try again later.", status: body?.status ?? null });
+        setRefused({ message: [body?.error?.message, body?.error?.hint].filter(Boolean).join(" ") || EVAL_COPY.couldNotStart, status: body?.status ?? null });
         return;
       }
       streaming = true;
-      setLive({ cases: [], done: {}, selfTest: null, summary: null, error: null });
-      await readEvents(res, (event) =>
-        setLive((current) => {
-          const state = current ?? { cases: [], done: {}, selfTest: null, summary: null, error: null };
-          if (event.type === "start") return { ...state, cases: event.cases };
-          if (event.type === "selftest") return { ...state, selfTest: { correct: event.correct, total: event.total } };
-          if (event.type === "case") return { ...state, done: { ...state.done, [event.outcome.caseId]: event.outcome } };
-          if (event.type === "done") return { ...state, summary: event.summary };
-          return { ...state, error: event.message };
-        }),
+      setLive(EMPTY_LIVE_RUN);
+      const result = await readNdjson(
+        res.body,
+        (value) => {
+          if (isRunEvent(value)) setLive((current) => applyEvent(current ?? EMPTY_LIVE_RUN, value));
+        },
+        IDLE_TIMEOUT_MS,
       );
-      setLive((current) => (current && !current.summary && !current.error ? { ...current, error: "The connection dropped before the run finished. The results may still show up here in a few minutes." } : current));
+      setLive(endedEarly(result.ended === "idle" ? EVAL_COPY.stalled : result.malformed > 0 ? EVAL_COPY.unreadable : EVAL_COPY.dropped));
     } catch {
-      setLive((current) => (current ? { ...current, error: "The connection dropped before the run finished. The results may still show up here in a few minutes." } : current));
-      if (!streaming) setRefused({ message: "The evals couldn't start right now. Please check your connection and try again.", status: null });
+      setLive(endedEarly(EVAL_COPY.dropped));
+      if (!streaming) setRefused({ message: EVAL_COPY.noConnection, status: null });
     } finally {
+      clearTimeout(startTimer);
+      if (stream.current === controller) stream.current = null;
       setStarting(false);
       onFinished();
     }
@@ -245,7 +278,7 @@ function EvalRunDialog({ data, onClose, onFinished }: EvalRunDialogProps) {
               honesty about weak data) and by an independent AI judge. A run takes 1–2 minutes.
             </p>
           </div>
-          <button type="button" onClick={() => ref.current?.close()} className="rounded-md px-2 py-1 text-slate-400 transition hover:bg-white/5 hover:text-slate-200" aria-label="Close">
+          <button type="button" onClick={() => ref.current?.close()} className={`rounded-md px-2 py-1 text-slate-400 transition hover:bg-white/5 hover:text-slate-200 ${FOCUS_RING}`} aria-label="Close">
             ✕
           </button>
         </header>
@@ -273,10 +306,10 @@ function EvalRunDialog({ data, onClose, onFinished }: EvalRunDialogProps) {
           </p>
           {confirming ? (
             <span className="flex gap-2">
-              <button type="button" onClick={() => setConfirming(false)} className="rounded-lg px-3.5 py-1.5 text-sm text-slate-300 transition hover:bg-white/5">
+              <button type="button" onClick={() => setConfirming(false)} className={`rounded-lg px-3.5 py-1.5 text-sm text-slate-300 transition hover:bg-white/5 ${FOCUS_RING}`}>
                 Cancel
               </button>
-              <button type="button" onClick={() => void run()} className="rounded-lg bg-sky-500/90 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400">
+              <button type="button" onClick={() => void run()} className={`rounded-lg bg-sky-500/90 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400 ${FOCUS_RING}`}>
                 Yes, start the run
               </button>
             </span>
@@ -285,7 +318,7 @@ function EvalRunDialog({ data, onClose, onFinished }: EvalRunDialogProps) {
               type="button"
               onClick={() => setConfirming(true)}
               disabled={starting || isRunningHere || Boolean(blocked) || Boolean(live?.summary)}
-              className="rounded-lg bg-sky-500/90 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400 disabled:bg-white/10 disabled:text-slate-400"
+              className={`rounded-lg bg-sky-500/90 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400 disabled:bg-white/10 disabled:text-slate-400 ${FOCUS_RING}`}
             >
               {starting ? "Starting…" : isRunningHere ? "Running…" : live?.summary ? "Done ✓" : "Run evals…"}
             </button>

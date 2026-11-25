@@ -4,8 +4,12 @@
  */
 import type { FinalAnswer } from "@/core/agent/answerSchema";
 import { progressLabel } from "@/core/api/progressLabels";
-import { CONFIDENCE_UI } from "../../_lib/labels";
+import { VISUAL_FAILED } from "../../_lib/clientErrors";
+import { BUSY_HINT } from "../../_lib/copy";
+import { CONFIDENCE_UI, withoutEllipsis } from "../../_lib/labels";
+import { FOCUS_RING, WAITING } from "../../_lib/styles";
 import { pickVisuals, type AnswerVisual } from "../../_lib/toolResults";
+import { RenderBoundary } from "../RenderBoundary";
 import { ComparisonGrid } from "../visuals/ComparisonGrid";
 import { RankedList } from "../visuals/RankedList";
 import { ScoreBreakdown } from "../visuals/ScoreBreakdown";
@@ -23,6 +27,8 @@ interface FinalAnswerCardProps {
   speechKey: string;
   /** Ask a follow-up question. */
   onAsk: (question: string) => void;
+  /** True while another answer is on its way (the follow-up chips wait, and say so). */
+  busy: boolean;
 }
 
 /** Renders one visual. */
@@ -40,9 +46,9 @@ function Visual({ visual }: { visual: AnswerVisual }) {
 }
 
 /** Renders the final answer card. */
-export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardProps) {
+export function FinalAnswerCard({ answer, speechKey, onAsk, busy }: FinalAnswerCardProps) {
   const visuals = pickVisuals(answer);
-  const steps = [...new Set(answer.meta.toolCalls.map((c) => progressLabel(c.tool, c.input).replace(/…$/, "")))];
+  const steps = [...new Set(answer.meta.toolCalls.map((c) => withoutEllipsis(progressLabel(c.tool, c.input))))];
   const caveats = [...answer.assumptions, ...answer.limitations];
 
   return (
@@ -52,7 +58,9 @@ export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardPro
 
       {visuals.map((visual) => (
         <div key={visual.key} className="rounded-xl border border-white/5 bg-black/15 p-4">
-          <Visual visual={visual} />
+          <RenderBoundary message={VISUAL_FAILED} where={`Visual(${visual.kind})`}>
+            <Visual visual={visual} />
+          </RenderBoundary>
         </div>
       ))}
 
@@ -73,8 +81,8 @@ export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardPro
           {caveats.length > 0 && (
             <Disclosure summary={`Assumptions & limits (${caveats.length})`}>
               <ul className="list-disc space-y-1 pl-5 text-[13px] leading-snug">
-                {caveats.map((text) => (
-                  <li key={text}>{text}</li>
+                {caveats.map((text, index) => (
+                  <li key={`${index}-${text}`}>{text}</li>
                 ))}
               </ul>
             </Disclosure>
@@ -103,12 +111,14 @@ export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardPro
 
       {answer.followUpSuggestions.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Suggested follow-up questions">
-          {answer.followUpSuggestions.map((question) => (
+          {answer.followUpSuggestions.map((question, index) => (
             <button
-              key={question}
+              key={`${index}-${question}`}
               type="button"
-              onClick={() => onAsk(question)}
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300 transition hover:border-sky-300/40 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+              onClick={() => !busy && onAsk(question)}
+              aria-disabled={busy || undefined}
+              title={busy ? BUSY_HINT : undefined}
+              className={`rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300 transition hover:border-sky-300/40 hover:text-slate-100 ${FOCUS_RING} ${WAITING}`}
             >
               {question}
             </button>

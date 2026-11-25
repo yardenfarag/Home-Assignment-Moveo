@@ -1,16 +1,27 @@
 /**
  * Comparison grid (U3b): hubs × hazards at a glance — each cell is a score
  * with its level color AND text. Numbers come from the compare_hubs tool.
+ * Each cell's rank and confidence reason are listed in a disclosure under the
+ * table, so they're reachable by keyboard and screen readers, not only on hover (S7).
  */
 import type { CompareHubsOutput } from "@/core/agent/tools/compareHubs";
 import type { Hazard } from "@/core/scoring/types";
-import { HAZARD_UI, LEVEL_UI } from "../../_lib/labels";
+import { CONFIDENCE_UI, HAZARD_UI, LEVEL_UI } from "../../_lib/labels";
+import { Disclosure } from "../answer/Disclosure";
 import { LevelChip } from "../LevelChip";
 
 /** Props for {@link ComparisonGrid}. */
 interface ComparisonGridProps {
   data: CompareHubsOutput;
 }
+
+/**
+ * One cell's rank in words.
+ * @param rank - rank among all hubs.
+ * @param total - number of hubs.
+ * @returns e.g. "rank 3 of 36".
+ */
+const rankText = (rank: number | undefined, total: number) => (rank === undefined ? "rank unknown" : `rank ${rank} of ${total}`);
 
 /** Renders the comparison table. */
 export function ComparisonGrid({ data }: ComparisonGridProps) {
@@ -47,7 +58,7 @@ export function ComparisonGrid({ data }: ComparisonGridProps) {
                       key={hub.hubId}
                       className="rounded-md border px-2 py-1 tabular-nums"
                       style={{ background: ui.bg, borderColor: ui.border }}
-                      title={`${cell.confidenceReason} (rank ${cell.rankAmongAll} of ${data.totalHubs})`}
+                      title={`${cell.confidenceReason} (${rankText(cell.rankAmongAll, data.totalHubs)})`}
                     >
                       <span className="font-medium" style={{ color: ui.text }}>
                         {cell.score}
@@ -71,6 +82,24 @@ export function ComparisonGrid({ data }: ComparisonGridProps) {
           </tbody>
         </table>
       </div>
+      <Disclosure summary="Rank and confidence per cell">
+        <ul className="space-y-1.5 text-[12px] leading-snug">
+          {data.hubs.flatMap((hub) =>
+            hazards.map((hazard) => {
+              const cell = hub.hazards[hazard];
+              return (
+                <li key={`${hub.hubId}-${hazard}`}>
+                  <span className="text-slate-200">
+                    {hub.hub} · {HAZARD_UI[hazard].label}
+                  </span>
+                  : {rankText(cell.rankAmongAll, data.totalHubs)}
+                  {cell.confidence ? ` · ${CONFIDENCE_UI[cell.confidence].label}` : ""}. <span className="text-slate-400">{cell.confidenceReason}</span>
+                </li>
+              );
+            }),
+          )}
+        </ul>
+      </Disclosure>
     </figure>
   );
 }
