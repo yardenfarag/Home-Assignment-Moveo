@@ -1,4 +1,6 @@
-# 🦉 The Daily Prophet
+# Sneakoscope
+
+<img src="src/app/icon.svg" width="56" alt="Sneakoscope icon: a glass spinning top with a glowing core" />
 
 A weather risk intelligence agent for a logistics company's US distribution hubs.
 Analysts chat with it to find out which hubs are most exposed to severe weather, compare hubs,
@@ -40,7 +42,7 @@ npm run dev                    # http://localhost:3000
 | `npm run session:export -- <file.jsonl>` | Export the AI session log to `docs/session/` (scrubbed) |
 
 ## The app
-![The Daily Prophet: a conversation with score breakdowns, a comparison grid, seasonality strips and a premise correction](docs/screenshots/desktop-conversation.png)
+![Sneakoscope: a conversation with score breakdowns, a comparison grid, seasonality strips and a premise correction](docs/screenshots/desktop-conversation.png)
 
 More screenshots: [start screen](docs/screenshots/desktop-start.png) · [phone](docs/screenshots/phone-start.png).
 Ask in plain language. Every number comes from deterministic, tested code, and the agent says when the data is unsure.

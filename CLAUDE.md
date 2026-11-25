@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# The Daily Prophet: project rules
+# Sneakoscope: project rules
 
 A weather-risk agent for logistics hubs (take-home assignment). Read before any work:
 [docs/plan.md](docs/plan.md) for architecture and the step list, [docs/decisions.md](docs/decisions.md)

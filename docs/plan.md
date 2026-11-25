@@ -1,4 +1,4 @@
-# 🦉 The Daily Prophet — Plan
+# 🦉 Sneakoscope — Plan
 
 Agreed on 2026-11-25 after a structured "grilling" session (see `docs/session/`).
 Every individual choice and its reason is in [decisions.md](decisions.md).

@@ -81,7 +81,7 @@ function main(): void {
   const records = keptLines.map((line) => JSON.parse(line) as TranscriptRecord);
   mkdirSync(OUTPUT_DIR, { recursive: true });
   writeFileSync(join(OUTPUT_DIR, "transcript.jsonl"), `${keptLines.join("\n")}\n`);
-  const markdown = renderTranscript(records, "The Daily Prophet — full AI coding session (scrubbed)");
+  const markdown = renderTranscript(records, "Sneakoscope — full AI coding session (scrubbed)");
   writeFileSync(join(OUTPUT_DIR, "transcript.md"), markdown);
   console.log(`✅ Exported ${records.length} records from ${inputPaths.length} file(s) to ${OUTPUT_DIR}`);
 

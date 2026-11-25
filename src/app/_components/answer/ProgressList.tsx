@@ -1,11 +1,11 @@
 /**
  * Live progress lines while the agent works ("Breaking down Dallas's risk score…").
  */
-import type { ProphetDataParts } from "@/core/api/chatStream";
+import type { SneakoscopeDataParts } from "@/core/api/chatStream";
 
 /** Props for {@link ProgressList}. */
 interface ProgressListProps {
-  items: ProphetDataParts["progress"][];
+  items: SneakoscopeDataParts["progress"][];
 }
 
 /** Renders the progress lines with a spinner or a check. */

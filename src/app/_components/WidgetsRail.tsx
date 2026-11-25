@@ -4,6 +4,7 @@
  * Deterministic data from /api/widgets. Clicking an item asks the agent about it.
  */
 import { useEffect, useState } from "react";
+import { RISK_LEVEL_CUTOFFS } from "@/core/scoring/config";
 import type { WidgetsData } from "@/core/widgets/widgetsData";
 import { HAZARD_UI, LEVEL_UI, relativeTime } from "../_lib/labels";
 import { LevelChip } from "./LevelChip";
@@ -20,12 +21,17 @@ interface WidgetsRailProps {
  */
 const RAIL = "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 xl:block xl:space-y-4";
 
-/** A glass panel with a title. */
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+/** The level scale, built from the scoring config (single source of truth). */
+const LEVEL_SCALE = `Low 0–${RISK_LEVEL_CUTOFFS.mediumFrom - 1} · Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}–${RISK_LEVEL_CUTOFFS.highFrom - 1} · High ${RISK_LEVEL_CUTOFFS.highFrom}–100`;
+
+/** A glass panel with a plain title, a one-line "what is this and why it matters", and an optional hint. */
+function Panel({ title, description, hint, children }: { title: string; description: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="glass w-[85%] shrink-0 snap-start rounded-2xl p-4 lg:w-auto" aria-label={title}>
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">{title}</h2>
+      <h2 className="text-sm font-medium text-slate-100">{title}</h2>
+      <p className="mb-3 mt-1 text-xs leading-relaxed text-slate-400">{description}</p>
       {children}
+      {hint && <p className="mt-3 text-[11px] text-slate-500">{hint}</p>}
     </section>
   );
 }
@@ -52,8 +58,8 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
 
   if (failed) {
     return (
-      <Panel title="Overview">
-        <p className="text-sm text-slate-400">The overview couldn&apos;t load right now. You can still ask anything in the chat.</p>
+      <Panel title="At a glance" description="The overview couldn't load right now. You can still ask anything in the chat.">
+        {null}
       </Panel>
     );
   }
@@ -71,7 +77,11 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
     "w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
   return (
     <div className={RAIL}>
-      <Panel title="Highest overall risk">
+      <Panel
+        title="Most at-risk hubs"
+        description="Overall weather-risk score from 0 to 100, combining six hazards. Higher means severe weather is more likely to disrupt the hub — the first places to consider for resilience upgrades."
+        hint={`${LEVEL_SCALE} · Select a hub to see why it scores that way.`}
+      >
         <ol className="space-y-1">
           {data.topHubs.map((hub) => (
             <li key={hub.hubId}>
@@ -87,7 +97,11 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
         </ol>
       </Panel>
 
-      <Panel title="Most exposed, by hazard">
+      <Panel
+        title="Most exposed hub, per hazard"
+        description="For each type of severe weather, the hub that scores highest (0–100). Useful when an upgrade targets one hazard, like flood barriers or hurricane-rated roofs."
+        hint="Select a hazard to see the full ranking."
+      >
         <ul className="space-y-1">
           {data.hazardLeaders.map((leader) => (
             <li key={leader.hazard}>
@@ -104,7 +118,7 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
         </ul>
       </Panel>
 
-      <Panel title="Data status">
+      <Panel title="About the data" description="How current the scores are and where they come from. Weather is refreshed every night and the scores are recalculated.">
         <dl className="space-y-1.5 text-xs text-slate-400">
           <div className="flex justify-between gap-2">
             <dt>Weather data</dt>

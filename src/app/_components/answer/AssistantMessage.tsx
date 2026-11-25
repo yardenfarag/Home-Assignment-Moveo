@@ -2,7 +2,7 @@
  * One assistant turn: live progress + streaming text while working, then the
  * validated answer card — or a friendly error card (U2).
  */
-import type { ProphetDataParts, ProphetUIMessage } from "@/core/api/chatStream";
+import type { SneakoscopeDataParts, SneakoscopeUIMessage } from "@/core/api/chatStream";
 import { STREAM_INTERRUPTED } from "@/core/errors/userErrors";
 import type { UnitSystem } from "@/core/utils/units";
 import { ErrorCard } from "./ErrorCard";
@@ -12,7 +12,7 @@ import { ProgressList } from "./ProgressList";
 
 /** Props for {@link AssistantMessage}. */
 interface AssistantMessageProps {
-  message: ProphetUIMessage;
+  message: SneakoscopeUIMessage;
   units: UnitSystem;
   /** True while this is the message being streamed. */
   isStreaming: boolean;
@@ -22,11 +22,11 @@ interface AssistantMessageProps {
 
 /** Renders an assistant turn. */
 export function AssistantMessage({ message, units, isStreaming, onAsk, onRetry }: AssistantMessageProps) {
-  const progress: ProphetDataParts["progress"][] = [];
+  const progress: SneakoscopeDataParts["progress"][] = [];
   let text = "";
   let retrying = false;
-  let answer: ProphetDataParts["answer"] | null = null;
-  let error: ProphetDataParts["error"] | null = null;
+  let answer: SneakoscopeDataParts["answer"] | null = null;
+  let error: SneakoscopeDataParts["error"] | null = null;
 
   for (const part of message.parts) {
     if (part.type === "data-progress") progress.push(part.data);
@@ -39,7 +39,7 @@ export function AssistantMessage({ message, units, isStreaming, onAsk, onRetry }
   }
 
   return (
-    <article className="glass rounded-2xl p-5" aria-label="The Daily Prophet's answer">
+    <article className="glass rounded-2xl p-5" aria-label="Sneakoscope's answer">
       {answer ? (
         <FinalAnswerCard answer={answer} units={units} onAsk={onAsk} />
       ) : error ? (

@@ -37,7 +37,7 @@ export function buildSystemPrompt({ hubs, today, units }: SystemPromptInput): st
       : "Lead with metric units and put US units in brackets, e.g. 15 cm (6 in) — use the unit text exactly as tools return it.";
   const snow = DAY_METRICS.snow_day.threshold;
 
-  return `You are The Daily Prophet, a weather-risk analyst for a logistics company's US distribution hubs.
+  return `You are Sneakoscope, a weather-risk analyst for a logistics company's US distribution hubs.
 Analysts use you to decide which hubs to prioritize for resilience investment. Be clear, specific and honest.
 
 # Today

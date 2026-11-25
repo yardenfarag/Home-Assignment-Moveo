@@ -7,7 +7,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ProphetDataParts, ProphetUIMessage } from "@/core/api/chatStream";
+import type { SneakoscopeDataParts, SneakoscopeUIMessage } from "@/core/api/chatStream";
 import type { TranscriptTurn } from "@/core/db/chatTranscript";
 import { userError } from "@/core/errors/userErrors";
 import type { UnitSystem } from "@/core/utils/units";
@@ -23,14 +23,14 @@ import { SideNav } from "./SideNav";
 import { WidgetsRail } from "./WidgetsRail";
 
 /** Text of a user message. */
-function textOf(message: ProphetUIMessage | undefined): string {
+function textOf(message: SneakoscopeUIMessage | undefined): string {
   return message?.parts.map((part) => (part.type === "text" ? part.text : "")).join("") ?? "";
 }
 
 /** Friendly error from a failed request (the API answers with `{ error: {...} }`). */
-function requestError(error: Error): ProphetDataParts["error"] {
+function requestError(error: Error): SneakoscopeDataParts["error"] {
   try {
-    const parsed = JSON.parse(error.message) as { error?: ProphetDataParts["error"] };
+    const parsed = JSON.parse(error.message) as { error?: SneakoscopeDataParts["error"] };
     if (parsed.error?.message) return parsed.error;
   } catch {
     // not JSON — e.g. the network dropped
@@ -40,7 +40,7 @@ function requestError(error: Error): ProphetDataParts["error"] {
 }
 
 /** Rebuilds UI messages from a saved transcript (validated answers, as they were shown). */
-function messagesFromTurns(turns: TranscriptTurn[]): ProphetUIMessage[] {
+function messagesFromTurns(turns: TranscriptTurn[]): SneakoscopeUIMessage[] {
   return turns.flatMap((turn, index) => [
     { id: `history-user-${index}`, role: "user" as const, parts: [{ type: "text" as const, text: turn.question }] },
     {
@@ -52,12 +52,13 @@ function messagesFromTurns(turns: TranscriptTurn[]): ProphetUIMessage[] {
 }
 
 /** The app. */
-export function ProphetApp() {
+export function SneakoscopeApp() {
   // Browser-remembered values, read hydration-safely (the server always renders the defaults).
   const units = useSyncExternalStore<UnitSystem>(subscribeToStorage, loadUnits, () => "us");
   const sessionIds = useSyncExternalStore(subscribeToStorage, sessionIdsSnapshot, () => EMPTY_IDS);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [freshness, setFreshness] = useState<string | null>(null);
+  const [hubCount, setHubCount] = useState<number | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -65,14 +66,14 @@ export function ProphetApp() {
   // sessionId and units travel with each sendMessage call (see ask); the transport only adds the message text.
   const transport = useMemo(
     () =>
-      new DefaultChatTransport<ProphetUIMessage>({
+      new DefaultChatTransport<SneakoscopeUIMessage>({
         api: "/api/chat",
         prepareSendMessagesRequest: ({ messages, body }) => ({ body: { ...body, message: textOf(messages.at(-1)) } }),
       }),
     [],
   );
 
-  const { messages, sendMessage, setMessages, status, error, clearError, stop } = useChat<ProphetUIMessage>({
+  const { messages, sendMessage, setMessages, status, error, clearError, stop } = useChat<SneakoscopeUIMessage>({
     transport,
     onData: (part) => {
       if (part.type === "data-session") {
@@ -138,6 +139,7 @@ export function ProphetApp() {
 
   const onStatus = useCallback((status: WidgetsData["dataStatus"]) => {
     setFreshness(`${status.hubCount} hubs · weather through ${status.weatherThrough}`);
+    setHubCount(status.hubCount);
   }, []);
 
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
@@ -145,7 +147,7 @@ export function ProphetApp() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header units={units} onUnitsChange={changeUnits} freshness={freshness} onNew={newChat} onToggleNav={() => setNavOpen((o) => !o)} />
+      <Header units={units} onUnitsChange={changeUnits} freshness={freshness} onToggleNav={() => setNavOpen((o) => !o)} />
 
       <div className="mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_22rem]">
         <aside
@@ -162,7 +164,7 @@ export function ProphetApp() {
         <main className="flex min-w-0 flex-col gap-4">
           <div className="flex-1 space-y-4" aria-busy={loadingChat}>
             {loadingChat && <p className="text-sm text-slate-400">Opening your chat…</p>}
-            {messages.length === 0 && !loadingChat && <EmptyState onAsk={ask} />}
+            {messages.length === 0 && !loadingChat && <EmptyState onAsk={ask} hubCount={hubCount} />}
             {messages.map((message) =>
               message.role === "user" ? (
                 <div key={message.id} className="flex justify-end">

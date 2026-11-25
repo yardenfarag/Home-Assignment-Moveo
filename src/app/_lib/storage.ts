@@ -6,8 +6,8 @@
  */
 import { UNIT_SYSTEMS, type UnitSystem } from "@/core/utils/units";
 
-const UNITS_KEY = "prophet.units";
-const SESSIONS_KEY = "prophet.sessions";
+const UNITS_KEY = "sneakoscope.units";
+const SESSIONS_KEY = "sneakoscope.sessions";
 /** How many past chats the side nav remembers. */
 const MAX_SESSIONS = 50;
 
@@ -51,7 +51,7 @@ export function rememberSession(id: string): string[] {
 }
 
 /** Fired in this tab when we change stored values (the "storage" event only fires in OTHER tabs). */
-const CHANGE_EVENT = "prophet-storage";
+const CHANGE_EVENT = "sneakoscope-storage";
 
 /** Tells subscribers in this tab that stored values changed. */
 function notify(): void {

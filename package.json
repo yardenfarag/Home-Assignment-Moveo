@@ -1,5 +1,5 @@
 {
-  "name": "daily-prophet",
+  "name": "sneakoscope",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -40,7 +40,7 @@
     "typescript": "^5",
     "vitest": "^5.1.1"
   },
-  "description": "The Daily Prophet — weather risk intelligence agent for logistics hubs",
+  "description": "Sneakoscope — weather risk intelligence agent for logistics hubs",
   "engines": {
     "node": ">=22"
   }

@@ -2,11 +2,11 @@
  * A soft, friendly error (A4/D76): message, what to do next, and a Try again
  * button when retrying can help.
  */
-import type { ProphetDataParts } from "@/core/api/chatStream";
+import type { SneakoscopeDataParts } from "@/core/api/chatStream";
 
 /** Props for {@link ErrorCard}. */
 interface ErrorCardProps {
-  error: ProphetDataParts["error"];
+  error: SneakoscopeDataParts["error"];
   onRetry?: () => void;
 }
 

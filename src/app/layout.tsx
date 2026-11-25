@@ -12,7 +12,7 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "The Daily Prophet — Weather Risk Intelligence",
+  title: "Sneakoscope — Weather Risk Intelligence",
   description: "Which logistics hubs are most exposed to severe weather — and why.",
 };
 

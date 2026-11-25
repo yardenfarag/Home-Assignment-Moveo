@@ -8,7 +8,7 @@ import { getAccessEnv } from "@/core/config/env";
 import { userError } from "@/core/errors/userErrors";
 import { isSiteAuthorized } from "@/core/security/auth";
 
-const CHALLENGE = { "WWW-Authenticate": 'Basic realm="The Daily Prophet", charset="UTF-8"' };
+const CHALLENGE = { "WWW-Authenticate": 'Basic realm="Sneakoscope", charset="UTF-8"' };
 
 /**
  * Lets signed-in requests through; asks the browser for credentials otherwise.
@@ -20,7 +20,7 @@ export function proxy(request: NextRequest): NextResponse {
   try {
     access = getAccessEnv();
   } catch {
-    return new NextResponse("The Daily Prophet isn't configured yet (site login missing).", { status: 500 });
+    return new NextResponse("Sneakoscope isn't configured yet (site login missing).", { status: 500 });
   }
   if (isSiteAuthorized(request.headers.get("authorization"), access)) return NextResponse.next();
 

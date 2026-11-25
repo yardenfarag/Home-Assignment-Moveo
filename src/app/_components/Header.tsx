@@ -1,7 +1,8 @@
 /**
- * Masthead (U1): wordmark, data freshness, the US/Metric switch (D60), new chat.
+ * Masthead (U1): wordmark, data freshness, the US/Metric switch (D60). "New chat" lives in the chat list (side nav).
  */
 import type { UnitSystem } from "@/core/utils/units";
+import { SneakoscopeIcon } from "./SneakoscopeIcon";
 
 /** Props for {@link Header}. */
 interface HeaderProps {
@@ -9,12 +10,11 @@ interface HeaderProps {
   onUnitsChange: (units: UnitSystem) => void;
   /** e.g. "36 hubs · weather through 2026-11-24" (null while loading). */
   freshness: string | null;
-  onNew: () => void;
   onToggleNav: () => void;
 }
 
 /** Renders the masthead. */
-export function Header({ units, onUnitsChange, freshness, onNew, onToggleNav }: HeaderProps) {
+export function Header({ units, onUnitsChange, freshness, onToggleNav }: HeaderProps) {
   const segment = (value: UnitSystem, label: string) => (
     <button
       type="button"
@@ -39,8 +39,9 @@ export function Header({ units, onUnitsChange, freshness, onNew, onToggleNav }: 
         ☰
       </button>
       <div className="min-w-0 flex-1">
-        <h1 className="text-lg font-medium tracking-tight text-slate-50">
-          <span aria-hidden="true">🦉 </span>The Daily Prophet
+        <h1 className="flex items-center gap-2 text-lg font-medium tracking-tight text-slate-50">
+          <SneakoscopeIcon size={26} />
+          Sneakoscope
         </h1>
         <p className="truncate text-xs text-slate-400">Weather risk intelligence for our hubs{freshness ? ` · ${freshness}` : ""}</p>
       </div>
@@ -48,13 +49,6 @@ export function Header({ units, onUnitsChange, freshness, onNew, onToggleNav }: 
         {segment("us", "US")}
         {segment("metric", "Metric")}
       </div>
-      <button
-        type="button"
-        onClick={onNew}
-        className="hidden rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 sm:block"
-      >
-        + New chat
-      </button>
     </header>
   );
 }

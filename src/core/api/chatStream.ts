@@ -27,7 +27,7 @@ export const chatRequestSchema = z.object({
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
 /** The custom data parts our stream carries (typed for the UI in Step 6). */
-export type ProphetDataParts = {
+export type SneakoscopeDataParts = {
   session: { sessionId: string };
   progress: { tool: string; label: string; status: "running" | "done" | "failed" };
   retry: { message: string };
@@ -36,7 +36,7 @@ export type ProphetDataParts = {
 };
 
 /** The chat message type shared by server and UI. */
-export type ProphetUIMessage = UIMessage<never, ProphetDataParts>;
+export type SneakoscopeUIMessage = UIMessage<never, SneakoscopeDataParts>;
 
 /** Runs one turn (answerQuestion with real or fake deps). */
 export type TurnRunner = (
@@ -54,7 +54,7 @@ const RETRY_MESSAGE = "Double-checking my numbers against the data…";
  * @returns a stream of UI message chunks.
  */
 export function buildChatStream(request: ChatRequest, run: TurnRunner) {
-  return createUIMessageStream<ProphetUIMessage>({
+  return createUIMessageStream<SneakoscopeUIMessage>({
     execute: async ({ writer }) => {
       writer.write({ type: "start" });
       const pending = new Map<string, { id: string; label: string }[]>(); // tool name → running calls (FIFO)

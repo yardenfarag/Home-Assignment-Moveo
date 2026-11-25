@@ -7,7 +7,7 @@ Every choice we made, and why, in plain language. Newest at the bottom of each s
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Name: **The Daily Prophet**. Original design, no Harry Potter logos, fonts, crests or characters. | Fun theme without copying anyone's brand. |
+| D1 | Name: **Sneakoscope** (originally "The Daily Prophet", renamed in the Step 6 review, see D89). Original design, no Harry Potter logos, fonts, crests or characters. | Fun theme without copying anyone's brand. |
 | D2 | **36 hubs**, one per major US metro, stored as rows in the database. Adding a city = adding a row. | The brief asked for 25–50 metros and for hubs to be data, not code. |
 | D3 | "Midwest", "South" and so on use the **official US Census regions**. | Gives "Which Midwest hubs…" a clear, quotable definition. |
 | D4 | A hub's location is the **city-center point**. FEMA data comes from the county that point is in. | Simple and consistent. A real warehouse can sit elsewhere in the metro (written down as an assumption). |
@@ -122,6 +122,11 @@ All numbers below live in **one file**, [`src/core/scoring/config.ts`](../src/co
 | D85 | **Dependencies** (U6): `@ai-sdk/react` 4.0.186 (pins our `ai` 7.0.181) for `useChat`, and `react-markdown` (no raw HTML). | Standard, less custom code. Verified compatible before installing. |
 | D86 | **Accessibility** (U7): the streaming answer is announced (`aria-live`), Enter sends / Shift+Enter adds a line, native `<details>`, visible focus rings, reduced motion respected, colors always paired with text labels. **Personality** (U8): the cat in the empty state and friendly errors, the owl wordmark. Answers stay plain. | Readability first, a little warmth around it. |
 | D87 | **Tool output types are imported by the UI** from exported tool builder functions (`ExplainHubScoreOutput`, …). No duplicated shapes. | Single source of truth: a tool change can't silently break a visual. |
+| D89 | **Renamed to Sneakoscope** (Yarden's Step 6 review): in the UI, metadata, agent prompt, error text, login realm, code identifiers, browser storage keys, package name and docs. **Kept on purpose:** the session log and the first migration's SQL comment (historical records), and the Supabase project name `daily-prophet` (cosmetic, can only be renamed in the dashboard). | A Sneakoscope "lights up when something's wrong", which fits a risk-detection tool better than a newspaper. |
+| D90 | **Original SVG icon**: a glass spinning top with a glowing amber core and an alert spark. One design used as the header logo, empty-state art (gently glowing, motion-safe) and browser-tab icon (`app/icon.svg`, replacing Next's default favicon). | The large cat emoji didn't fit a professional tool. The icon carries the name's meaning. |
+| D91 | **Empty-state copy is Yarden's own draft**: "Weather risk across our hubs" + "Ask me about weather risk across our N hubs. I can rank them, compare them, look at past weather, or explain a hub's score…". N comes from the live data, not hard-coded. | "Which hubs should we protect first?" sounded commercial. The hub count is data (adding a city must not need a copy change). |
+| D92 | **Widgets explain themselves**: plain titles ("Most at-risk hubs", "Most exposed hub, per hazard", "About the data"), one line on *what it shows and why it matters for investment decisions*, the Low/Medium/High scale (built from config), and a "select to ask" hint. | Yarden: "widgets are not very clear… why is this important?" |
+| D93 | **"New chat" lives only in the chat list** (the header copy was removed). On phones it's reachable through ☰. | Redundant control (Yarden's review). |
 | D88 | **No Markdown tables in answers** (prompt rule). The UI draws grids from the data. | A model-written table rendered as raw pipes, and it duplicated the comparison grid. |
 
 

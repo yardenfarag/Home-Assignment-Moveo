@@ -40,7 +40,7 @@ export const USER_ERRORS: Record<UserErrorCode, Omit<UserError, "code">> = {
   },
   unauthorized: {
     status: 401,
-    message: "Please sign in to use The Daily Prophet.",
+    message: "Please sign in to use Sneakoscope.",
     hint: "Use the username and password you were given. If you don't have them, ask whoever shared this link with you.",
     retryable: false,
   },
