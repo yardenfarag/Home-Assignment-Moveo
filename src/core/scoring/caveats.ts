@@ -33,13 +33,13 @@ export function hazardCaveats(hazard: Hazard, units: UnitSystem): string[] {
       return ["Hurricane exposure comes from FEMA's long-term county frequency; any single season can be far above or below it."];
     case "winter":
       return [
-        `Heavy-snow days (${t("heavy_snow_day")}) are barely registered by modeled data, so they are reported but not scored.`,
+        `Heavy-snow days, ${t("heavy_snow_day")}, are barely registered by modeled data, so they are reported but not scored.`,
         "Ice storms come from FEMA only — observed weather has no ice signal.",
         "Local adaptation is not modeled: the same snow disrupts southern cities more than northern ones.",
       ];
     case "flood":
       return [
-        `Heavy-rain days (${t("heavy_rain_day")}) are not the same as flooding; FEMA's flood frequency counts flood warnings anywhere in the county.`,
+        `Heavy-rain days, ${t("heavy_rain_day")}, are not the same as flooding; FEMA's flood frequency counts flood warnings anywhere in the county.`,
         "In very large counties (e.g. Phoenix, Las Vegas, Los Angeles) FEMA's flood frequency is likely overstated, and for many big metros it is at the top of the scale.",
       ];
     case "severeStorms":
@@ -49,11 +49,11 @@ export function hazardCaveats(hazard: Hazard, units: UnitSystem): string[] {
       ];
     case "wind":
       return [
-        `Warning-level gusts (${t("gust_warning_day")}) are undercounted by modeled data, so wind is scored on advisory-level gust days (${t("gust_advisory_day")}).`,
+        `Warning-level gusts, ${t("gust_warning_day")}, are undercounted by modeled data, so wind is scored on advisory-level gust days, ${t("gust_advisory_day")}.`,
       ];
     case "heat":
       return [
-        `Observed heat uses one national threshold (${t("extreme_heat_day")}); FEMA heat waves follow local heat-alert criteria, so the two can differ.`,
+        `Observed heat uses one national threshold, ${t("extreme_heat_day")}; FEMA heat waves follow local heat-alert criteria, so the two can differ.`,
       ];
   }
 }
@@ -68,7 +68,7 @@ export function metricCaveats(metricId: DayMetricId, units: UnitSystem): string[
   const caveats = [WEATHER_DATA_CAVEAT];
   const metric: DayMetric = DAY_METRICS[metricId];
   if (!metric.scored && metric.notScoredBecause) {
-    caveats.push(`The ${metric.label} count (${formatDual(metric.threshold, units)}) is reported only: ${metric.notScoredBecause}.`);
+    caveats.push(`The ${metric.label} count, ${formatDual(metric.threshold, units)}, is reported only: ${metric.notScoredBecause}.`);
   }
   return caveats;
 }
