@@ -22,6 +22,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { buildScrubRules, findLeaks, scrubRecord } from "./session/scrub";
 import { isConversationRecord, renderTranscript, withoutReasoning, type TranscriptRecord } from "./session/render";
+import { runScript } from "./lib/run";
 
 /** Where the transcript files are written. */
 const OUTPUT_DIR = resolve("docs", "session");
@@ -104,9 +105,4 @@ function main(): void {
   console.log("🔒 Leak check passed: no emails, tokens, secret values, username or home path left.");
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-}
+void runScript(main, "scripts/export-session");

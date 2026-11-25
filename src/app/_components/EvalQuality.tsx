@@ -372,7 +372,7 @@ function RunDetails({ summary }: { summary: EvalRunSummary }) {
         <dt>Judge</dt>
         <dd className="text-slate-300">
           {summary.judge
-            ? `${summary.judge} · ${summary.judgeReliable ? "reliable ✓ (graded all planted test answers right)" : "unreliable ⚠️ (missed a planted test answer, so its scores are a hint only)"}`
+            ? `${summary.judge} · ${summary.judgeReliable ? "reliable ✓ (graded every planted test answer right and never contradicted itself)" : "unreliable ⚠️ (missed a planted test answer or contradicted itself, so its scores are a hint only)"}`
             : "none this run (code checks only)"}
         </dd>
       </dl>

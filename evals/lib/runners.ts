@@ -15,7 +15,14 @@ import { describeUnknownError } from "../../src/core/errors/boundaryError";
 import type { AgentModel } from "../../src/core/agent/model";
 import type { EvalCase, TurnResult } from "./types";
 
-/** Runs a case's turns through the agent in this process. */
+/**
+ * Runs a case's turns through the agent in this process (follow-ups see the earlier turns).
+ * A failed turn is recorded with its error and the next turn still runs.
+ * @param evalCase - the case.
+ * @param agent - the answering model.
+ * @param context - the data the agent reads.
+ * @returns one result per turn, with token usage.
+ */
 export async function runInProcess(evalCase: EvalCase, agent: AgentModel, context: AgentContext): Promise<TurnResult[]> {
   const history: ModelMessage[] = [];
   const results: TurnResult[] = [];

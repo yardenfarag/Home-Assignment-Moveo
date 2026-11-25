@@ -60,7 +60,8 @@ Love cats 🐱. Use cat emojis in chat and UI copy where they fit 😸. Error-bo
 ## Hard-won lessons
 Each one: *next time you see X → do Y*.
 1. **`npm run x -- --flag` on PowerShell** → the `--` is swallowed and the flag arrives as env var
-   `npm_config_flag`. Read both `process.argv` and `process.env.npm_config_*`.
+   `npm_config_flag` (dashes become underscores; `--no-x` arrives as `npm_config_x=false`). Use the shared
+   `scripts/lib/cli.ts` helpers, which handle every form.
 2. **"This API probably lags N days / returns shape X"** → probe the real API first. Open-Meteo's archive
    served data up to yesterday, not 5 days back as assumed.
 3. **Supabase pause fails with "hibernating"** → it can't be paused through the API. Ask Yarden to pause it in

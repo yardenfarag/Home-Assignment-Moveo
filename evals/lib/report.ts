@@ -5,10 +5,14 @@
  * flood side-by-side for the D57 review (E7).
  */
 import type { AgentContext } from "../../src/core/agent/context";
-import { duplicateCalls } from "./checks";
+import { EXTERNAL_HTTP_TIMEOUT_MS } from "../../src/core/config/timeouts";
+import { boundaryLogLine } from "../../src/core/errors/boundaryError";
 import { isInconsistentVerdict } from "../../src/core/judge/judgeAnswer";
+import { percentile } from "../../src/core/utils/stats";
+import { duplicateCalls } from "./checks";
+import { fixed as f, groupBy } from "./helpers";
 import type { JudgeSelfTest } from "./judging";
-import type { CaseRun } from "./types";
+import type { CaseRun, ResultsFile } from "./types";
 
 /** Price per token, from OpenRouter's public model list (null when unknown). */
 export interface Pricing {
@@ -16,25 +20,49 @@ export interface Pricing {
   output: number;
 }
 
+/** OpenRouter's public model list. */
+const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+
 /**
- * Looks up a model's current price on OpenRouter (public endpoint, no key).
+ * Looks up a model's current price on OpenRouter (public endpoint, no key). The cost is a soft
+ * metric, so a failure is logged and the run goes on without a price.
  * @param modelId - OpenRouter model id.
  * @returns per-token prices, or null when unavailable.
  */
 export async function fetchPricing(modelId: string): Promise<Pricing | null> {
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/models", { signal: AbortSignal.timeout(15_000) });
-    const json = (await res.json()) as { data: { id: string; pricing: { prompt: string; completion: string } }[] };
-    const model = json.data.find((m) => m.id === modelId);
+    const res = await fetch(OPENROUTER_MODELS_URL, { signal: AbortSignal.timeout(EXTERNAL_HTTP_TIMEOUT_MS) });
+    if (!res.ok) throw new Error(`OpenRouter model list answered HTTP ${res.status}`);
+    const json = (await res.json()) as { data?: { id: string; pricing: { prompt: string; completion: string } }[] };
+    const model = json.data?.find((m) => m.id === modelId);
+    if (!model) console.warn(`💸 No OpenRouter price listed for ${modelId}; cost will show as n/a.`);
     return model ? { input: Number(model.pricing.prompt), output: Number(model.pricing.completion) } : null;
-  } catch {
+  } catch (error) {
+    console.warn(`${boundaryLogLine(error, "fetchPricing", "llm")} (continuing without a price)`);
     return null;
   }
+}
+
+/**
+ * Whether the judge can be trusted on these runs (J4, D109): it graded every planted answer
+ * right AND never contradicted itself. The one definition used by the CLI report, the app's
+ * run summary and the bakeoff.
+ * @param selfTest - the self-test (`caught` in files from before D109), or null/undefined without one.
+ * @param runs - the judged case runs.
+ * @returns true when its verdicts can be trusted.
+ */
+export function isJudgeReliable(selfTest: ResultsFile["selfTest"], runs: CaseRun[]): boolean {
+  if (!selfTest) return false;
+  return (selfTest.correct ?? selfTest.caught) === selfTest.total && (judgeAverages(runs)?.inconsistent ?? 0) === 0;
 }
 
 /** Soft metrics for a set of runs. */
 export interface SoftMetrics {
   turns: number;
+  /** Turns that produced an answer. */
+  answered: number;
+  /** Whether any turn reported token usage (in-process runs do; the remote stream doesn't). */
+  usageReported: boolean;
   avgToolCalls: number;
   duplicateCalls: number;
   untracedNumbers: number;
@@ -56,35 +84,36 @@ export interface SoftMetrics {
 export function softMetrics(runs: CaseRun[], pricing: Pricing | null): SoftMetrics {
   const turns = runs.flatMap((r) => r.results);
   const answers = turns.map((t) => t.answer).filter((a) => a !== null);
-  const seconds = turns.map((t) => t.ms / 1000).sort((a, b) => a - b);
+  const seconds = turns.map((t) => t.ms / 1000);
   const inputTokens = turns.reduce((s, t) => s + (t.usage?.inputTokens ?? 0), 0);
   const outputTokens = turns.reduce((s, t) => s + (t.usage?.outputTokens ?? 0), 0);
   const hasUsage = turns.some((t) => t.usage);
   return {
     turns: turns.length,
+    answered: answers.length,
+    usageReported: hasUsage,
     avgToolCalls: answers.length ? answers.reduce((s, a) => s + a.meta.toolCalls.length, 0) / answers.length : 0,
     duplicateCalls: answers.reduce((s, a) => s + duplicateCalls(a.meta.toolCalls), 0),
     untracedNumbers: answers.reduce((s, a) => s + a.meta.warnings.length, 0),
     retries: answers.filter((a) => a.meta.retried).length,
     avgSeconds: seconds.reduce((s, x) => s + x, 0) / Math.max(1, seconds.length),
-    p95Seconds: seconds[Math.min(seconds.length - 1, Math.floor(seconds.length * 0.95))] ?? 0,
+    p95Seconds: seconds.length ? percentile(seconds, 0.95) : 0,
     inputTokens,
     outputTokens,
     costUsd: pricing && hasUsage ? inputTokens * pricing.input + outputTokens * pricing.output : null,
   };
 }
 
-/** Formats a number to fixed decimals. */
-const f = (n: number, d = 1) => n.toFixed(d);
-
 /**
- * Token counts as text. A remote run (`--url`) can't see them: the streamed API doesn't carry usage.
+ * Token counts as text, or why there are none: every turn failed (a failed turn reports no usage),
+ * or a remote run (`--url`), whose streamed API doesn't carry usage.
  * @param metrics - soft metrics.
  * @returns "in / out", or a plain "n/a" explanation.
  */
 function tokensText(metrics: SoftMetrics): string {
-  if (metrics.inputTokens === 0 && metrics.outputTokens === 0) return "n/a (remote run: the API stream doesn't report tokens)";
-  return `${metrics.inputTokens.toLocaleString()} in / ${metrics.outputTokens.toLocaleString()} out`;
+  if (metrics.usageReported) return `${metrics.inputTokens.toLocaleString()} in / ${metrics.outputTokens.toLocaleString()} out`;
+  if (metrics.turns > 0 && metrics.answered === 0) return "n/a (every turn failed, so no tokens were counted)";
+  return "n/a (remote run: the API stream doesn't report tokens)";
 }
 
 /**
@@ -139,7 +168,12 @@ export interface JudgeAverages {
 export function judgeAverages(runs: CaseRun[]): JudgeAverages | null {
   const verdicts = runs.flatMap((r) => r.judgments ?? []).map((j) => j.verdict).filter((v) => v !== null);
   if (verdicts.length === 0) return null;
-  const avg = (pick: (v: (typeof verdicts)[number]) => number | null) => {
+  /**
+   * The mean of one score over the verdicts that have it.
+   * @param pick - reads the score from a verdict (null = not graded, e.g. no premise).
+   * @returns the mean, or null when no verdict has the score.
+   */
+  const avg =(pick: (v: (typeof verdicts)[number]) => number | null) => {
     const values = verdicts.map(pick).filter((x): x is number => x !== null);
     return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   };
@@ -166,7 +200,7 @@ export function judgeAverages(runs: CaseRun[]): JudgeAverages | null {
 export function printJudgeReport(runs: CaseRun[], selfTest: JudgeSelfTest | null, judgeModel: string | null): void {
   if (!judgeModel) return console.log("\n⚖️  Judge: off (--no-judge)");
   const a = judgeAverages(runs);
-  const reliable = selfTest !== null && selfTest.correct === selfTest.total && (a?.inconsistent ?? 0) === 0;
+  const reliable = isJudgeReliable(selfTest, runs);
   console.log(`\n⚖️  Judge (${judgeModel}) — self-test: ${selfTest ? `${selfTest.correct}/${selfTest.total} planted answers graded right` : "n/a"}${reliable ? " ✅" : " ⚠️  JUDGE UNRELIABLE — don't trust its verdicts"}`);
   for (const d of selfTest?.details ?? []) console.log(`   · ${d}`);
   if (a) {
@@ -198,8 +232,7 @@ export function markdownSummary(
   metrics: SoftMetrics,
   meta: { label: string; date: string; repeat: number; judgeModel: string | null; selfTest: JudgeSelfTest | null },
 ): string {
-  const byCase = new Map<string, CaseRun[]>();
-  for (const run of runs) byCase.set(run.caseId, [...(byCase.get(run.caseId) ?? []), run]);
+  const byCase = groupBy(runs, (run) => run.caseId);
   const rows = [...byCase.values()].map((caseRuns) => {
     const passes = caseRuns.filter((r) => r.pass).length;
     const failed = caseRuns.flatMap((r) => r.checks.filter((c) => !c.pass).map((c) => c.name));
@@ -230,11 +263,17 @@ ${rows.join("\n")}
 ${judgeSection(runs, meta.judgeModel, meta.selfTest)}`;
 }
 
-/** The judge section of the Markdown summary. */
+/**
+ * The judge section of the Markdown summary.
+ * @param runs - case runs with judgments.
+ * @param judgeModel - judge model id (null when the judge was off).
+ * @param selfTest - the judge's self-test (null when off).
+ * @returns the Markdown section.
+ */
 function judgeSection(runs: CaseRun[], judgeModel: string | null, selfTest: JudgeSelfTest | null): string {
   if (!judgeModel) return "\n## Independent judge\nNot run (`--no-judge`).\n";
   const a = judgeAverages(runs);
-  const reliable = selfTest !== null && selfTest.correct === selfTest.total && (a?.inconsistent ?? 0) === 0;
+  const reliable = isJudgeReliable(selfTest, runs);
   const flagged = runs.flatMap((r) =>
     (r.judgments ?? []).flatMap((j) => (j.verdict?.unsupportedClaims ?? []).map((claim) => `- \`${r.caseId}\`: ${claim.replace(/\|/g, "\\|")}`)),
   );
@@ -242,7 +281,7 @@ function judgeSection(runs: CaseRun[], judgeModel: string | null, selfTest: Judg
 ## Independent judge
 Each answer is graded by **${judgeModel}** (a different provider than the answering model) against the actual tool results.
 Hard check: faithful to data ≥ 4 (included in the results above). Everything else here is a soft metric:
-graded twice on identical answers, the pass/fail verdict flipped on 4 of 14, so it can't fail a case on its own (D103).
+graded twice on identical answers, the pass/fail verdict wasn't stable, so it can't fail a case on its own (D103).
 
 **Judge self-test:** ${selfTest ? `${selfTest.correct}/${selfTest.total} planted answers graded right` : "n/a"} ${reliable ? "✅ — the judge's verdicts can be trusted" : "⚠️ — the judge misgraded a planted answer or contradicted itself, treat its verdicts with caution"}
 ${(selfTest?.details ?? []).map((d) => `- ${d}`).join("\n")}
@@ -286,12 +325,18 @@ export function printFloodReview(ctx: AgentContext): void {
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
+  /**
+   * A signal value with 2 decimals, or "—" when the hub doesn't have it (never a made-up 0.00).
+   * @param v - the signal value.
+   * @returns the text.
+   */
+  const signalText = (v: number | null | undefined) => (v === null || v === undefined ? "—" : f(v, 2));
   console.log("\n🌊 Flood review (D57, D123) — top 10 by flood score");
   console.log("   hub              score  observed  FEMA   heavy-rain d/yr  inland /1k sq mi  coastal ev/yr");
   for (const r of rows) {
     console.log(
       `   ${r.hub.padEnd(16)} ${f(r.score).padStart(5)}  ${String(r.observed ?? "—").padStart(8)}  ${String(r.fema ?? "—").padStart(5)}` +
-        `   ${f(r.rainDays ?? 0, 2).padStart(14)}  ${f(r.inland ?? 0, 2).padStart(14)}  ${r.coastal === null || r.coastal === undefined ? "n/a".padStart(13) : f(r.coastal, 2).padStart(13)}`,
+        `   ${signalText(r.rainDays).padStart(14)}  ${signalText(r.inland).padStart(14)}${(r.coastal === null || r.coastal === undefined ? "n/a" : f(r.coastal, 2)).padStart(13)}`,
     );
   }
 }

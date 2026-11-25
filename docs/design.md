@@ -280,7 +280,7 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
 ## 9. Errors, security and limits
 - **One log format for every failure at a boundary** (external API, database, LLM, API route, config):
   `ErrorName || message || function || emoji`, with a fixed emoji per boundary: 🦉 LLM, 🐸 Open-Meteo, 🦡 FEMA,
-  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page) ([`BoundaryError`](../src/core/errors/boundaryError.ts#L58),
+  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page), 🐈 script (a script or the eval harness catching its own error) ([`BoundaryError`](../src/core/errors/boundaryError.ts#L60),
   [`BOUNDARY_EMOJI`](../src/core/errors/boundaryError.ts#L15)). A log line shows at a glance where something broke.
 - **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L121) turns any failure into
   `{ code, message, hint, retryable }` with friendly copy, e.g. *"I couldn't put together an answer I can stand behind
@@ -323,16 +323,16 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
 ## 10. Evals, and how the model was chosen
 - **`npm run eval`** runs 13 cases: the brief's four questions, plus a false premise, a follow-up, an unknown city, a
   hazard we don't score, a decision question, an off-topic request, "last year", confidence and the top 5
-  ([`EVAL_CASES`](../evals/cases.ts#L22)).
+  ([`EVAL_CASES`](../evals/cases.ts#L75)).
   - The **expected values are computed at run time** from the same data the agent sees
-    ([`buildOracle`](../evals/lib/oracle.ts#L38)), so they stay correct after every nightly re-score.
+    ([`buildOracle`](../evals/lib/oracle.ts#L39)), so they stay correct after every nightly re-score.
   - The checks are concrete: the right tool with the right input, the right top hub, numbers that match, the premise
     verdict.
 - **An independent judge** (an LLM from a different provider, `google/gemini-3.5-flash-lite`) grades each answer
   against the exact tool results ([`judgeAnswer`](../src/core/judge/judgeAnswer.ts#L121)). It's tested before every run
-  with planted good and bad answers ([`judgeSelfTest`](../evals/lib/judging.ts#L96)).
+  with planted good and bad answers ([`judgeSelfTest`](../evals/lib/judging.ts#L105)).
 - **Evals can also run from the app** (D130): the overview's *Answer quality* line opens a dialog, and after a
-  confirmation [`runEvalSuite`](../evals/lib/suite.ts#L130) runs the same cases 3 at a time and streams each result.
+  confirmation [`runEvalSuite`](../evals/lib/suite.ts#L165) runs the same cases 3 at a time and streams each result.
   Runs are limited for everyone together ([`EVAL_RUN_LIMITS`](../src/core/api/evalGate.ts#L13), decided by
   [`decideEvalGate`](../src/core/api/evalGate.ts#L52)), counted from events, with no new table.
 - **The model was picked by measurement.** 9 models were screened, then 4 finalists ran 3 times each, with the rule

@@ -16,28 +16,33 @@ import { getJevEnv } from "../src/core/config/env";
 import { GUARD_TIMEOUT_MS } from "../src/core/config/timeouts";
 import { listActiveHubs } from "../src/core/db/hubsRepository";
 import { GUARD_CONFIG, runGuard, type GuardVerdict } from "../src/core/guard/jevGuard";
+import { percentile } from "../src/core/utils/stats";
 import { GUARD_CASES, type GuardCase } from "../evals/guardCases";
+import { utcMinuteStamp } from "../evals/lib/helpers";
+import { has, intFlag } from "./lib/cli";
+import { runScript } from "./lib/run";
 
-/** Reads `--name=value` (or PowerShell's `npm_config_name`). */
-function flag(name: string): string | undefined {
-  const arg = process.argv.find((a) => a.startsWith(`--${name}=`));
-  return arg ? arg.slice(name.length + 3) : process.env[`npm_config_${name}`];
-}
-
-/** Reads a boolean `--name` flag. */
-const has = (name: string) => process.argv.includes(`--${name}`) || process.env[`npm_config_${name}`] === "true";
-
-/** Formats a probability range over repeats. */
+/**
+ * Formats a probability range over repeats.
+ * @param xs - the probabilities.
+ * @returns "min–max", or "n/a" without values.
+ */
 const range = (xs: number[]) => (xs.length ? `${Math.min(...xs).toFixed(2)}–${Math.max(...xs).toFixed(2)}` : "n/a");
+
+/** One guard case with the verdicts of every repeat. */
+interface GuardCaseResult {
+  c: GuardCase;
+  verdicts: GuardVerdict[];
+}
 
 /** Runs the guard eval. */
 async function main(): Promise<void> {
-  const repeat = Math.max(1, Number(flag("repeat") ?? 1));
+  const repeat = intFlag("repeat", 1);
   const env = getJevEnv();
   const hubNames = (await listActiveHubs()).map((hub) => `${hub.name}, ${hub.state}`);
   console.log(`Guard eval: ${GUARD_CASES.length} cases × ${repeat} on ${env.JEV_MODEL} (decline if on-topic < ${GUARD_CONFIG.inScopeCutoff} or manipulation > ${GUARD_CONFIG.manipulationCutoff})…`);
 
-  const results: { c: GuardCase; verdicts: GuardVerdict[] }[] = [];
+  const results: GuardCaseResult[] = [];
   for (const c of GUARD_CASES) {
     const verdicts: GuardVerdict[] = [];
     for (let i = 0; i < repeat; i++) {
@@ -62,12 +67,13 @@ async function main(): Promise<void> {
   const passed = rows.filter((r) => r.ok).length;
   const lowestAllowed = Math.min(...allow.flatMap((r) => r.inScope));
   const highestAllowedManip = Math.max(...allow.flatMap((r) => r.manip));
-  const ms = results.flatMap((r) => r.verdicts.map((v) => v.ms)).sort((a, b) => a - b);
-  const p95 = ms[Math.floor(ms.length * 0.95)] ?? 0;
+  const ms = results.flatMap((r) => r.verdicts.map((v) => v.ms));
   const summary = [
     `${passed}/${rows.length} cases got the right decision${repeat > 1 ? ` in all ${repeat} runs` : ""}.`,
     `Margins: lowest on-topic score of a message that must pass = ${lowestAllowed.toFixed(2)} (cutoff ${GUARD_CONFIG.inScopeCutoff}); highest manipulation score of a message that must pass = ${highestAllowedManip.toFixed(2)} (cutoff ${GUARD_CONFIG.manipulationCutoff}).`,
-    `Latency: median ${ms[Math.floor(ms.length / 2)]} ms, p95 ${p95} ms (timeout ${GUARD_TIMEOUT_MS} ms).`,
+    ms.length
+      ? `Latency: median ${Math.round(percentile(ms, 0.5))} ms, p95 ${Math.round(percentile(ms, 0.95))} ms (timeout ${GUARD_TIMEOUT_MS} ms).`
+      : "Latency: n/a (no guard calls).",
   ];
   console.log(`\n${passed === rows.length ? "🏆" : "⚠️ "} ${summary.join("\n   ")}`);
 
@@ -82,7 +88,7 @@ async function main(): Promise<void> {
       "docs/guard-evals.md",
       `# Guard eval results
 
-Latest run: **${env.JEV_MODEL}** · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ${repeat} run(s) per case.
+Latest run: **${env.JEV_MODEL}** · ${utcMinuteStamp()} · ${repeat} run(s) per case.
 Run it yourself: \`npm run eval:guard\`. The cases are in [evals/guardCases.ts](../evals/guardCases.ts), and how the guard works is in
 [design.md](design.md#9-errors-security-and-limits).
 
@@ -99,10 +105,7 @@ ${table}
     );
     console.log("Written to docs/guard-evals.md");
   }
-  if (passed !== rows.length) process.exit(1);
+  if (passed !== rows.length) process.exitCode = 1;
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+void runScript(main, "scripts/eval-guard");

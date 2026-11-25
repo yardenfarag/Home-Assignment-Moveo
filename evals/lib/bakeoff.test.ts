@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GATE_CHECK, rankModels, type ModelSummary } from "./bakeoff";
+import { judgeReliable, rankModels, summarize, type ModelSummary } from "./bakeoff";
+import { checkKind } from "./checks";
+import type { CheckResult, ResultsFile } from "./types";
 
 /** A model summary with sensible defaults. */
 const model = (over: Partial<ModelSummary>): ModelSummary => ({
@@ -56,13 +58,53 @@ describe("rankModels (B4)", () => {
   });
 });
 
-describe("GATE_CHECK", () => {
-  it("covers premise and data checks, not tool-choice or judge checks", () => {
-    for (const name of ["premise flagged as wrong", "Miami hurricane score matches", "first hub named = computed #1", "no Boise numbers", "percentage matches computed value"]) {
-      expect(GATE_CHECK.test(name)).toBe(true);
+describe("rankModels tie band (N6)", () => {
+  it("counts the band on the larger of the two pools, so fewer runs don't buy a wider band", () => {
+    // Leader 39/39. A 10-run model at 8/10 would tie on its own count (2/10), not on the common basis (2/39).
+    const ranked = rankModels([model({ model: "leader", passed: 39, caseRuns: 39 }), model({ model: "few-runs", passed: 8, caseRuns: 10, costPerAnswer: 0.001 })]);
+    expect(ranked[0].summary.model).toBe("leader");
+    expect(ranked[1].verdict).toBe("less accurate");
+  });
+});
+
+/** A results file with one run holding the given checks. */
+const file = (checks: CheckResult[]): ResultsFile => ({
+  label: "x/model",
+  judge: "j/judge",
+  metrics: { turns: 1, costUsd: null },
+  runs: [{ caseId: "c", title: "C", results: [{ question: "q", answer: null, ms: 1000 }], checks, pass: checks.every((c) => c.pass) }],
+});
+
+describe("bakeoff gate (S2)", () => {
+  it("gates on the check's kind, not its name", () => {
+    const s = summarize("x/model", [
+      file([
+        { name: "anything at all", pass: false, detail: "", kind: "gate" },
+        { name: "premise-looking name", pass: false, detail: "", kind: "behavior" },
+        { name: "judge: turn 1 faithful to data", pass: false, detail: "", kind: "judge" },
+      ]),
+    ]);
+    expect(s.gateFailures).toEqual(["c: anything at all"]);
+    expect(s.judgeFailures).toBe(1);
+    expect(s.codeFailures).toBe(2);
+  });
+
+  it("still reads files saved before checks had a kind (classified by the old names)", () => {
+    const legacy = (name: string): CheckResult => ({ name, pass: false, detail: "" });
+    for (const name of ["premise flagged as wrong", "Miami hurricane score matches", "first hub named = computed #1", "no Boise numbers", "percentage matches computed value", "stat for calendar 2025", "answer says 2025"]) {
+      expect(checkKind(legacy(name))).toBe("gate");
     }
     for (const name of ["rank_hubs(winter, Midwest) called", "marked out of scope", "recommendation given"]) {
-      expect(GATE_CHECK.test(name)).toBe(false);
+      expect(checkKind(legacy(name))).toBe("behavior");
     }
+    expect(checkKind(legacy("judge: turn 1 faithful to data"))).toBe("judge");
+  });
+});
+
+describe("judgeReliable (S1)", () => {
+  it("needs every planted answer right in every file, accepting the legacy `caught` field", () => {
+    expect(judgeReliable([{ ...file([]), selfTest: { correct: 3, total: 3 } }, { ...file([]), selfTest: { caught: 3, total: 3 } }])).toBe(true);
+    expect(judgeReliable([{ ...file([]), selfTest: { correct: 3, total: 3 } }, { ...file([]), selfTest: { correct: 2, total: 3 } }])).toBe(false);
+    expect(judgeReliable([{ ...file([]), selfTest: null }])).toBe(false);
   });
 });
