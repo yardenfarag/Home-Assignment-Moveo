@@ -7,10 +7,11 @@
  */
 import { randomUUID } from "node:crypto";
 import type { NewEvent } from "../db/eventsRepository";
-import type { SnapshotToSave } from "../db/scoresRepository";
+import type { SnapshotToSave, StoredSnapshot } from "../db/scoresRepository";
 import type { Hub } from "../domain/hub";
 import type { DailyWeather } from "../domain/weather";
-import { describeUnknownError } from "../errors/boundaryError";
+import { alertEvent, detectScoreChanges } from "../alerts/scoreChanges";
+import { describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
 import { SCORING_VERSION } from "./config";
 import { computeObservedSignals, scoringWindow } from "./observedSignals";
 import { scoreHub } from "./scoreHub";
@@ -23,6 +24,8 @@ export interface ScoringDeps {
   getWeatherDays: (hubId: string, startDate: string, endDate: string) => Promise<DailyWeather[]>;
   getFemaSignalsByHub: () => Promise<{ signals: Map<string, FemaSignals>; problems: Map<string, string> }>;
   saveScoreSnapshots: (snapshots: SnapshotToSave[]) => Promise<number>;
+  /** The latest saved snapshots of the current scoring version (the alert baseline, D124). */
+  getLatestSnapshots: () => Promise<StoredSnapshot[] | null>;
   recordEvent: (event: NewEvent) => Promise<boolean>;
   log: (line: string) => void;
 }
@@ -52,7 +55,33 @@ export interface ScoringSummary {
   scoringVersion: string;
   hubsScored: number;
   hubsFailed: number;
+  /** Score-change alerts raised by this run (D124). */
+  alerts: number;
   results: HubScoringResult[];
+}
+
+/**
+ * The previous run's results for the same scoring version, for the alert comparison.
+ * A failure here never stops scoring: alerts are skipped for this run and the problem logged.
+ * @param deps - scoring dependencies.
+ * @returns results by hub id, or null when unavailable.
+ */
+async function previousResults(deps: ScoringDeps): Promise<Map<string, { hubId: string; overallScore: number; riskLevel: RiskLevel }> | null> {
+  try {
+    const snapshots = await deps.getLatestSnapshots();
+    if (!snapshots) return null;
+    return new Map(snapshots.map((s) => [s.hubId, { hubId: s.hubId, overallScore: s.overallScore, riskLevel: s.riskLevel }]));
+  } catch (error) {
+    deps.log(
+      formatBoundaryMessage({
+        name: "AlertBaselineError",
+        message: `Could not read the previous scores, so no alerts this run: ${describeUnknownError(error)}`,
+        functionName: "runScoring",
+        boundary: "database",
+      }),
+    );
+    return null;
+  }
 }
 
 /**
@@ -73,6 +102,7 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
 
   const hubs = await deps.listActiveHubs();
   const { signals: femaByHub, problems: femaProblems } = await deps.getFemaSignalsByHub();
+  const previous = await previousResults(deps);
   const snapshots: SnapshotToSave[] = [];
   const results: HubScoringResult[] = [];
 
@@ -103,11 +133,26 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
   }
 
   await deps.saveScoreSnapshots(snapshots);
+
+  // Score-change alerts (D124): the "if" lives in detectScoreChanges.
+  const hubName = new Map(hubs.map((hub) => [hub.id, hub.name]));
+  const alerts = previous
+    ? detectScoreChanges(
+        previous,
+        snapshots.map((s) => ({ hubId: s.hubId, hubName: hubName.get(s.hubId) ?? s.hubId, overallScore: s.score.overallScore, riskLevel: s.score.riskLevel })),
+      )
+    : [];
+  for (const alert of alerts) {
+    deps.log(`   🔔 ${alert.hubName}: ${alert.fromScore} → ${alert.toScore} (${alert.fromLevel} → ${alert.toLevel})`);
+    await deps.recordEvent(alertEvent(alert, runId));
+  }
+
   const summary: ScoringSummary = {
     runId,
     scoringVersion: SCORING_VERSION,
     hubsScored: snapshots.length,
     hubsFailed: results.filter((r) => r.error).length,
+    alerts: alerts.length,
     results,
   };
   const count = (level: RiskLevel) => results.filter((r) => r.riskLevel === level).length;
@@ -121,6 +166,7 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
       scoringVersion: SCORING_VERSION,
       hubsScored: summary.hubsScored,
       hubsFailed: summary.hubsFailed,
+      alerts: summary.alerts,
       levels: { high: count("high"), medium: count("medium"), low: count("low") },
     },
   });

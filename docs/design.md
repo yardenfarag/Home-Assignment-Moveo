@@ -169,7 +169,7 @@ Step by step, with the code:
    they fail, the browser shows "Double-checking my numbers…" while the LLM gets one retry.
 9. **Saved and logged.** The turn, including tool results, is saved for follow-ups
    ([`saveTurn`](../src/core/db/chatRepository.ts#L94)), and an `agent.answered` event is logged with the tools used,
-   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L84)).
+   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L115)).
 10. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
    **from the tool results**, not from anything the LLM wrote ([src/app/_components/visuals/](../src/app/_components/visuals/)).
 
@@ -210,11 +210,16 @@ Vercel Cron 06:00 UTC ─► GET /api/cron/ingest ─► runIngestThenScore
   ([`fetchFemaCountyByPoint`](../src/core/data/femaNri.ts#L124)). A rate limiter keeps us under 90% of Open-Meteo's free
   limits ([`WeightedRateLimiter`](../src/core/ingest/rateLimiter.ts#L62)). That's why the first full load (5 years ×
   36 hubs) takes about an hour, while the nightly top-up takes seconds.
-- **Scoring** ([`runScoring`](../src/core/scoring/runScoring.ts#L65)) reads the stored data, scores every hub and saves a
+- **Scoring** ([`runScoring`](../src/core/scoring/runScoring.ts#L94)) reads the stored data, scores every hub and saves a
   snapshot per hub. A hub that failed to ingest is still scored on the data it already has.
 - **The nightly job** ([`GET`](../src/app/api/cron/ingest/route.ts#L21)) runs both
   ([`runIngestThenScore`](../src/core/pipeline/runIngestThenScore.ts#L23)). It's scheduled in [vercel.json](../vercel.json)
   and protected by a secret only Vercel sends (`CRON_SECRET`).
+- **Score-change alerts** (bonus, D124). After each re-score, [`detectScoreChanges`](../src/core/alerts/scoreChanges.ts#L57)
+  compares every hub with its previous score from the same scoring version. If the risk level changed or the score moved
+  10+ points, an `alert.score_changed` event is saved. The app shows these in a "Recent changes" card
+  (`GET /api/alerts`, last 30 days), and each one can be dismissed (remembered per browser). `npm run alerts:test`
+  records a clearly marked test alert through the same path, for demos.
 - Every step logs an event (`ingest.started`, `ingest.weather_saved`, `scoring.finished`, …), so a failed night can be
   traced afterwards.
 

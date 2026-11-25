@@ -8,6 +8,7 @@ import { RISK_LEVEL_CUTOFFS } from "@/core/scoring/config";
 import type { WidgetsData } from "@/core/widgets/widgetsData";
 import { HAZARD_UI, LEVEL_UI, relativeTime } from "../_lib/labels";
 import { LevelChip } from "./LevelChip";
+import { RecentChanges } from "./RecentChanges";
 
 /** Props for {@link WidgetsRail}. */
 interface WidgetsRailProps {
@@ -77,6 +78,7 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
     "w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
   return (
     <div className={RAIL}>
+      <RecentChanges onAsk={onAsk} />
       <Panel
         title="Most at-risk hubs"
         description="Overall weather-risk score from 0 to 100, combining six hazards. Higher means severe weather is more likely to disrupt the hub — the first places to consider for resilience upgrades."

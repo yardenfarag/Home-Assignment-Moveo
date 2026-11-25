@@ -131,6 +131,9 @@ national value per hazard, close to typical NWS warning levels:
 - **The prompt was developed on the starting model** (Sonnet) and used unchanged for every model in the bakeoff.
 
 ## Operational limits of the demo deployment
+- **Alerts compare each night with the night before.** A score that creeps up slowly (say 2 points a week) never moves
+  10 points in one night, so it raises an alert only when it crosses a level cut-off. Dismissing an alert hides it in
+  that browser only; there's no login, so no shared state.
 - **There is no login** (D113). Anyone with the link can ask questions, and every answer is paid from the same OpenRouter
   key. Request limits cap the damage: 20 questions per 10 minutes and 100 per day per visitor, 300 per day in total
   (D114). Someone switching IP addresses can get around the per-visitor limits, but not the daily total. If the key's

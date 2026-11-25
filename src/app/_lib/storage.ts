@@ -91,3 +91,39 @@ export function sessionIdsSnapshot(): string[] {
 
 /** Server-side snapshot: nothing is remembered on the server. */
 export const EMPTY_IDS: string[] = [];
+
+/** Alerts this browser dismissed (D124). There's no login, so a dismissal is per browser, never for everyone. */
+const DISMISSED_KEY = "sneakoscope.dismissedAlerts";
+/** Older dismissals are dropped first; alerts older than 30 days aren't shown anyway. */
+const MAX_DISMISSED = 100;
+
+let cachedDismissedRaw: string | null = null;
+let cachedDismissed: string[] = [];
+
+/**
+ * Stable snapshot of the dismissed alert ids, for useSyncExternalStore.
+ * @returns the ids.
+ */
+export function dismissedAlertsSnapshot(): string[] {
+  const raw = typeof window === "undefined" ? null : window.localStorage.getItem(DISMISSED_KEY);
+  if (raw !== cachedDismissedRaw) {
+    cachedDismissedRaw = raw;
+    try {
+      const parsed: unknown = JSON.parse(raw ?? "[]");
+      cachedDismissed = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+    } catch {
+      cachedDismissed = [];
+    }
+  }
+  return cachedDismissed;
+}
+
+/**
+ * Remembers that this browser dismissed an alert.
+ * @param id - the alert id.
+ */
+export function dismissAlert(id: string): void {
+  const ids = [id, ...dismissedAlertsSnapshot().filter((existing) => existing !== id)].slice(0, MAX_DISMISSED);
+  if (hasStorage()) window.localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+  notify();
+}
