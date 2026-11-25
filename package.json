@@ -14,10 +14,13 @@
     "session:export": "tsx scripts/export-session.ts",
     "ingest": "tsx --env-file=.env.local scripts/ingest.ts",
     "fema:anchors": "tsx scripts/compute-fema-anchors.ts",
-    "score": "tsx --env-file=.env.local scripts/score.ts"
+    "score": "tsx --env-file=.env.local scripts/score.ts",
+    "ask": "tsx --env-file=.env.local scripts/ask.ts"
   },
   "dependencies": {
+    "@openrouter/ai-sdk-provider": "^3.1.0",
     "@supabase/supabase-js": "^2.119.2",
+    "ai": "^7.0.181",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",

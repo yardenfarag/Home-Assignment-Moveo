@@ -35,6 +35,7 @@ npm run dev                    # http://localhost:3000
 | `npm run ingest -- --hub=dallas,denver` | Same, for selected hubs only |
 | `npm run ingest -- --refresh-fema` | Re-fetch FEMA records for every hub (e.g. after a new NRI release) |
 | `npm run score` | Re-score all hubs from stored data (no API calls). The ingest runs this automatically. |
+| `npm run ask -- "question"` | Ask the real agent from the terminal (add `--session=<id>` for a follow-up, `--metric` for metric units) |
 | `npm run fema:anchors` | Recompute the national 95th-percentile FEMA anchors (for review before changing `scoring/config.ts`) |
 | `npm run session:export -- <file.jsonl>` | Export the AI session log to `docs/session/` (scrubbed) |
 

@@ -9,7 +9,8 @@
  */
 import type { DailyWeather } from "../domain/weather";
 import { addDays, daysInclusive } from "../utils/dates";
-import { DAY_THRESHOLDS, SCORING_WINDOW_DAYS } from "./config";
+import { SCORING_WINDOW_DAYS } from "./config";
+import { DAY_METRICS, type DayMetricId } from "./dayMetrics";
 
 /** A closed date range `YYYY-MM-DD`..`YYYY-MM-DD`. */
 export interface DateWindow {
@@ -57,25 +58,31 @@ export function scoringWindow(latestDate: string): DateWindow {
 }
 
 /**
- * Counts days meeting a condition among days that have a value for one variable.
- * @param days - days in the window.
- * @param pick - reads the variable from a day.
- * @param meets - the threshold test.
- * @returns per-year rate (null when no data) and how many days had data.
+ * Counts the days that meet a metric among days that have a value for its variable.
+ * Shared with the weather-stat tool so both count days identically.
+ * @param days - the days to look at.
+ * @param metricId - which hazard-day metric.
+ * @returns days meeting the threshold and days with data.
  */
-function ratePerYear(
-  days: DailyWeather[],
-  pick: (day: DailyWeather) => number | null,
-  meets: (value: number) => boolean,
-): { rate: number | null; present: number } {
+export function countMetricDays(days: DailyWeather[], metricId: DayMetricId): { hits: number; present: number } {
+  const metric = DAY_METRICS[metricId];
   let present = 0;
   let hits = 0;
   for (const day of days) {
-    const value = pick(day);
+    const value = day[metric.variable];
     if (value === null) continue;
     present++;
-    if (meets(value)) hits++;
+    if (metric.meets(value)) hits++;
   }
+  return { hits, present };
+}
+
+/**
+ * Per-year rate of a metric: hits × 365.25 ÷ days with data.
+ * @returns the rate (null when no data) and how many days had data.
+ */
+function ratePerYear(days: DailyWeather[], metricId: DayMetricId): { rate: number | null; present: number } {
+  const { hits, present } = countMetricDays(days, metricId);
   return { rate: present === 0 ? null : (hits * 365.25) / present, present };
 }
 
@@ -88,15 +95,14 @@ function ratePerYear(
 export function computeObservedSignals(days: DailyWeather[], window: DateWindow): ObservedSignals {
   const inWindow = days.filter((day) => day.date >= window.start && day.date <= window.end);
   const expectedDays = daysInclusive(window.start, window.end);
-  const t = DAY_THRESHOLDS;
 
-  const snow = ratePerYear(inWindow, (d) => d.snowfallCm, (v) => v >= t.snowDayCm);
-  const heavySnow = ratePerYear(inWindow, (d) => d.snowfallCm, (v) => v >= t.heavySnowDayCm);
-  const cold = ratePerYear(inWindow, (d) => d.tempMinC, (v) => v <= t.extremeColdC);
-  const rain = ratePerYear(inWindow, (d) => d.precipitationMm, (v) => v >= t.heavyRainMm);
-  const gustAdvisory = ratePerYear(inWindow, (d) => d.windGustMaxKmh, (v) => v >= t.gustAdvisoryKmh);
-  const gustWarning = ratePerYear(inWindow, (d) => d.windGustMaxKmh, (v) => v >= t.gustWarningKmh);
-  const heat = ratePerYear(inWindow, (d) => d.apparentTempMaxC, (v) => v >= t.extremeHeatApparentC);
+  const snow = ratePerYear(inWindow, "snow_day");
+  const heavySnow = ratePerYear(inWindow, "heavy_snow_day");
+  const cold = ratePerYear(inWindow, "extreme_cold_day");
+  const rain = ratePerYear(inWindow, "heavy_rain_day");
+  const gustAdvisory = ratePerYear(inWindow, "gust_advisory_day");
+  const gustWarning = ratePerYear(inWindow, "gust_warning_day");
+  const heat = ratePerYear(inWindow, "extreme_heat_day");
 
   const share = (present: number) => (expectedDays === 0 ? 0 : present / expectedDays);
   return {

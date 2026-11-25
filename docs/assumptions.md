@@ -73,6 +73,16 @@ national value per hazard, close to typical NWS warning levels:
 - Forecasts and live alerts. Phase 1 is historical exposure only.
 - Cities that aren't in our hub list. The agent says so instead of guessing.
 
+## Agent behavior limits (Step 4)
+- **Follow-ups may repeat earlier numbers.** Within a conversation, the agent may reuse numbers from earlier
+  tool results (D65). If the nightly re-score changed a value since then, a follow-up could repeat the older one.
+  Starting a new conversation always uses the latest scores.
+- **Free-text numbers are checked softly.** Numbers in `dataUsed` must come from tools (hard check), but numbers
+  inside the prose are only *flagged* when no tool returned them (D61). The evals track those warnings.
+- **Cost grows with conversation length.** Earlier tool results are sent with each new question, e.g. about 35k
+  input tokens by the third turn on Sonnet. The model also sometimes calls more tools than needed (up to 5 for one
+  question). Both are measured in the Step 8 bakeoff.
+
 ## Operational limits of the demo deployment
 - The OpenRouter key has a **$20 credit cap** and **expires 7 days after creation (around 2026-12-02)**.
   After that the agent can't answer until a new key is set in Vercel's environment variables.

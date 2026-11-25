@@ -18,6 +18,8 @@ export const SCORING_WINDOW_DAYS = 1_826;
 export const DAY_THRESHOLDS = {
   /** Snow day: daily snowfall ≥ 1 cm. */
   snowDayCm: 1,
+  /** Measurable snow: ≥ 0.1 in (0.254 cm), the NWS bar below which snowfall is a "trace". Reported only (G13). */
+  measurableSnowDayCm: 0.254,
   /** Heavy snow day: ≥ 15 cm. Reported stat only, NOT scored (D50). */
   heavySnowDayCm: 15,
   /** Extreme cold day: daily minimum ≤ −18 °C (0 °F). */
