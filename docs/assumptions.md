@@ -1,7 +1,31 @@
 # Assumptions, uncertainty & scope
 
-What this agent assumes, what it can't know, and what it deliberately doesn't do.
-The agent repeats the relevant parts in its answers (the `assumptions` and `limitations` fields).
+What this agent assumes, what it can't know, and what it deliberately doesn't do. The agent repeats the parts that
+apply in each answer: code attaches them to the answer's `limitations` list
+([src/core/scoring/caveats.ts](../src/core/scoring/caveats.ts)), so they can't be forgotten.
+
+## At a glance
+The limits that matter most when you read an answer:
+1. **Exposure, not losses.** A high score means bad weather hits often, not that it costs the most money.
+2. **City-center points.** Each hub is its metro's center; the real warehouse may be in another county.
+3. **Modeled weather, not station readings.** It smooths peaks, so extreme gusts and heavy snow are undercounted.
+4. **County-level FEMA data.** County size and mountains distort some hazards (flood, tornado, Seattle's winter).
+5. **History only.** No forecasts or live alerts.
+6. **One national threshold per hazard.** The same snow means more in Atlanta than in Minneapolis; that isn't modeled.
+7. **All hubs weigh the same.** No shipment or revenue data.
+
+## Contents
+- [What the score means and doesn't mean](#what-the-score-means-and-doesnt-mean)
+- [Location](#location)
+- [Data sources & their limits](#data-sources--their-limits)
+- [Known scoring limitations](#known-scoring-limitations)
+- [Time window](#time-window)
+- [Thresholds](#thresholds-checked-against-us-national-weather-service-criteria)
+- [Out of scope](#out-of-scope)
+- [Agent behavior limits](#agent-behavior-limits)
+- [Limits of the evaluation](#limits-of-the-evaluation)
+- [Operational limits of the demo deployment](#operational-limits-of-the-demo-deployment)
+- [Uncertainty the agent communicates](#uncertainty-the-agent-communicates)
 
 ## What the score means and doesn't mean
 - **It measures exposure, not loss.** It shows how often hazardous weather hits a hub's location. It does
@@ -24,7 +48,7 @@ The agent repeats the relevant parts in its answers (the `assumptions` and `limi
 | [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) | Daily snowfall, min temperature, precipitation, max wind gust, max apparent temperature, 2021-01-01 → yesterday, in each hub's local calendar day | It's **modeled reanalysis, not station measurements**: it smooths peaks, so wind gusts in particular are underestimated. The last few days are **preliminary** and get revised, so we re-fetch the last 7 every night. The free tier is **non-commercial**: a real deployment needs a paid plan. Data is licensed CC-BY 4.0 (attribution shown in the UI). |
 | [FEMA National Risk Index v1.20 (Dec 2025)](https://hazards.fema.gov/nri/data-resources) via its public [ArcGIS county service](https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Counties/FeatureServer/0) | Annualized frequency of hurricane, tornado, hail, inland and coastal flooding, ice storm, winter weather, cold wave, heat wave, strong wind | County-level. Built from long historical records, so it **changes slowly** and won't reflect last year's events. Riverine flood is now called `IFLD` (Inland Flooding). |
 
-## Known scoring limitations (Step 3)
+## Known scoring limitations
 How these are handled is in [decisions.md](decisions.md) D47–D58. The numbers are in
 [`src/core/scoring/config.ts`](../src/core/scoring/config.ts).
 - **County-level FEMA data depends on county shape and size.**
@@ -65,25 +89,38 @@ national value per hazard, close to typical NWS warning levels:
 | Wind advisory day | gust ≥ 72 km/h (45 mph) | Wind Advisory: sustained 30–39 mph (NWSI 10-515). The 45 mph gust value is our own choice | **The wind signal we actually score on.** The Step 2 check over 5 years: warning-level days were 0–1/yr (13 of 36 hubs at 0, because modeled data smooths peaks, though single storms do show up, e.g. Tampa 153 km/h during Hurricane Milton), while advisory days were 0.2–8.6/yr |
 | Extreme heat day | apparent temp max ≥ 40 °C (~105 °F) | Extreme Heat Warning (renamed from Excessive Heat Warning 2025-03-04, [NWS](https://www.weather.gov/news/250310-heat-hazard)): heat index ~105–110 °F, locally set | Open-Meteo's "apparent temperature" is a different formula from the NWS heat index |
 
-## Out of scope (Phase 1)
+## Out of scope
 - **Dust storms.** FEMA has no dust hazard. NOAA's [Storm Events Database](https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/)
   has "Dust Storm" events by forecast zone (84 nationwide in 2023, mostly TX/AZ/CA). Dust storm warning criteria:
   visibility ≤ ¼ mile with winds usually ≥ 25 mph ([NWSI 10-515](https://www.weather.gov/media/directives/010_pdfs/pd01005015curr.pdf)).
   Planned as the first post-deploy feature.
 - Wildfire smoke, earthquakes, lightning and drought (FEMA has some of these, but they aren't weather-disruption
   hazards in our brief).
-- Forecasts and live alerts. Phase 1 is historical exposure only.
+- Forecasts and live alerts. This version covers historical exposure only.
 - Cities that aren't in our hub list. The agent says so instead of guessing.
 
-## Agent behavior limits (Step 4)
+## Agent behavior limits
 - **Follow-ups may repeat earlier numbers.** Within a conversation, the agent may reuse numbers from earlier
   tool results (D65). If the nightly re-score changed a value since then, a follow-up could repeat the older one.
   Starting a new conversation always uses the latest scores.
 - **Free-text numbers are checked softly.** Numbers in `dataUsed` must come from tools (hard check), but numbers
   inside the prose are only *flagged* when no tool returned them (D61). The evals track those warnings.
-- **Cost grows with conversation length.** Earlier tool results are sent with each new question, e.g. about 35k
-  input tokens by the third turn on Sonnet. The model also sometimes calls more tools than needed (up to 5 for one
-  question). Both are measured in the Step 8 bakeoff.
+- **Cost grows with conversation length.** Earlier tool results are sent with each new question, so a long chat costs
+  more per answer (about 35k input tokens by the third turn, measured on the starting model). The chosen model makes
+  about 1 tool call per answer, at about $0.01 per answer ([bakeoff.md](bakeoff.md)).
+- **A slow model step ends the answer.** Each model step has 25 s and a whole answer 60 s. Past that, the user gets a
+  friendly "couldn't answer, please try again" instead of a late answer (D108).
+
+## Limits of the evaluation
+- **Small samples.** The model was chosen on 3 runs of 13 cases per finalist. That's enough to see big differences,
+  not small ones ([bakeoff.md](bakeoff.md)).
+- **Wording checks are pattern matches.** A correct answer phrased in an unexpected way can fail a check. Two such
+  false failures were found and fixed in the bakeoff (D109).
+- **The judge is an LLM too.** It's checked before every run with planted good and bad answers, and self-contradicting
+  verdicts mark it unreliable. Still, the bakeoff showed judges can favor their own model family. That's why the judge
+  must come from a different provider than the answering model (D111), and only its faithful-to-data score can fail a
+  case (D103).
+- **The prompt was developed on the starting model** (Sonnet) and used unchanged for every model in the bakeoff.
 
 ## Operational limits of the demo deployment
 - The OpenRouter key has a **$20 credit cap** and **expires 7 days after creation (around 2026-12-02)**.
@@ -91,6 +128,11 @@ national value per hazard, close to typical NWS warning levels:
 - Open-Meteo's free tier is per-IP and non-commercial. A production version needs their paid API.
 
 ## Uncertainty the agent communicates
-- **Confidence** (High / Medium / Low) is computed in code from data completeness (≥95% of days present) and
-  the number of sources backing each hazard (observed + FEMA).
+- **Confidence** (High / Medium / Low) is computed in code, never by the model
+  ([src/core/scoring/confidence.ts](../src/core/scoring/confidence.ts)). It's **High** when the data is complete (≥ 95% of
+  days present) and the two sources agree. It drops to **Medium** when observed weather and FEMA disagree by more than
+  40 points (compared like with like, D56), and to **Low** when less than 80% of days are present. Every confidence comes
+  with a one-line reason the agent can quote.
+- **The premise of a question is checked by code.** "Why is Seattle's hurricane risk so high?" gets a correction in the
+  first sentence, because code compares the claim with the real level (D63).
 - Every answer lists the assumptions and limitations that apply to it.
