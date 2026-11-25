@@ -51,6 +51,26 @@ body {
   background-clip: padding-box;
 }
 
+/*
+ * Pointer cursor on everything clickable (D128). Tailwind v4's reset makes buttons use the default
+ * arrow (v3 used the pointer), so set it once here rather than on each component. In the components
+ * layer, so a utility like `cursor-wait` can still override it. (Not `@layer base`: Tailwind v4's
+ * Turbopack loader silently dropped a custom base block from the build.)
+ */
+@layer components {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="radio"],
+  summary,
+  select {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
 /* Frosted-glass surface used by cards and panels. In the components layer so utilities can override it. */
 @layer components {
   .glass {

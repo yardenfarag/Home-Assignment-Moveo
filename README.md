@@ -54,9 +54,11 @@ off-topic requests and attempts to change its rules get a friendly reply without
 points shows up under **Recent changes** in the overview, where it can be dismissed.
 
 **Voice (bonus):** press the microphone button and speak your question. The words fill the question box, so you can fix a misheard hub
-name before pressing Ask, and the answer is then read aloud. Every answer also has a 🔊 **Listen** button. It runs in
-the browser (Chrome, Edge and Safari for speaking a question; reading aloud works in all modern browsers), and the
-buttons are hidden where a browser can't do it.
+name before pressing Ask, and the answer is then read aloud. Every answer also has a 🔊 **Listen** button.
+**Conversation mode** (the sound-waves button) is hands-free: just talk, and it sends your question when you pause,
+reads the answer aloud, then listens for the next one. Click the button again, or stay silent, to end it. It all runs
+in the browser (Chrome, Edge and Safari for speaking; reading aloud works in all modern browsers), and the buttons are
+hidden where a browser can't do it.
 
 ## How it works, in one minute
 1. The chat page sends your question to **our own API** (`POST /api/chat`), never straight to an AI.
