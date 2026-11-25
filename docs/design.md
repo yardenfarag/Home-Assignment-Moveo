@@ -92,7 +92,7 @@ Five layers, each in code:
    the LLM must return: [`llmAnswerSchema`](../src/core/agent/answerSchema.ts#L28). It has the answer text, hubs
    mentioned, the numbers used, the premise claim, confidence, assumptions, limitations, follow-ups, an optional
    recommendation, and the out-of-scope flag. An answer that doesn't fit the shape is rejected.
-3. **A ledger records every tool result.** [`ToolLedger`](../src/core/agent/ledger.ts#L112) is the ground truth for one
+3. **A ledger records every tool result.** [`ToolLedger`](../src/core/agent/ledger.ts#L127) is the ground truth for one
    answer: which hubs and numbers the tools actually returned. In a follow-up it also includes the earlier turns' results
    (D65).
 4. **Code checks the answer against the ledger:** [`finalizeAnswer`](../src/core/agent/finalizeAnswer.ts#L40).
@@ -100,11 +100,11 @@ Five layers, each in code:
      in `dataUsed` must appear in the ledger. A recommendation needs data. A premise must be about a real hub.
    - *Soft check* (a warning, logged and counted by the evals): numbers in the free text that no tool returned.
    - If the retry also fails, the user gets a clear, friendly error, never an unchecked answer
-     ([`runAgent`](../src/core/agent/runAgent.ts#L171)).
+     ([`runAgent`](../src/core/agent/runAgent.ts#L174)).
 5. **Code, not the LLM, sets the sensitive fields.** Confidence is recomputed from the data. The premise verdict
    ("you said Dallas is high; the data says…") is decided by comparing against the real level. The standing data
    caveats are attached. Every recommendation gets a fixed disclaimer the LLM can't soften
-   ([`RECOMMENDATION_DISCLAIMER`](../src/core/agent/config.ts#L27)).
+   ([`RECOMMENDATION_DISCLAIMER`](../src/core/agent/config.ts#L32)).
 
 The evals then test all of this from the outside (section 10).
 
@@ -147,19 +147,19 @@ Step by step, with the code:
    localStorage, so earlier chats can be reopened from the side menu.
 2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L28) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L19)), and starts a
    stream ([`buildChatStream`](../src/core/api/chatStream.ts#L55)).
-3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L71) loads the latest score
+3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L80) loads the latest score
    for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 5 turns of this chat
    ([`loadHistory`](../src/core/db/chatRepository.ts#L54)).
-4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L243)
+4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L245)
    asks Jev, a small yes/no decision model, two questions: *is this about weather risk for our hubs* (for a follow-up,
    Jev also sees the last 2 turns, so "why that one?" counts), and *does it try to change the assistant's rules*. If
    it's off topic or manipulative, the person gets a friendly card with example questions
-   ([`guardDeclineAnswer`](../src/core/guard/jevGuard.ts#L169)) and the agent never runs. The check takes about 0.3 s;
+   ([`guardDeclineAnswer`](../src/core/guard/jevGuard.ts#L171)) and the agent never runs. The check takes about 0.3 s;
    if Jev is slow (over 2 s) or down, the message goes through (fail open).
-5. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L171) builds the system prompt
-   ([`buildSystemPrompt`](../src/core/agent/systemPrompt.ts#L27): rules, the scoring method, the hub list) and the
+5. **The agent runs.** [`runAgent`](../src/core/agent/runAgent.ts#L174) builds the system prompt
+   ([`buildSystemPrompt`](../src/core/agent/systemPrompt.ts#L28): rules, the scoring method, the hub list) and the
    tools ([`buildTools`](../src/core/agent/tools/index.ts#L22)), then calls the LLM in
-   [`attempt`](../src/core/agent/runAgent.ts#L86). Limits: 6 tool steps, 25 s per step, 60 s in total
+   [`attempt`](../src/core/agent/runAgent.ts#L88). Limits: 6 tool steps, 25 s per step, 60 s in total
    ([`AGENT_LIMITS`](../src/core/agent/config.ts#L9)).
 6. **Tools compute.** Every tool call goes through [`runTool`](../src/core/agent/tools/shared.ts#L61). It reports progress
    to the browser, records the result in the ledger, and answers an exact repeat of an earlier call with a short "same as
@@ -303,7 +303,7 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   if Jev is down or slow, the agent still answers, and it already declines off-topic questions itself.
 - **Request limits instead of a login** (D114). Two layers:
   - **In our code, on `POST /api/chat`** (the only route that costs money):
-    [`checkChatGate`](../src/core/api/chatGate.ts#L85) runs before the agent. Limits
+    [`checkChatGate`](../src/core/api/chatGate.ts#L96) runs before the agent. Limits
     ([`RATE_LIMITS`](../src/core/security/rateLimit.ts#L16)): **20 questions per 10 minutes and 100 per day per
     visitor**, and **300 per day for everyone together** (about $3).
     - It counts `chat.request` events in the database, so the limits hold across Vercel's many function instances.
@@ -319,6 +319,22 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   validated with Zod at startup, and errors name the missing variable, never its value
   ([src/core/config/env.ts](../src/core/config/env.ts)). [.env.example](../.env.example) lists them all, and a test
   fails if the two drift apart.
+- **Keeping LLM costs low** (D136), simplest and biggest savings first:
+  1. **Small tool results.** Tools return scores, counts and a few key numbers, never daily rows. A caveat is sent in
+     full once per conversation; later results name it by id (`caveatsGivenEarlier`), while the stored answer keeps
+     the full text.
+  2. **Scores are computed once a night** and stored in `score_snapshots` (with `scoring_version` and `created_at`);
+     the tools read them. Nothing is recalculated per question.
+  3. **Provider prompt caching.** The system prompt and the tool definitions open every request unchanged (today's
+     date is the prompt's last line), so the provider serves them from its cache; models that need an explicit
+     cache marker (Anthropic, Google, Qwen) get one ([src/core/agent/usage.ts](../src/core/agent/usage.ts)).
+  4. **Answer cache** for the first question of a new conversation only, keyed by the normalized question, the scores
+     version, the model and the day, kept 24 hours in `answer_cache`
+     ([src/core/agent/answerCache.ts](../src/core/agent/answerCache.ts)). A hit skips the guard and the model. It
+     stores the turn's tool results too, so follow-ups still work. The eval script never uses it.
+  5. **Limits:** at most 6 tool steps and 3,000 output tokens per question, and only the last 5 turns of history.
+  6. **Cost tracking:** every answer's `agent.answered` event records tokens, prompt-cache hits and the cost
+     OpenRouter charged; the guard's cost is in `guard.decision`; `npm run eval` prints the charged total.
 
 ## 10. Evals, and how the model was chosen
 - **`npm run eval`** runs 13 cases: the brief's four questions, plus a false premise, a follow-up, an unknown city, a
