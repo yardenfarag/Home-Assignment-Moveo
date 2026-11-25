@@ -2,7 +2,7 @@
  * GET /api/cron/ingest — the nightly job (A3, D14, D54): fetch new weather
  * days (+ FEMA for new hubs), then re-score every hub under one run id.
  * Called by Vercel Cron with `Authorization: Bearer <CRON_SECRET>`; not behind
- * the site login (proxy.ts excludes /api/cron).
+ * a site login (the app has none, D113).
  */
 import { connection } from "next/server";
 import { createIngestDeps } from "@/core/ingest/createIngestDeps";

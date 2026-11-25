@@ -19,7 +19,8 @@ import { progressLabel } from "./progressLabels";
 /** Body of `POST /api/chat`. */
 export const chatRequestSchema = z.object({
   sessionId: z.uuid().nullable(),
-  message: z.string(),
+  /** Hard cap on the raw body; the agent's friendlier 1,000-character limit applies after this. */
+  message: z.string().max(10_000),
   units: z.enum(UNIT_SYSTEMS),
 });
 

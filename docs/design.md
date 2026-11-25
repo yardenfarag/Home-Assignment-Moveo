@@ -36,7 +36,6 @@ flowchart TB
   user([Analyst in a browser])
   subgraph vercel [Vercel: one Next.js app]
     ui["Chat UI<br/>src/app/_components"]
-    proxy["Login check<br/>src/proxy.ts"]
     api["API routes<br/>src/app/api"]
     subgraph core ["src/core: plain TypeScript, no Next.js"]
       agent["Agent<br/>agent/"]
@@ -52,7 +51,7 @@ flowchart TB
   meteo[Open-Meteo weather archive]
   fema[FEMA National Risk Index]
 
-  user --> proxy --> ui
+  user --> ui
   ui -->|"POST /api/chat, GET /api/widgets, …"| api
   api --> agent
   agent <-->|"chooses tools, writes the answer"| llm
@@ -69,8 +68,7 @@ flowchart TB
 | Part | Where | What it does | Talks to |
 |---|---|---|---|
 | **Chat UI** | [src/app/_components/](../src/app/_components/) | The page: chat, the list of earlier chats, the overview widgets. Entry: [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L55) | Only our own API routes, never the LLM |
-| **Login check** | [src/proxy.ts](../src/proxy.ts) | Asks for the site username/password on every page and API ([`proxy`](../src/proxy.ts#L18)) | — |
-| **API routes** | [src/app/api/](../src/app/api/) | Thin: check the login, validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
+| **API routes** | [src/app/api/](../src/app/api/) | Thin: validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
 | **Agent** | [src/core/agent/](../src/core/agent/) | Runs the LLM with tools, checks the answer, retries once | OpenRouter, the tools |
 | **Tools** | [src/core/agent/tools/](../src/core/agent/tools/) | `rank_hubs`, `compare_hubs`, `get_weather_stat`, `explain_hub_score`. They compute; the LLM only calls them | Scoring, stats, database |
 | **Scoring and stats** | [src/core/scoring/](../src/core/scoring/), [src/core/stats/](../src/core/stats/) | Pure functions: weather days → hazard scores → overall score, level, confidence | Nothing (pure) |
@@ -141,9 +139,8 @@ Step by step, with the code:
 1. **The browser sends the question.** [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L55) uses the AI SDK's
    `useChat` to `POST /api/chat` with `{ sessionId, message, units }`. The session id lives in the browser's
    localStorage, so earlier chats can be reopened from the side menu.
-2. **The route checks and hands off.** [`POST`](../src/app/api/chat/route.ts#L20) checks the login again (the proxy is
-   the first layer), validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L20)), and starts a
-   stream ([`buildChatStream`](../src/core/api/chatStream.ts#L56)).
+2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L24) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L20)), and starts a
+   stream ([`buildChatStream`](../src/core/api/chatStream.ts#L57)).
 3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L54) loads the latest score
    for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 10 turns of this chat
    ([`loadHistory`](../src/core/db/chatRepository.ts#L52)).
@@ -160,7 +157,7 @@ Step by step, with the code:
    they fail, the browser shows "Double-checking my numbers…" while the LLM gets one retry.
 8. **Saved and logged.** The turn, including tool results, is saved for follow-ups
    ([`saveTurn`](../src/core/db/chatRepository.ts#L94)), and an `agent.answered` event is logged with the tools used,
-   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L50)).
+   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L84)).
 9. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
    **from the tool results**, not from anything the LLM wrote ([src/app/_components/visuals/](../src/app/_components/visuals/)).
 
@@ -240,7 +237,6 @@ src/
   app/                   Next.js only: pages, API routes, React components
     _components/         the chat UI (answer cards in answer/, charts in visuals/)
     api/                 chat, chat/history, chat/sessions, widgets, cron/ingest
-  proxy.ts               site login (HTTP Basic Auth) for every page and API
   core/                  plain TypeScript, no Next.js (ESLint-enforced), all the logic:
     agent/               the agent: prompt, answer schema, ledger, checks, retry, the 4 tools
     api/                 chat-stream protocol shared by the route and the UI
@@ -252,7 +248,7 @@ src/
     ingest/, pipeline/   incremental ingest, rate limiting, ingest → score
     judge/               the independent answer judge used by the evals
     scoring/             hazard scores, overall, levels, confidence, caveats (pure)
-    security/            login and cron-secret checks (constant-time)
+    security/            the nightly job's secret check (constant-time)
     stats/, utils/       weather statistics, dates, units (pure)
     widgets/             data for the overview panel
 scripts/                 CLI entry points: ingest, score, ask, eval, bakeoff, session:export, …
@@ -266,14 +262,29 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
   `ErrorName || message || function || emoji`, with a fixed emoji per boundary: 🦉 LLM, 🐸 Open-Meteo, 🦡 FEMA,
   🐘 database, 🦄 API route, 🦔 config ([`BoundaryError`](../src/core/errors/boundaryError.ts#L56),
   [`BOUNDARY_EMOJI`](../src/core/errors/boundaryError.ts#L15)). A log line shows at a glance where something broke.
-- **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L82) turns any failure into
+- **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L94) turns any failure into
   `{ code, message, hint, retryable }` with friendly copy, e.g. *"I couldn't put together an answer I can stand behind
   this time."*
 - **Every external call has a timeout:** HTTP 30 s, database 15 s, each LLM step 25 s
   ([src/core/config/timeouts.ts](../src/core/config/timeouts.ts)).
-- **Login:** HTTP Basic Auth on every page and API, checked in the proxy and again in each route, with constant-time
-  comparison ([`isSiteAuthorized`](../src/core/security/auth.ts#L56)). The cron route uses its own secret instead
-  ([`isCronAuthorized`](../src/core/security/auth.ts#L71)).
+- **No login, on purpose** (D113). Anyone with the link can use the app, so testers don't need credentials. The
+  **nightly job** is the one protected route: it needs the secret that only Vercel Cron sends
+  ([`isCronAuthorized`](../src/core/security/auth.ts#L30)), compared in constant time. Chat history is private by
+  obscurity only: a chat can be reopened by anyone who knows its random id.
+- **Request limits instead of a login** (D114). Two layers:
+  - **In our code, on `POST /api/chat`** (the only route that costs money):
+    [`checkChatGate`](../src/core/api/chatGate.ts#L45) runs before the agent. Limits
+    ([`RATE_LIMITS`](../src/core/security/rateLimit.ts#L16)): **20 questions per 10 minutes and 100 per day per
+    visitor**, and **300 per day for everyone together** (about $3).
+    - It counts `chat.request` events in the database, so the limits hold across Vercel's many function instances.
+    - A "visitor" is a keyed hash of the IP that changes daily ([`visitorKey`](../src/core/security/rateLimit.ts#L59)):
+      no raw IP is ever stored.
+    - Over a limit, the user gets a friendly message ("You're asking faster than I can keep up 😸"), not an error page.
+    - If the counter itself fails, the request goes through and the problem is logged, rather than locking everyone out.
+    - The eval script skips the limits by sending the cron secret as an operator key.
+  - **Vercel's firewall, on every route:** one rate-limit rule (100 requests per minute per IP) blocks floods before
+    our code even runs. It's set in the Vercel dashboard, not in the repo; the steps are in the
+    [README](../README.md#deploy-your-own-copy).
 - **Secrets** live only in `.env.local` (local, git-ignored) and Vercel's environment variables. Every variable is
   validated with Zod at startup, and errors name the missing variable, never its value
   ([src/core/config/env.ts](../src/core/config/env.ts)). [.env.example](../.env.example) lists them all, and a test

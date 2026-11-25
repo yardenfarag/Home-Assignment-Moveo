@@ -7,7 +7,7 @@
  * Logging an event must never break the main flow, so `recordEvent` does not
  * throw: if the insert fails it prints a formatted error and carries on.
  */
-import { formatBoundaryMessage } from "../errors/boundaryError";
+import { BoundaryError, describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
 import type { Json } from "./database.types";
 import { getDb, type Db } from "./client";
 
@@ -39,6 +39,40 @@ export interface NewEvent {
   message?: string;
   /** Extra structured details (no secrets). */
   payload?: Record<string, Json>;
+}
+
+/** Which events to count. */
+export interface EventCountQuery {
+  eventType: string;
+  /** Only events at or after this time (ISO). */
+  since: string;
+  /** Only events whose `payload.visitor` equals this key (rate limits, D114). */
+  visitor?: string;
+}
+
+/**
+ * Counts events (uses the `(event_type, created_at)` index).
+ * @param query - event type, start time, optional visitor key.
+ * @param db - database client (injectable for tests).
+ * @returns the number of matching events.
+ * @throws BoundaryError (database) when the query fails.
+ */
+export async function countEvents(query: EventCountQuery, db: Db = getDb()): Promise<number> {
+  try {
+    let request = db.from("events").select("id", { count: "exact", head: true }).eq("event_type", query.eventType).gte("created_at", query.since);
+    if (query.visitor) request = request.eq("payload->>visitor", query.visitor);
+    const { count, error } = await request;
+    if (error) throw error;
+    return count ?? 0;
+  } catch (error) {
+    throw new BoundaryError({
+      name: "EventCountError",
+      message: `Could not count '${query.eventType}' events: ${describeUnknownError(error)}`,
+      functionName: "countEvents",
+      boundary: "database",
+      cause: error,
+    });
+  }
 }
 
 /**

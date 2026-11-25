@@ -16,8 +16,8 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getAccessEnv } from "../src/core/config/env";
 import { createAnswerQuestionDeps } from "../src/core/agent/createAnswerQuestionDeps";
+import { getCronEnv } from "../src/core/config/env";
 import { recordEvent } from "../src/core/db/eventsRepository";
 import { createJudgeModel } from "../src/core/judge/judgeAnswer";
 import { EVAL_CASES } from "../evals/cases";
@@ -79,7 +79,6 @@ async function main(): Promise<void> {
   const deps = createAnswerQuestionDeps({ modelOverride: flag("model") });
   const context = await deps.loadContext({ today: deps.today(), units: "us" });
   const oracle = buildOracle(context);
-  const access = url ? getAccessEnv() : null;
   const liveLabel = url ? `remote ${url}` : deps.agentModel.modelId;
   const rejudgeFile = flag("rejudge");
 
@@ -104,10 +103,7 @@ async function main(): Promise<void> {
         evalCase,
         getResults: () =>
           url
-            ? runRemote(evalCase, {
-                baseUrl: url,
-                authorization: `Basic ${Buffer.from(`${access!.APP_USERNAME}:${access!.APP_PASSWORD}`).toString("base64")}`,
-              })
+            ? runRemote(evalCase, { baseUrl: url, operatorKey: getCronEnv().CRON_SECRET })
             : runInProcess(evalCase, deps.agentModel, context),
       }));
   const runs: CaseRun[] = [];

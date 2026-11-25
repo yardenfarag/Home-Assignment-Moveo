@@ -2,12 +2,12 @@
  * @module app/api/_lib/http
  *
  * Shared plumbing for API routes (the `_lib` folder is private — not a route):
- * auth checks (second layer behind proxy.ts, A2) and friendly JSON errors (A4).
+ * the cron secret check and friendly JSON errors (A4). The site has no login (D113).
  */
-import { getAccessEnv } from "@/core/config/env";
+import { getCronEnv } from "@/core/config/env";
 import { describeUnknownError, formatBoundaryMessage } from "@/core/errors/boundaryError";
 import { toUserError, userError, type UserError } from "@/core/errors/userErrors";
-import { isCronAuthorized, isSiteAuthorized } from "@/core/security/auth";
+import { isCronAuthorized } from "@/core/security/auth";
 
 /** Never cache API responses: they're per-user or change nightly. */
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -53,19 +53,10 @@ export function failure(error: unknown, functionName: string): Response {
 }
 
 /**
- * Second auth layer for site routes.
- * @param request - the incoming request.
- * @returns a 401 response when not signed in, otherwise null.
- */
-export function requireSiteAuth(request: Request): Response | null {
-  return isSiteAuthorized(request.headers.get("authorization"), getAccessEnv()) ? null : errorResponse(userError("unauthorized"));
-}
-
-/**
  * Auth for the cron route (Bearer CRON_SECRET).
  * @param request - the incoming request.
  * @returns a 401 response when the secret is wrong, otherwise null.
  */
 export function requireCronAuth(request: Request): Response | null {
-  return isCronAuthorized(request.headers.get("authorization"), getAccessEnv()) ? null : errorResponse(userError("unauthorized"));
+  return isCronAuthorized(request.headers.get("authorization"), getCronEnv()) ? null : errorResponse(userError("unauthorized"));
 }

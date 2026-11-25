@@ -84,7 +84,7 @@ export function FinalAnswerCard({ answer, units, onAsk }: FinalAnswerCardProps) 
               </ul>
               <p className="mt-2 text-xs text-slate-500">
                 Every number above was checked against these results before you saw it
-                {answer.meta.retried ? " (the first draft failed that check and was corrected)" : ""}. Model: {answer.meta.model}.
+                {answer.meta.retried ? " (the first draft failed that check and was corrected)" : ""}.
               </p>
               {answer.meta.warnings.length > 0 && (
                 <p className="mt-1 text-xs text-amber-300/80">

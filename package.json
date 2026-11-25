@@ -44,6 +44,6 @@
   },
   "description": "Sneakoscope — weather risk intelligence agent for logistics hubs",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   }
 }
