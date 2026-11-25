@@ -74,7 +74,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 15 | Voice (bonus): the mic fills the box, voice answers read aloud, 🔊 on every answer (D127); conversation mode + pointer cursors (D128); mic button removed, cleaner read-aloud (D129) | — |
 | 16 | Evals from the UI: Answer quality line + dialog, confirmation with the limits, live progress, 1 run per 30 min and 4 per day for everyone (done: D130) | `JUDGE_MODEL` (now also in Vercel) |
 | 17 | Code review fixes, 5 PRs: 1 session log privacy (D131) · 2 agent and API (D132) · 3 data pipeline (D133) · 4 frontend (D134) · 5 evals, scripts, JSDoc and DRY (D135). Done. | — |
-| 18 | LLM cost: compact tool results, precomputed scores, provider prompt caching, a first-question answer cache, limits, cost tracking | — |
+| 18 | LLM cost: compact tool results, precomputed scores, provider prompt caching, a first-question answer cache, limits, cost tracking (done: D136) | — |
 
 ## Later (order to be chosen)
 Reviewed together after Step 11:

@@ -90,9 +90,11 @@ export async function runTool<T extends ToolOutputBase>(
     console.error(formatBoundaryMessage({ name: "ToolExecutionError", message: `${name}: ${detail}`, functionName: "runTool", boundary }));
     output = { error: TOOL_FAILED_MESSAGE, hubIds: [], confidence: null, caveats: [] };
   }
+  // The ledger (and the stored answer's tool calls) keep the full output; the model gets it with
+  // caveats it already has named by id instead of repeated (tool results are paid for again at every step).
   runtime.ledger.record(name, input, output);
   runtime.callbacks.onToolEnd?.(name, output, callId);
-  return output;
+  return runtime.ledger.forModel(output);
 }
 
 /** @returns "Dallas, TX". */

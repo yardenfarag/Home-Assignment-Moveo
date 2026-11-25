@@ -2,9 +2,9 @@
  * @module core/agent/answerQuestion
  *
  * The ONE entry point for answering a chat message — used by `npm run ask`
- * and (Step 5) `POST /api/chat`. Loads context + memory, runs the out-of-scope
- * guard (Step 11), runs the agent, saves the turn, and logs events under one
- * correlation id per turn.
+ * and (Step 5) `POST /api/chat`. Loads context + memory, answers a repeated FIRST
+ * question from the answer cache (D136), runs the out-of-scope guard (Step 11), runs the
+ * agent, saves the turn, and logs events (tokens, cache hits, cost) under one correlation id.
  */
 import { randomUUID } from "node:crypto";
 import type { ModelMessage } from "ai";
@@ -12,6 +12,7 @@ import type { NewEvent } from "../db/eventsRepository";
 import { AgentInputError } from "../errors/agentInputError";
 import { boundaryLogLine, describeUnknownError } from "../errors/boundaryError";
 import type { UnitSystem } from "../utils/units";
+import { answerCacheKey, cacheExpiry, normalizeQuestion, scoresVersionOf, type AnswerCacheStore } from "./answerCache";
 import type { FinalAnswer } from "./answerSchema";
 import { guardDeclineAnswer, recentTurnsFromHistory, type GuardInput, type GuardVerdict } from "../guard/jevGuard";
 import { AGENT_LIMITS, HISTORY_TURNS } from "./config";
@@ -19,6 +20,7 @@ import type { AgentContext } from "./context";
 import type { AgentModel } from "./model";
 import { runAgent, type AgentCallbacks, type AgentResult } from "./runAgent";
 import { hubLabel } from "./tools/shared";
+import { NO_USAGE } from "./usage";
 
 /** A chat message from the user. */
 export interface QuestionInput {
@@ -48,6 +50,11 @@ export interface AnswerQuestionDeps {
   guard: (input: GuardInput) => Promise<GuardVerdict>;
   /** Today `YYYY-MM-DD` (UTC). */
   today: () => string;
+  /**
+   * The answer cache for FIRST questions (D136). Leave it out to skip caching (tests, evals, and
+   * the eval script's operator requests, which must always run the agent).
+   */
+  answerCache?: AnswerCacheStore;
 }
 
 /** The result returned to the caller. */
@@ -56,8 +63,10 @@ export interface QuestionResult {
   sessionId: string;
   /** The checked answer. */
   answer: FinalAnswer;
-  /** Tokens used (0 when the guard declined). */
+  /** Tokens and cost (all 0 when the guard declined or the answer came from the cache). */
   usage: AgentResult["usage"];
+  /** True when the answer was reused from the answer cache. */
+  fromCache: boolean;
 }
 
 /**
@@ -98,7 +107,39 @@ export async function answerQuestion(
     // The guard (D118) runs before the paid agent. Empty or over-long messages skip it:
     // runAgent rejects those with its own friendly message.
     const message = input.message.trim();
-    if (message.length > 0 && message.length <= AGENT_LIMITS.maxUserMessageChars) {
+    const validMessage = message.length > 0 && message.length <= AGENT_LIMITS.maxUserMessageChars;
+
+    // Answer cache (D136): only the first question of a conversation, checked BEFORE the guard so a
+    // hit costs nothing at all. It was answered (and passed the guard) the first time it was asked.
+    const today = deps.today();
+    const cacheKey =
+      validMessage && history.length === 0 && deps.answerCache
+        ? answerCacheKey({ question: normalizeQuestion(message), scoresVersion: scoresVersionOf(context.snapshotByHub.values()), model: deps.agentModel.modelId, today })
+        : null;
+    if (cacheKey && deps.answerCache) {
+      const cached = await deps.answerCache.get(cacheKey, new Date()).catch((error: unknown) => {
+        console.error(`${boundaryLogLine(error, "answerQuestion", "database")} (answer cache read failed; answering normally)`);
+        return null;
+      });
+      if (cached) {
+        callbacks.onAnswerDelta?.(cached.answer.answer);
+        // The turn keeps the cached tool results (for follow-ups), with the question as THIS user typed it.
+        const messages = cached.messages.map((m, i) => (i === 0 && m.role === "user" ? { ...m, content: message } : m));
+        await save(sessionId, messages, cached.answer, cached.answer.meta.model);
+        await deps.recordEvent({
+          eventType: "agent.answered",
+          source: "agent",
+          level: "info",
+          correlationId,
+          sessionId,
+          message: "answered from the answer cache",
+          payload: { model: cached.answer.meta.model, fromCache: true, ...NO_USAGE },
+        });
+        return { sessionId, answer: cached.answer, usage: NO_USAGE, fromCache: true };
+      }
+    }
+
+    if (validMessage) {
       const verdict = await deps.guard({
         message,
         history: recentTurnsFromHistory(history),
@@ -120,12 +161,13 @@ export async function answerQuestion(
           failedOpen: verdict.failedOpen,
           ms: verdict.ms,
           model: verdict.model,
+          costUsd: verdict.costUsd ?? null,
         },
       });
       if (verdict.decision === "decline" && verdict.reason) {
         const answer = guardDeclineAnswer(verdict.reason, context.hubs.length);
         await save(sessionId, [{ role: "user", content: message }, { role: "assistant", content: answer.answer }], answer, verdict.model);
-        return { sessionId, answer, usage: { inputTokens: 0, outputTokens: 0 } };
+        return { sessionId, answer, usage: NO_USAGE, fromCache: false };
       }
     }
 
@@ -149,6 +191,20 @@ export async function answerQuestion(
       },
     );
     await save(sessionId, result.newMessages, result.answer, deps.agentModel.modelId);
+    // Cache only clean answers: a first question with no validation warnings (D136).
+    if (cacheKey && deps.answerCache && result.answer.meta.warnings.length === 0) {
+      await deps.answerCache
+        .put({
+          key: cacheKey,
+          question: normalizeQuestion(message),
+          scoresVersion: scoresVersionOf(context.snapshotByHub.values()),
+          model: deps.agentModel.modelId,
+          answer: result.answer,
+          messages: result.newMessages,
+          expiresAt: cacheExpiry(new Date()),
+        })
+        .catch((error: unknown) => console.error(`${boundaryLogLine(error, "answerQuestion", "database")} (answer cache write failed; the answer is unaffected)`));
+    }
     await deps.recordEvent({
       eventType: "agent.answered",
       source: "agent",
@@ -165,11 +221,16 @@ export async function answerQuestion(
         confidenceOverridden: result.answer.meta.confidenceOverridden,
         premiseHolds: result.answer.premiseCheck?.holds ?? null,
         warnings: result.answer.meta.warnings,
+        fromCache: false,
+        // Cost tracking (D136): cached input tokens show the provider's prompt cache working.
         inputTokens: result.usage.inputTokens,
+        cachedInputTokens: result.usage.cachedInputTokens,
+        cacheWriteTokens: result.usage.cacheWriteTokens,
         outputTokens: result.usage.outputTokens,
+        costUsd: result.usage.costUsd,
       },
     });
-    return { sessionId, answer: result.answer, usage: result.usage };
+    return { sessionId, answer: result.answer, usage: result.usage, fromCache: false };
   } catch (error) {
     // An empty or too-long message is the user's input, not a failure of ours.
     const rejected = error instanceof AgentInputError;

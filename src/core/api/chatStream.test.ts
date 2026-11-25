@@ -1,3 +1,4 @@
+import { NO_USAGE } from "../agent/usage";
 import { describe, expect, it } from "vitest";
 import type { FinalAnswer } from "../agent/answerSchema";
 import { AgentInputError } from "../errors/agentInputError";
@@ -26,7 +27,7 @@ describe("buildChatStream", () => {
       cb.onToolEnd?.("explain_hub_score", { hubIds: ["dallas"] });
       cb.onAnswerDelta?.("Dallas ");
       cb.onAnswerDelta?.("is High.");
-      return { sessionId: "11111111-1111-4111-8111-111111111111", answer, usage: { inputTokens: 1, outputTokens: 1 } };
+      return { sessionId: "11111111-1111-4111-8111-111111111111", answer, usage: { ...NO_USAGE, inputTokens: 1, outputTokens: 1 }, fromCache: false };
     };
     const chunks = await collect(buildChatStream(request, run));
     expect(chunks.map((c) => c.type)).toEqual([
@@ -51,7 +52,7 @@ describe("buildChatStream", () => {
       cb.onAnswerDelta?.("Draft");
       cb.onRetry?.(["bad number"]);
       cb.onAnswerDelta?.("Fixed");
-      return { sessionId: "s", answer, usage: { inputTokens: 1, outputTokens: 1 } };
+      return { sessionId: "s", answer, usage: { ...NO_USAGE, inputTokens: 1, outputTokens: 1 }, fromCache: false };
     };
     const types = (await collect(buildChatStream(request, run))).map((c) => `${c.type}${c.id ? `:${c.id}` : ""}`);
     expect(types).toEqual([

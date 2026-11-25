@@ -16,8 +16,11 @@ export interface TurnResult {
   error?: string;
   /** Wall-clock time for the turn. */
   ms: number;
-  /** Token usage (in-process mode only). */
-  usage?: { inputTokens: number; outputTokens: number };
+  /**
+   * Token usage (in-process mode only). Newer results also carry the prompt-cache hits and the cost
+   * OpenRouter charged (D136); older saved files don't.
+   */
+  usage?: { inputTokens: number; outputTokens: number; cachedInputTokens?: number; costUsd?: number | null };
 }
 
 /**

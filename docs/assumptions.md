@@ -131,6 +131,9 @@ national value per hazard, close to typical NWS warning levels:
 - **The prompt was developed on the starting model** (Sonnet) and used unchanged for every model in the bakeoff.
 
 ## Operational limits of the demo deployment
+- **A repeated first question can be answered from the answer cache** (D136). The cached answer was checked the same
+  way and is never older than the day's scores: the key includes the scores version and the date, and entries
+  expire after 24 hours. Follow-up questions are always answered fresh.
 - **Voice runs on the browser's own speech services.** Speech-to-text works in Chrome, Edge and Safari (not Firefox, so the 🎤
   is hidden there). **Chrome and Edge send the recorded audio to Google or Microsoft** to turn it into text; Sneakoscope never
   receives or stores audio, only the resulting text when you press Ask. Recognition can mishear hub names, which is why

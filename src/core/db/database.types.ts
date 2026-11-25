@@ -15,6 +15,45 @@ export type Database = {
   };
   public: {
     Tables: {
+      answer_cache: {
+        Row: {
+          answer: Json;
+          cache_key: string;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          messages: Json;
+          model: string;
+          question: string;
+          scores_version: string;
+          updated_at: string;
+        };
+        Insert: {
+          answer: Json;
+          cache_key: string;
+          created_at?: string;
+          expires_at: string;
+          id?: string;
+          messages: Json;
+          model: string;
+          question: string;
+          scores_version: string;
+          updated_at?: string;
+        };
+        Update: {
+          answer?: Json;
+          cache_key?: string;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          messages?: Json;
+          model?: string;
+          question?: string;
+          scores_version?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       chat_messages: {
         Row: {
           answer: Json | null;

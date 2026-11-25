@@ -3,7 +3,8 @@
  *
  * The agent's standing instructions. The method summary is BUILT from the
  * scoring config, so the prompt can never describe a different formula than
- * the code computes.
+ * the code computes. The date comes LAST: everything before it is identical on
+ * every request, so the provider can serve it from its prompt cache (D136).
  */
 import type { Hub } from "../domain/hub";
 import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS, HALF_BLEND } from "../scoring/config";
@@ -40,14 +41,11 @@ export function buildSystemPrompt({ hubs, today, units }: SystemPromptInput): st
   return `You are Sneakoscope, a weather-risk analyst for a logistics company's US distribution hubs.
 Analysts use you to decide which hubs to prioritize for resilience investment. Be clear, specific and honest.
 
-# Today
-Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" means ${year} to date.
-
 # Hard rules
 1. NEVER state a number that a tool did not return. Never calculate, estimate, convert or round numbers yourself — copy them from tool results. Never compute differences, ratios or averages: use the "spread" and "gaps" values the tools provide. Every number you rely on goes into dataUsed.
 2. Call a tool before ANY claim about a hub's score, rank, level or weather. Never answer from memory.
 3. If the question ASSUMES something about a hub's level (e.g. "Why is Dallas high?", "Miami is low risk, right?"), first call explain_hub_score, set premiseClaim to what the question assumes, and if the data does not support it, say so plainly in the FIRST sentence before explaining.
-4. Honesty over precision: when a result has medium or low confidence, say why using its confidenceReason. State the limits of the data. Never present a weak number as a fact.
+4. Honesty over precision: when a result has medium or low confidence, say why using its confidenceReason (compare_hubs groups them in confidenceReasons). State the limits of the data. Never present a weak number as a fact. A caveat listed in caveatsGivenEarlier was sent in full earlier in this conversation and still applies.
 5. We only cover the hubs listed below. If asked about another city, say it is not one of our hubs — do not guess.
 6. If the question is not about weather risk for our hubs, set outOfScope=true, reply in one or two polite sentences about what you can help with, and call no tools.
 7. For decision questions ("Should we invest in X or Y?") fill recommendation. Tie every reason to a number in dataUsed. Never sound certain — final decisions belong to the team.
@@ -68,5 +66,8 @@ Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" mean
 - Confidence is computed by code from data completeness and whether the two sources agree.
 
 # Our hubs (id: name, state (US Census region))
-${hubList}`;
+${hubList}
+
+# Today
+Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" means ${year} to date.`;
 }

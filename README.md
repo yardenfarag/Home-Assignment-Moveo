@@ -77,7 +77,7 @@ The full picture, with diagrams and links down to the line of code: **[docs/desi
 | 1 | Public APIs for weather and hazard data | Open-Meteo weather archive + FEMA National Risk Index: [src/core/data/](src/core/data/), [design §6](docs/design.md#6-where-the-data-comes-from-ingest-and-the-nightly-job) |
 | 2 | Deterministic scoring in code, not LLM output | [src/core/scoring/](src/core/scoring/) (pure, unit-tested), [design §5](docs/design.md#5-how-a-hubs-risk-score-is-computed) |
 | 3 | Explain reasoning clearly | `explain_hub_score` returns the full breakdown, and the UI draws it: [design §4](docs/design.md#4-one-question-end-to-end), [examples](docs/examples.md) |
-| 4 | Conversational follow-ups, history per session | `chat_sessions` / `chat_messages`, last 10 turns: [src/core/db/chatRepository.ts](src/core/db/chatRepository.ts), eval case `follow-up` |
+| 4 | Conversational follow-ups, history per session | `chat_sessions` / `chat_messages`, last 5 turns sent to the model (D136): [src/core/db/chatRepository.ts](src/core/db/chatRepository.ts), eval case `follow-up` |
 | 5 | A chat interface | [src/app/_components/](src/app/_components/), [screenshots](docs/screenshots/) |
 | 6 | The UI uses `POST /api/chat`, never the LLM | [src/app/api/chat/route.ts](src/app/api/chat/route.ts); the UI only calls our routes ([API](#api)) |
 | 7 | Zod-validated tool inputs and final answer; retry once, then a clear error | [src/core/agent/answerSchema.ts](src/core/agent/answerSchema.ts), [src/core/agent/finalizeAnswer.ts](src/core/agent/finalizeAnswer.ts), [design §3](docs/design.md#3-how-the-llm-is-kept-from-inventing-numbers) |

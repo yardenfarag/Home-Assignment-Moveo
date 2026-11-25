@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { completeWeatherDays } from "../agent/testFixtures";
 import type { DailyWeather } from "../domain/weather";
 import { computeMonthlyCounts, computeWeatherStat, resolvePeriod } from "./weatherStats";
 
@@ -56,10 +57,20 @@ describe("computeWeatherStat", () => {
       { date: "2025-02-01", snowfallCm: 5, tempMinC: -5, precipitationMm: 5, windGustMaxKmh: 30, apparentTempMaxC: 0 },
     ];
     expect(computeMonthlyCounts(winter, "snow_day", { start: "2025-01-01", end: "2025-03-31" })).toEqual([
-      { month: "2025-01", label: "Jan 2025", daysMeeting: 1, daysWithData: 2 },
-      { month: "2025-02", label: "Feb 2025", daysMeeting: 1, daysWithData: 1 },
-      { month: "2025-03", label: "Mar 2025", daysMeeting: 0, daysWithData: 0 },
+      { month: "2025-01", daysMeeting: 1, daysWithData: 2 },
+      { month: "2025-02", daysMeeting: 1, daysWithData: 1 },
+      { month: "2025-03", daysMeeting: 0, daysWithData: 0 }, // no data, never "0 days"
     ]);
+  });
+
+  it("leaves out daysWithData for a month whose days (inside the period) all have data", () => {
+    const allOfJanuary = completeWeatherDays("2025-01-01", "2025-01-31");
+    expect(computeMonthlyCounts(allOfJanuary, "snow_day", { start: "2025-01-01", end: "2025-02-10" })).toEqual([
+      { month: "2025-01", daysMeeting: 2 }, // complete: the 1st and the 15th snowed
+      { month: "2025-02", daysMeeting: 0, daysWithData: 0 },
+    ]);
+    // A month cut by the period counts as complete when its days inside the period all have data.
+    expect(computeMonthlyCounts(allOfJanuary, "snow_day", { start: "2025-01-10", end: "2025-01-31" })).toEqual([{ month: "2025-01", daysMeeting: 1 }]);
   });
 
   it("counts metric days in the period and reports % of days with data", () => {

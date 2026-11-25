@@ -36,6 +36,17 @@ const ERROR_FOR: Record<keyof RequestCounts, "too_many_requests" | "daily_limit"
   globalDaily: "daily_limit",
 };
 
+/**
+ * Whether the request comes from the operator (our eval script): the cron secret in the operator header,
+ * compared in constant time.
+ * @param headers - the request headers.
+ * @param secret - the server secret.
+ * @returns true for the operator.
+ */
+export function isOperatorRequest(headers: Headers, secret: string): boolean {
+  return constantTimeEqual(headers.get(OPERATOR_HEADER) ?? "", secret);
+}
+
 /** Event recorded when a request is refused (at most once per visitor per burst window). */
 const RATE_LIMITED_EVENT = "chat.rate_limited";
 
@@ -83,7 +94,7 @@ function logCountFailure(error: unknown): void {
  * @returns a friendly error to send back, or null to go ahead.
  */
 export async function checkChatGate(headers: Headers, deps: ChatGateDeps): Promise<UserError | null> {
-  if (constantTimeEqual(headers.get(OPERATOR_HEADER) ?? "", deps.secret)) return null;
+  if (isOperatorRequest(headers, deps.secret)) return null;
 
   const now = deps.now();
   const day = now.toISOString().slice(0, 10);

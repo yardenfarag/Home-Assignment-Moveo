@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysInclusive, isoDateInTimeZone, minDate, toIsoDate } from "./dates";
+import { addDays, daysInclusive, daysOfMonthInPeriod, isoDateInTimeZone, lastDayOfMonth, minDate, monthLabel, toIsoDate } from "./dates";
 
 describe("dates", () => {
   it("adds days across month and leap-year boundaries", () => {
@@ -29,6 +29,18 @@ describe("dates", () => {
     expect(() => daysInclusive("2025-04-31", "2025-05-01")).toThrow(/Invalid ISO date/);
     expect(() => addDays("2025-02-29", 0)).toThrow(/Invalid ISO date/); // 2025 is not a leap year
     expect(addDays("2024-02-29", 0)).toBe("2024-02-29");
+  });
+
+  it("knows each month's last day, short label, and days inside a period", () => {
+    expect(lastDayOfMonth(2024, 2)).toBe("2024-02-29");
+    expect(lastDayOfMonth(2025, 12)).toBe("2025-12-31");
+    expect(monthLabel("2025-01")).toBe("Jan 2025");
+    expect(monthLabel("2024-12")).toBe("Dec 2024");
+    expect(daysOfMonthInPeriod("2025-02", "2025-01-01", "2025-12-31")).toBe(28);
+    expect(daysOfMonthInPeriod("2024-02", "2024-01-01", "2024-12-31")).toBe(29);
+    expect(daysOfMonthInPeriod("2025-11", "2024-11-25", "2025-11-24")).toBe(24);
+    expect(daysOfMonthInPeriod("2024-11", "2024-11-25", "2025-11-24")).toBe(6);
+    expect(daysOfMonthInPeriod("2026-01", "2025-01-01", "2025-12-31")).toBe(0);
   });
 
   it("gives the local calendar date in a timezone", () => {
