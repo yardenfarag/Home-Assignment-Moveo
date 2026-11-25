@@ -9,7 +9,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { StoredSnapshot } from "../../db/scoresRepository";
 import { GENERAL_CAVEATS, hazardCaveats } from "../../scoring/caveats";
-import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS } from "../../scoring/config";
+import { HAZARD_WEIGHTS, OVERALL_MIX } from "../../scoring/config";
 import { riskLevelFor } from "../../scoring/overall";
 import { competitionRanks } from "../../scoring/ranking";
 import { HAZARDS } from "../../scoring/types";
@@ -55,13 +55,13 @@ export function explainHubScoreOutput(ctx: AgentContext, input: { hubId: string 
     hub: hubLabel(hub),
     county: hub.countyName ? `${hub.countyName} County (FIPS ${hub.countyFips})` : null,
     overallScore: snapshot.overallScore,
+    // The level cut-offs and the formula's rule are in the system prompt (built from the same
+    // config), so they aren't repeated here; `calculation` carries this hub's numbers.
     level: snapshot.riskLevel,
-    levelCutoffs: `Low 0-${RISK_LEVEL_CUTOFFS.mediumFrom - 1}, Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}-${RISK_LEVEL_CUTOFFS.highFrom - 1}, High ${RISK_LEVEL_CUTOFFS.highFrom}-100`,
     rankOverall: rankOf((s) => s.overallScore),
     totalHubs: all.length,
     topHazard: snapshot.topHazard,
     formula: {
-      rule: `overall = ${OVERALL_MIX.weightedAverage} × weighted average of hazard scores + ${OVERALL_MIX.worstHazard} × worst hazard score`,
       weightedAverage: snapshot.weightedAverage,
       worstHazardScore: worst,
       calculation: `${OVERALL_MIX.weightedAverage} × ${snapshot.weightedAverage} + ${OVERALL_MIX.worstHazard} × ${worst} = ${snapshot.overallScore}`,
@@ -87,7 +87,8 @@ export function explainHubScoreOutput(ctx: AgentContext, input: { hubId: string 
         confidenceReason: hz.confidenceReason,
         inputs: hz.inputs.map((i) => ({
           signal: i.signal,
-          source: i.source === "fema" ? "FEMA National Risk Index" : "observed weather (Open-Meteo)",
+          /** "observed" (weather, Open-Meteo) or "fema" (FEMA National Risk Index), as the system prompt names them. */
+          source: i.source,
           valuePerYear: i.value === null ? null : Math.round(i.value * 100) / 100,
           unit: i.unit,
           valueThatScores100: i.anchor100,

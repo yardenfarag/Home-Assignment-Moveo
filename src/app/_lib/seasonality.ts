@@ -6,12 +6,20 @@
  * on long, multi-year ranges.
  */
 import type { MonthlyCount } from "@/core/stats/weatherStats";
+import { daysOfMonthInPeriod, monthLabel } from "@/core/utils/dates";
 
 /** How much of a month's days (inside the period) have weather data. */
 export type MonthCoverage = "full" | "partial" | "none";
 
 /** One month, ready to draw. */
-export interface StripMonth extends MonthlyCount {
+export interface StripMonth {
+  /** `YYYY-MM`. */
+  month: string;
+  /** e.g. "Jan 2025". */
+  label: string;
+  daysMeeting: number;
+  /** Days of this month (inside the period) with weather data. */
+  daysWithData: number;
   /** Calendar days of this month that fall inside the period. */
   daysInPeriod: number;
   coverage: MonthCoverage;
@@ -25,25 +33,9 @@ export interface StripMonth extends MonthlyCount {
 const MAX_LABELS = 12;
 
 /**
- * Calendar days of a month that fall inside a period.
- * @param month - `YYYY-MM`.
- * @param start - period start, `YYYY-MM-DD`.
- * @param end - period end, `YYYY-MM-DD`.
- * @returns the count (0 when the month is outside the period).
- */
-export function daysOfMonthInPeriod(month: string, start: string, end: string): number {
-  const year = Number(month.slice(0, 4));
-  const monthIndex = Number(month.slice(5, 7)) - 1;
-  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-  // ISO dates compare correctly as text; clip the month to the period.
-  const from = start > `${month}-01` ? start : `${month}-01`;
-  const to = end < `${month}-${String(lastDay).padStart(2, "0")}` ? end : `${month}-${String(lastDay).padStart(2, "0")}`;
-  if (from > to) return 0;
-  return Number(to.slice(8, 10)) - Number(from.slice(8, 10)) + 1;
-}
-
-/**
- * Builds the strip's columns: coverage per month and thinned labels.
+ * Builds the strip's columns: coverage per month and thinned labels. Accepts both the compact
+ * entries tools return now (`daysWithData` only when some days lack data, no `label`) and the
+ * older saved ones (both always present): the label is always derived, a missing count means complete.
  * @param byMonth - hazard days per month, from get_weather_stat.
  * @param period - the period's first and last day.
  * @returns one column per month.
@@ -54,11 +46,16 @@ export function stripMonths(byMonth: MonthlyCount[], period: { start: string; en
   const every = Math.max(1, Math.ceil(byMonth.length / MAX_LABELS));
   return byMonth.map((m, index) => {
     const daysInPeriod = daysOfMonthInPeriod(m.month, period.start, period.end);
-    const coverage: MonthCoverage = m.daysWithData === 0 ? "none" : m.daysWithData < daysInPeriod ? "partial" : "full";
-    const name = m.label.slice(0, 3);
+    const daysWithData = typeof m.daysWithData === "number" ? m.daysWithData : daysInPeriod;
+    const coverage: MonthCoverage = daysWithData === 0 ? "none" : daysWithData < daysInPeriod ? "partial" : "full";
+    const label = monthLabel(m.month);
+    const name = label.slice(0, 3);
     const isJanuary = m.month.endsWith("-01");
     return {
-      ...m,
+      month: m.month,
+      label,
+      daysMeeting: m.daysMeeting,
+      daysWithData,
       daysInPeriod,
       coverage,
       monthLabel: index % every === 0 ? (singleYear ? name.slice(0, 1) : name) : "",

@@ -9,7 +9,7 @@
 import type { DailyWeather } from "../domain/weather";
 import { countMetricDays, type DateWindow } from "../scoring/observedSignals";
 import type { DayMetricId } from "../scoring/dayMetrics";
-import { addDays, daysInclusive } from "../utils/dates";
+import { addDays, daysInclusive, daysOfMonthInPeriod, lastDayOfMonth, MONTH_NAMES } from "../utils/dates";
 
 /** A period as the tool receives it. `month` (1–12) narrows a year. */
 export type PeriodRequest =
@@ -27,19 +27,6 @@ export interface ResolvedPeriod extends DateWindow {
 export interface DataBounds {
   earliest: string;
   latest: string;
-}
-
-/** English month names, January first (index = month − 1). */
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-/**
- * The last day of a calendar month (handles leap years and December).
- * @param year - the year, e.g. 2024.
- * @param month - the month, 1–12.
- * @returns the last day of that month, `YYYY-MM-DD`.
- */
-function lastDayOfMonth(year: number, month: number): string {
-  return addDays(`${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`, -1);
 }
 
 /**
@@ -63,7 +50,7 @@ export function resolvePeriod(request: PeriodRequest, bounds: DataBounds): Resol
     if (month !== undefined && (month < 1 || month > 12)) throw new Error(`Month must be 1–12, got ${month}.`);
     start = month ? `${year}-${String(month).padStart(2, "0")}-01` : `${year}-01-01`;
     end = month ? lastDayOfMonth(year, month) : `${year}-12-31`;
-    label = month ? `${MONTHS[month - 1]} ${year}` : `calendar year ${year}`;
+    label = month ? `${MONTH_NAMES[month - 1]} ${year}` : `calendar year ${year}`;
   } else {
     start = request.startDate;
     end = request.endDate;
@@ -118,14 +105,17 @@ export function computeWeatherStat(days: DailyWeather[], metricId: DayMetricId, 
   };
 }
 
-/** Hazard days in one calendar month. */
+/**
+ * Hazard days in one calendar month. Kept small, because long ranges list 60 of these and the
+ * model pays for every one at each step: the label ("Jan 2025") is derived from `month`
+ * (`monthLabel`), and `daysWithData` is listed only when some days of the month lack data.
+ */
 export interface MonthlyCount {
   /** `YYYY-MM`. */
   month: string;
-  /** e.g. "Jan 2025". */
-  label: string;
   daysMeeting: number;
-  daysWithData: number;
+  /** Days of this month (inside the period) with data — present ONLY when some are missing (0 = no data at all). */
+  daysWithData?: number;
 }
 
 /**
@@ -143,7 +133,8 @@ export function computeMonthlyCounts(days: DailyWeather[], metricId: DayMetricId
     const month = cursor.slice(0, 7);
     const inMonth = days.filter((d) => d.date.startsWith(month) && d.date >= period.start && d.date <= period.end);
     const { hits, present } = countMetricDays(inMonth, metricId);
-    months.push({ month, label: `${MONTHS[Number(month.slice(5)) - 1].slice(0, 3)} ${month.slice(0, 4)}`, daysMeeting: hits, daysWithData: present });
+    const complete = present >= daysOfMonthInPeriod(month, period.start, period.end);
+    months.push(complete ? { month, daysMeeting: hits } : { month, daysMeeting: hits, daysWithData: present });
     cursor = addDays(lastDayOfMonth(Number(month.slice(0, 4)), Number(month.slice(5))), 1);
   }
   return months;

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FinalAnswer } from "@/core/agent/answerSchema";
-import { pickVisuals } from "./toolResults";
+import { manyHubsContext } from "@/core/agent/testFixtures";
+import { compareHubsOutput, type CompareHubsOutput } from "@/core/agent/tools/compareHubs";
+import { explainHubScoreOutput } from "@/core/agent/tools/explainHubScore";
+import { weatherStatOutput } from "@/core/agent/tools/getWeatherStat";
+import { rankHubsOutput } from "@/core/agent/tools/rankHubs";
+import { compareCellReason, pickVisuals } from "./toolResults";
 
 const answerWith = (toolCalls: { tool: string; input: unknown; output: unknown }[], outOfScope = false) =>
   ({ outOfScope, meta: { toolCalls } }) as unknown as FinalAnswer;
@@ -45,5 +50,45 @@ describe("pickVisuals (U3b — chosen by code, never by the LLM)", () => {
 
   it("copes with a saved answer missing its meta", () => {
     expect(pickVisuals({ outOfScope: false } as unknown as FinalAnswer)).toEqual([]);
+  });
+
+  it("draws the real (compact) result of every tool", async () => {
+    const ctx = manyHubsContext(4);
+    const [a, b] = [...ctx.snapshotByHub.keys()];
+    const visuals = [
+      { tool: "rank_hubs", input: {}, output: rankHubsOutput(ctx, { metric: "wind", region: "South", order: "most", limit: 3 }) },
+      { tool: "compare_hubs", input: {}, output: compareHubsOutput(ctx, { hubIds: [a, b], hazards: null }) },
+      { tool: "explain_hub_score", input: {}, output: explainHubScoreOutput(ctx, { hubId: a }) },
+      { tool: "get_weather_stat", input: {}, output: await weatherStatOutput(ctx, { hubId: a, metric: "snow_day", periodKind: "year", year: 2025, month: null, startDate: null, endDate: null }) },
+    ].map((call) => pickVisuals(answerWith([call]))[0]?.kind);
+    expect(visuals).toEqual(["ranking", "grid", "breakdown", "seasonality"]);
+  });
+
+  it("skips a seasonality result whose months aren't real YYYY-MM months (they'd break the strip)", () => {
+    const stat = { threshold: "≥ 0.4 in of snow", period: { start: "2025-01-01", end: "2025-12-31" } };
+    const ok = pickVisuals(answerWith([{ tool: "get_weather_stat", input: {}, output: { ...stat, byMonth: [{ month: "2025-01", daysMeeting: 2 }] } }]));
+    const bad = pickVisuals(answerWith([{ tool: "get_weather_stat", input: {}, output: { ...stat, byMonth: [{ month: "2025-13", daysMeeting: 2 }] } }]));
+    expect(ok).toHaveLength(1);
+    expect(bad).toEqual([]);
+  });
+});
+
+describe("compareCellReason (new and older saved comparison shapes)", () => {
+  it("finds a cell's reason in the compact list of reasons", () => {
+    const ctx = manyHubsContext(4);
+    const [a, b] = [...ctx.snapshotByHub.keys()];
+    const data = compareHubsOutput(ctx, { hubIds: [a, b], hazards: null });
+    expect(compareCellReason(data, a, "wind")).toMatch(/sources disagree/); // the first test hub's wind is medium
+    expect(compareCellReason(data, b, "wind")).toMatch(/tell the same story/);
+    expect(compareCellReason(data, a, "hurricane")).toMatch(/FEMA's long-term county frequency record/);
+  });
+
+  it("reads the reason from the cell itself in answers saved before results were compact", () => {
+    const saved = {
+      totalHubs: 36,
+      hubs: [{ hubId: "miami", hub: "Miami, FL", hazards: { flood: { score: 80, level: "high", confidence: "high", confidenceReason: "Old per-cell reason." } } }],
+    } as unknown as CompareHubsOutput;
+    expect(compareCellReason(saved, "miami", "flood")).toBe("Old per-cell reason.");
+    expect(compareCellReason(saved, "miami", "heat")).toBeNull(); // no such cell: nothing to show, no crash
   });
 });

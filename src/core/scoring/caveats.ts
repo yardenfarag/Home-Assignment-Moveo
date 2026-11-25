@@ -7,8 +7,8 @@
  * caveats but never drop these. Thresholds are built from config, never retyped.
  */
 import { formatDual, type UnitSystem } from "../utils/units";
-import { DAY_METRICS, type DayMetric, type DayMetricId } from "./dayMetrics";
-import type { Hazard } from "./types";
+import { DAY_METRIC_IDS, DAY_METRICS, type DayMetric, type DayMetricId } from "./dayMetrics";
+import { HAZARDS, type Hazard } from "./types";
 
 /** Caveats that apply to every score answer. */
 export const GENERAL_CAVEATS: readonly string[] = [
@@ -83,4 +83,32 @@ export function metricCaveats(metricId: DayMetricId, units: UnitSystem): string[
     caveats.push(`The ${metric.label} count, ${formatDual(metric.threshold, units)}, is reported only: ${metric.notScoredBecause}.`);
   }
   return caveats;
+}
+
+/** A standing caveat with a short, stable id (e.g. "general-1", "flood-2", "weather-data"). */
+export interface CatalogCaveat {
+  id: string;
+  text: string;
+}
+
+/**
+ * Every standing caveat the tools can attach, each with a short id. Tool results name a caveat by
+ * its id once the model already has its text, so the text isn't paid for again (see ToolLedger),
+ * and the id turns back into the text for the answer's limitations. Built from the functions above,
+ * never retyped. Caveats that depend on the data (a period's notes, stale data) are not in it: they
+ * are always sent in full.
+ * @param units - which unit system leads in the text.
+ * @returns the caveats, ids unique.
+ */
+export function standingCaveatCatalog(units: UnitSystem): CatalogCaveat[] {
+  return [
+    ...GENERAL_CAVEATS.map((text, i) => ({ id: `general-${i + 1}`, text })),
+    ...HAZARDS.flatMap((hazard) => hazardCaveats(hazard, units).map((text, i) => ({ id: `${hazard}-${i + 1}`, text }))),
+    { id: "weather-data", text: WEATHER_DATA_CAVEAT },
+    ...DAY_METRIC_IDS.flatMap((metricId) =>
+      metricCaveats(metricId, units)
+        .filter((text) => text !== WEATHER_DATA_CAVEAT)
+        .map((text, i) => ({ id: `${metricId}-${i + 1}`, text })),
+    ),
+  ];
 }

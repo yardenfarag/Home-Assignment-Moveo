@@ -12,6 +12,8 @@ import type { CompareHubsOutput } from "@/core/agent/tools/compareHubs";
 import type { ExplainHubScoreOutput } from "@/core/agent/tools/explainHubScore";
 import type { WeatherStatOutput } from "@/core/agent/tools/getWeatherStat";
 import type { RankHubsOutput } from "@/core/agent/tools/rankHubs";
+import { compareCellKey } from "@/core/agent/tools/compareCells";
+import type { Hazard } from "@/core/scoring/types";
 
 /** One visual to render under an answer. */
 export type AnswerVisual =
@@ -44,13 +46,40 @@ const KIND_BY_TOOL: Record<ToolName, AnswerVisual["kind"]> = {
  */
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
+/** A `YYYY-MM` month key (the strip derives labels and day counts from it, so it must be a real month). */
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 /** The fields each visual reads, checked before drawing (a light check, not full validation). */
 const LOOKS_RIGHT: Record<AnswerVisual["kind"], (output: Record<string, unknown>) => boolean> = {
   grid: (o) => Array.isArray(o.hubs) && o.hubs.length > 0 && o.hubs.every((hub) => isObject(hub) && isObject(hub.hazards)),
   breakdown: (o) => isObject(o.formula) && Array.isArray(o.formula.contributions) && Array.isArray(o.hazards) && typeof o.topHazard === "string",
-  seasonality: (o) => Array.isArray(o.byMonth) && typeof o.threshold === "string" && isObject(o.period) && typeof o.period.start === "string" && typeof o.period.end === "string",
+  seasonality: (o) =>
+    Array.isArray(o.byMonth) &&
+    o.byMonth.every((m) => isObject(m) && typeof m.month === "string" && MONTH_KEY.test(m.month) && typeof m.daysMeeting === "number") &&
+    typeof o.threshold === "string" &&
+    isObject(o.period) &&
+    typeof o.period.start === "string" &&
+    typeof o.period.end === "string",
   ranking: (o) => Array.isArray(o.results),
 };
+
+/**
+ * The confidence reason of one comparison cell. Answers saved before tool results were made
+ * compact carry it on the cell itself; newer ones list each reason once in `confidenceReasons`.
+ * @param data - the compare_hubs result.
+ * @param hubId - the cell's hub.
+ * @param hazard - the cell's hazard.
+ * @returns the reason, or null when neither shape has one.
+ */
+export function compareCellReason(data: CompareHubsOutput, hubId: string, hazard: Hazard): string | null {
+  const cell: unknown = data.hubs.find((hub) => hub.hubId === hubId)?.hazards[hazard];
+  if (isObject(cell) && typeof cell.confidenceReason === "string") return cell.confidenceReason;
+  const reasons: unknown = data.confidenceReasons;
+  if (!isObject(reasons)) return null;
+  const key = compareCellKey(hubId, hazard);
+  const match = Object.entries(reasons).find(([, cells]) => Array.isArray(cells) && cells.includes(key));
+  return match ? match[0] : null;
+}
 
 /**
  * The visual kind for a tool name, if it has one.

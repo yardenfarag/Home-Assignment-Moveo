@@ -1,6 +1,7 @@
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
+import { GENERAL_CAVEATS } from "../scoring/caveats";
 import { ctx, score } from "./testFixtures";
 import { runAgent } from "./runAgent";
 
@@ -137,6 +138,39 @@ describe("runAgent", () => {
     );
     expect(onRetry).not.toHaveBeenCalled();
     expect(result.answer.confidence).toBe("high");
+  });
+
+  it("sends each caveat's text once per conversation, yet every answer still lists the caveats (G4)", async () => {
+    // Turn 1: explain_hub_score sends every caveat in full.
+    const turn1 = await runAgent(
+      { message: "Why is Dallas high?", history: [] },
+      { model: new MockLanguageModelV4({ doStream: [toolCallStep("explain_hub_score", { hubId: "dallas" }), answerStep(goodAnswer)] }), modelId: "mock/model", context: ctx },
+    );
+    // Turn 2: a ranking's caveats are all among them, so the model gets them by id only.
+    const rankAnswer = { ...goodAnswer, premiseClaim: null };
+    const turn2 = await runAgent(
+      { message: "And how does it rank?", history: turn1.newMessages },
+      {
+        model: new MockLanguageModelV4({ doStream: [toolCallStep("rank_hubs", { metric: "overall", region: null, order: "most", limit: 1 }), answerStep(rankAnswer)] }),
+        modelId: "mock/model",
+        context: ctx,
+      },
+    );
+    const sentToModel = turn2.newMessages
+      .flatMap((m) => (m.role === "tool" ? m.content : []))
+      .flatMap((part) => (part.type === "tool-result" && part.output.type === "json" ? [part.output.value as { caveats: string[]; caveatsGivenEarlier?: string[] }] : []));
+    expect(sentToModel).toHaveLength(1);
+    expect(sentToModel[0].caveats).toEqual([]);
+    expect(sentToModel[0].caveatsGivenEarlier).toEqual(["general-1", "general-2"]);
+    expect(turn2.answer.limitations).toEqual(expect.arrayContaining([...GENERAL_CAVEATS]));
+    expect((turn2.answer.meta.toolCalls[0].output as { caveats: string[] }).caveats).toEqual(GENERAL_CAVEATS); // the stored call keeps them
+
+    // Turn 3 calls no tools: the caveats named by id in turn 2 still reach the answer.
+    const turn3 = await runAgent(
+      { message: "Remind me of its score?", history: turn2.newMessages },
+      { model: new MockLanguageModelV4({ doStream: [answerStep({ ...goodAnswer, premiseClaim: null })] }), modelId: "mock/model", context: ctx },
+    );
+    expect(turn3.answer.limitations).toEqual(expect.arrayContaining([...GENERAL_CAVEATS]));
   });
 
   it("rejects an over-long message before calling the model", async () => {

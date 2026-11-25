@@ -6,9 +6,11 @@
  * caveats in the final answer must trace back to entries here.
  */
 import type { ModelMessage } from "ai";
+import { standingCaveatCatalog } from "../scoring/caveats";
 import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS, HALF_BLEND } from "../scoring/config";
 import { DAY_METRICS } from "../scoring/dayMetrics";
 import type { Confidence } from "../scoring/types";
+import type { UnitSystem } from "../utils/units";
 import type { ToolCallRecord } from "./answerSchema";
 
 /** Fields every tool output carries so the ledger can read them uniformly. */
@@ -17,8 +19,16 @@ export interface ToolOutputBase {
   hubIds: string[];
   /** Weakest confidence of the data in this result (null when not applicable, e.g. an error). */
   confidence: Confidence | null;
-  /** Standing caveats that apply to this result (G4). */
+  /**
+   * Standing caveats that apply to this result (G4). In what the MODEL sees, a caveat whose text
+   * it already has (from an earlier call of this conversation) is moved to `caveatsGivenEarlier`.
+   */
   caveats: string[];
+  /**
+   * Ids (from `standingCaveatCatalog`) of caveats that also apply to this result but whose text
+   * the model was already given earlier in the conversation. Only in what the model sees.
+   */
+  caveatsGivenEarlier?: string[];
 }
 
 /**
@@ -108,18 +118,38 @@ export function toolOutputsFromHistory(messages: readonly ModelMessage[]): ToolO
 /**
  * Ground truth of one agent turn: this turn's tool results, plus tool results
  * from earlier turns of the same conversation (D25 — follow-ups may reuse them).
+ *
+ * It also keeps tool results small for the model: a standing caveat's text is sent only the
+ * first time the model's context gets it; later results name it by id (`caveatsGivenEarlier`).
+ * The ledger itself always keeps the FULL caveats, so the answer's limitations and the
+ * "numbers must come from tools" check see everything.
  */
 export class ToolLedger {
-  /** Every call of this turn, in order (becomes the answer's `meta.toolCalls`). */
+  /** Every call of this turn, in order (becomes the answer's `meta.toolCalls`, with full caveats). */
   readonly calls: ToolCallRecord[] = [];
-  /** This turn's tool outputs. */
+  /** This turn's tool outputs (full caveats). */
   private readonly outputs: ToolOutputBase[] = [];
-  /** Tool outputs from earlier turns of the conversation (D65). */
+  /** Tool outputs from earlier turns of the conversation (D65), with caveats given by id turned back into text. */
   private historyOutputs: ToolOutputBase[] = [];
   /** Numbers the system prompt states (hub count, this year and last year, D122). */
   private extraKnown: number[] = [];
   /** Keys of calls already started in this answer (duplicate detection, E8). */
   private readonly claimed = new Set<string>();
+  /** Caveat texts the model already has in its context (sent in full this turn or in the loaded history). */
+  private readonly caveatsShown = new Set<string>();
+  /** Standing caveat text → id. */
+  private readonly caveatIdByText: Map<string, string>;
+  /** Standing caveat id → text. */
+  private readonly caveatTextById: Map<string, string>;
+
+  /**
+   * @param units - unit system of this conversation's caveat texts (the app always uses "us", D126).
+   */
+  constructor(units: UnitSystem = "us") {
+    const catalog = standingCaveatCatalog(units);
+    this.caveatIdByText = new Map(catalog.map((c) => [c.text, c.id]));
+    this.caveatTextById = new Map(catalog.map((c) => [c.id, c.text]));
+  }
 
   /**
    * Claims a tool call when it STARTS (so parallel duplicates in one step are caught too).
@@ -145,10 +175,40 @@ export class ToolLedger {
   /**
    * Adds tool results from earlier turns. They count as known hubs and numbers;
    * their confidence and caveats are used only when this turn calls no tools.
+   * Caveats those results name by id are turned back into text (an id this version no longer
+   * knows is skipped). Only caveats whose TEXT is in the history count as already shown to the
+   * model: when the turn that carried a text drops out of the history window, it is sent again.
    * @param messages - conversation history.
    */
   seedFromHistory(messages: readonly ModelMessage[]): void {
-    this.historyOutputs = toolOutputsFromHistory(messages);
+    const outputs = toolOutputsFromHistory(messages);
+    for (const output of outputs) output.caveats.forEach((text) => this.caveatsShown.add(text));
+    this.historyOutputs = outputs.map((output) => {
+      const ids: unknown[] = Array.isArray(output.caveatsGivenEarlier) ? output.caveatsGivenEarlier : [];
+      const earlier = ids.flatMap((id) => (typeof id === "string" ? (this.caveatTextById.get(id) ?? []) : []));
+      return earlier.length > 0 ? { ...output, caveats: [...new Set([...output.caveats, ...earlier])] } : output;
+    });
+  }
+
+  /**
+   * What the MODEL gets for a recorded output: caveats it already has in its context are named
+   * by id instead of repeated (data-dependent caveats outside the catalog are always sent).
+   * Call it once per output, in the order the results reach the model.
+   * @param output - the full tool output (as recorded).
+   * @returns the same output, or a copy with repeated caveats replaced by `caveatsGivenEarlier`.
+   */
+  forModel<T extends ToolOutputBase>(output: T): T {
+    const caveats: string[] = [];
+    const givenEarlier: string[] = [];
+    for (const text of output.caveats) {
+      const id = this.caveatIdByText.get(text);
+      if (id && this.caveatsShown.has(text)) givenEarlier.push(id);
+      else {
+        caveats.push(text);
+        this.caveatsShown.add(text);
+      }
+    }
+    return givenEarlier.length > 0 ? { ...output, caveats, caveatsGivenEarlier: givenEarlier } : output;
   }
 
   /** Current-turn outputs if any, otherwise the earlier ones (for confidence/caveats). */

@@ -73,6 +73,42 @@ export function daysInclusive(start: string, end: string): number {
   return Math.max(0, diff);
 }
 
+/** English month names, January first (index = month − 1). */
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/**
+ * The last day of a calendar month (handles leap years and December).
+ * @param year - the year, e.g. 2024.
+ * @param month - the month, 1–12.
+ * @returns the last day of that month, `YYYY-MM-DD`.
+ */
+export function lastDayOfMonth(year: number, month: number): string {
+  return addDays(`${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`, -1);
+}
+
+/**
+ * A calendar month's short label.
+ * @param month - `YYYY-MM`.
+ * @returns e.g. "Jan 2025".
+ */
+export function monthLabel(month: string): string {
+  return `${MONTH_NAMES[Number(month.slice(5, 7)) - 1].slice(0, 3)} ${month.slice(0, 4)}`;
+}
+
+/**
+ * Calendar days of a month that fall inside a period.
+ * @param month - `YYYY-MM`.
+ * @param start - period start, `YYYY-MM-DD`.
+ * @param end - period end, `YYYY-MM-DD`.
+ * @returns the count (0 when the month is outside the period).
+ */
+export function daysOfMonthInPeriod(month: string, start: string, end: string): number {
+  const first = `${month}-01`;
+  const last = lastDayOfMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)));
+  // ISO dates compare correctly as text; clip the month to the period.
+  return daysInclusive(start > first ? start : first, end < last ? end : last);
+}
+
 /**
  * Returns the earlier of two ISO dates.
  * @param a - first date.

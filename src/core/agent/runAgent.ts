@@ -178,7 +178,7 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
     throw new AgentInputError(`That message is too long for me — please keep it under ${AGENT_LIMITS.maxUserMessageChars.toLocaleString("en-US")} characters.`);
   }
 
-  const ledger = new ToolLedger();
+  const ledger = new ToolLedger(deps.context.units);
   ledger.seedFromHistory(request.history);
   // Facts the system prompt states, so they're known even though no tool returned them: the hub count
   // ("36 hubs") and this year and last year ("Today is …"), which rule 14 asks the agent to name (D122).
