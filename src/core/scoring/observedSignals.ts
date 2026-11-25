@@ -79,6 +79,8 @@ export function countMetricDays(days: DailyWeather[], metricId: DayMetricId): { 
 
 /**
  * Per-year rate of a metric: hits × 365.25 ÷ days with data.
+ * @param days - the days in the window.
+ * @param metricId - which hazard-day metric.
  * @returns the rate (null when no data) and how many days had data.
  */
 function ratePerYear(days: DailyWeather[], metricId: DayMetricId): { rate: number | null; present: number } {
@@ -104,6 +106,11 @@ export function computeObservedSignals(days: DailyWeather[], window: DateWindow)
   const gustWarning = ratePerYear(inWindow, "gust_warning_day");
   const heat = ratePerYear(inWindow, "extreme_heat_day");
 
+  /**
+   * Coverage: the share of the window's days that have a value.
+   * @param present - days with a value.
+   * @returns 0..1.
+   */
   const share = (present: number) => (expectedDays === 0 ? 0 : present / expectedDays);
   return {
     window,

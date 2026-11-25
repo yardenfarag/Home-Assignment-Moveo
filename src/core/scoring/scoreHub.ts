@@ -9,10 +9,15 @@ import { weakestConfidence } from "./confidence";
 import { computeHazardScores } from "./hazards";
 import type { ObservedSignals } from "./observedSignals";
 import { computeOverall, riskLevelFor } from "./overall";
+import { round } from "../utils/stats";
 import { HAZARDS, type FemaSignals, type Hazard, type HubScore } from "./types";
 
-/** Rounds to 1 decimal (published precision). */
-const round1 = (value: number) => Math.round(value * 10) / 10;
+/**
+ * Rounds to 1 decimal (published precision).
+ * @param value - the number.
+ * @returns the rounded number.
+ */
+const round1 = (value: number) => round(value, 1);
 
 /**
  * Scores one hub.

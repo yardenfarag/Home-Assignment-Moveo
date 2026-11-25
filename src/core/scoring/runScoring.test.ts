@@ -87,6 +87,38 @@ describe("runScoring", () => {
     expect(miami.warning).toMatch(/no county area/);
     expect(miami.confidence).toBe("low");
   });
+
+  it("logs and records an unusable FEMA row instead of dropping it silently", async () => {
+    const lines: string[] = [];
+    const deps = makeDeps({
+      getFemaSignalsByHub: vi.fn(async () => ({ signals: new Map(), problems: new Map([["miami", "no county area"]]) })),
+      log: (line) => lines.push(line),
+    });
+    await runScoring({ trigger: "cli" }, deps);
+    expect(lines).toContain("   ⚠️  ScoringDataWarning || miami: unusable FEMA record (no county area) || runScoring || 🐘");
+    const events = vi.mocked(deps.recordEvent).mock.calls.map(([e]) => e);
+    expect(events.find((e) => e.eventType === "scoring.hub_warning" && e.hubId === "miami")).toMatchObject({ level: "warn", message: "unusable FEMA record (no county area)" });
+    const finished = events.find((e) => e.eventType === "scoring.finished")!;
+    expect(finished.level).toBe("warn");
+    expect(finished.payload).toMatchObject({ warnings: expect.arrayContaining([{ hubId: "miami", warning: "unusable FEMA record (no county area)" }]) });
+  });
+
+  it("logs a plain per-hub error in the boundary format", async () => {
+    const lines: string[] = [];
+    await runScoring({ trigger: "cli" }, makeDeps({ log: (line) => lines.push(line) }));
+    expect(lines).toContain("   ❌ ghost: Error || no weather data stored yet (run the ingest first) || runScoring || 🐘");
+  });
+
+  it("warns about a hub whose weather ends days before the other hubs'", async () => {
+    const deps = makeDeps({
+      listActiveHubs: vi.fn(async () => [hub("miami"), hub("tampa")]),
+      getLatestWeatherDate: vi.fn(async (id: string) => (id === "miami" ? "2026-11-24" : "2026-11-19")),
+      getFemaSignalsByHub: vi.fn(async () => ({ signals: new Map([["miami", fema], ["tampa", fema]]), problems: new Map() })),
+    });
+    const summary = await runScoring({ trigger: "cli" }, deps);
+    expect(summary.results.find((r) => r.hubId === "tampa")?.warning).toBe("weather data ends 2026-11-19, 5 days behind the newest hub");
+    expect(summary.results.find((r) => r.hubId === "miami")?.warning).toBeUndefined();
+  });
 });
 
 describe("runScoring alerts (D124)", () => {
@@ -100,6 +132,17 @@ describe("runScoring alerts (D124)", () => {
     expect(summary.alerts).toBe(1);
     const events = vi.mocked(deps.recordEvent).mock.calls.map(([e]) => e);
     expect(events.find((e) => e.eventType === "alert.score_changed")).toMatchObject({ hubId: "miami", payload: { fromScore: 10, fromLevel: "low", test: false } });
+  });
+
+  it("raises no alert for a hub whose FEMA data is missing this run (the drop would be an artifact)", async () => {
+    const deps = makeDeps({
+      getLatestSnapshots: vi.fn(async () => previousMiami(90, "high")),
+      getFemaSignalsByHub: vi.fn(async () => ({ signals: new Map(), problems: new Map([["miami", "no county area"]]) })),
+    });
+    const summary = await runScoring({ trigger: "cron" }, deps);
+    expect(summary.alerts).toBe(0);
+    const finished = vi.mocked(deps.recordEvent).mock.calls.map(([e]) => e).find((e) => e.eventType === "scoring.finished")!;
+    expect(finished.payload).toMatchObject({ alertsSkippedForMissingFema: ["miami", "ghost"] });
   });
 
   it("keeps scoring (no alerts) when the previous scores can't be read", async () => {

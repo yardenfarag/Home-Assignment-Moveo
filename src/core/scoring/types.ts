@@ -7,7 +7,7 @@
  */
 import { z } from "zod";
 
-/** The six hazards we score, in weight order (heaviest first). */
+/** The six hazards we score, in weight order (heaviest first). Mirrors `score_snapshots.top_hazard`. */
 export const HAZARDS = ["hurricane", "winter", "flood", "severeStorms", "wind", "heat"] as const;
 
 /** One of the six scored hazards. */

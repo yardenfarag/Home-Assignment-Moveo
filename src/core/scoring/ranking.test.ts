@@ -13,6 +13,17 @@ describe("competitionRanks", () => {
   });
 });
 
+describe("tie-breaks", () => {
+  it("lists hubs with equal scores by hub id, whatever the input order", () => {
+    const rows = ["c", "a", "b"].map((hubId) => ({ hubId, region: "South" as const, scores: { overall: 100 } }));
+    expect(rankHubs(rows, { metric: "overall", order: "most", limit: 3 }).map((r) => [r.hubId, r.rankAmongAll])).toEqual([
+      ["a", 1],
+      ["b", 1],
+      ["c", 1],
+    ]);
+  });
+});
+
 describe("scoreSpread (E10 — gaps are computed in code, never by the LLM)", () => {
   it("names the highest and lowest and the points between them (rounded to 1 decimal)", () => {
     expect(

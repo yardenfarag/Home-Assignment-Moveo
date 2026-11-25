@@ -20,9 +20,16 @@ import { femaOnlyConfidence, hybridConfidence, type ConfidenceResult } from "./c
 import { linearScore } from "./normalize";
 import type { ObservedSignals } from "./observedSignals";
 import type { FemaSignals, Hazard, HazardScore, SignalInput } from "./types";
+import { round } from "../utils/stats";
 
 /**
  * Builds one scored input. Missing observed values stay null; FEMA "not applicable" (null) scores 0 (D18).
+ * @param signal - machine name of the signal, e.g. `snowDays`.
+ * @param source - observed weather or FEMA.
+ * @param value - the raw per-year value, or null when missing.
+ * @param unit - human unit, e.g. "days/yr".
+ * @param anchor100 - the value that maps to 100.
+ * @param nullMeansZero - true for FEMA, where null means "not applicable" (scores 0), not "missing".
  * @returns the input with its score.
  */
 function input(
@@ -37,15 +44,24 @@ function input(
   return { signal, source, value, unit, anchor100, score: effective === null ? null : linearScore(effective, anchor100) };
 }
 
-/** Max / average of the non-null scores of some inputs (null if none). */
+/**
+ * Max / average of the non-null scores of some inputs.
+ * @param inputs - the scored inputs.
+ * @param how - take the maximum or the average.
+ * @returns the combined score, or null when no input has a score.
+ */
 function combine(inputs: SignalInput[], how: "max" | "avg"): number | null {
   const scores = inputs.map((i) => i.score).filter((s): s is number => s !== null);
   if (scores.length === 0) return null;
   return how === "max" ? Math.max(...scores) : scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
-/** Rounds to 1 decimal (published precision). */
-const round1 = (value: number) => Math.round(value * 10) / 10;
+/**
+ * Rounds to 1 decimal (published precision).
+ * @param value - the number.
+ * @returns the rounded number.
+ */
+const round1 = (value: number) => round(value, 1);
 
 /** How a hazard is built: its two halves and how the sources are cross-checked (D49, D56). */
 interface HazardRecipe {
@@ -114,8 +130,21 @@ export function computeHazardScores(observed: ObservedSignals | null, fema: Fema
   const f = fema ?? ({} as Partial<FemaSignals>);
   const days = "days/yr";
   const events = "events/yr";
+  /**
+   * An observed-weather input (days per year), anchored by OBSERVED_ANCHORS.
+   * @param signal - the observed signal.
+   * @param value - its per-year rate (missing = null).
+   * @returns the scored input.
+   */
   const obs = (signal: keyof typeof OBS, value: number | null | undefined) =>
     input(signal, "observed", value ?? null, days, OBS[signal], false);
+  /**
+   * A FEMA input, anchored by FEMA_ANCHORS_P95 (null = not applicable = 0).
+   * @param signal - the FEMA signal.
+   * @param value - its annualized frequency.
+   * @param unit - its unit (default events/yr).
+   * @returns the scored input.
+   */
   const fem = (signal: keyof typeof FEMA, value: number | null | undefined, unit = events) =>
     input(signal, "fema", value ?? null, unit, FEMA[signal], true);
 

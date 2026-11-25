@@ -13,6 +13,7 @@
  */
 import type { NewEvent } from "../db/eventsRepository";
 import type { RiskLevel } from "../scoring/types";
+import { round } from "../utils/stats";
 
 /** The alert rule: the single source of truth. */
 export const ALERT_RULES = {
@@ -20,6 +21,8 @@ export const ALERT_RULES = {
   scoreChangePoints: 10,
   /** How far back the app shows alerts. */
   showDays: 30,
+  /** At most this many alerts are shown (newest first). */
+  showLimit: 20,
 } as const;
 
 /** Event type for real alerts and for the clearly marked test alert. */
@@ -59,7 +62,7 @@ export function detectScoreChanges(previous: ReadonlyMap<string, Omit<HubResult,
   for (const now of current) {
     const before = previous.get(now.hubId);
     if (!before) continue;
-    const change = Math.round((now.overallScore - before.overallScore) * 10) / 10;
+    const change = round(now.overallScore - before.overallScore, 1);
     if (now.riskLevel !== before.riskLevel || Math.abs(change) >= ALERT_RULES.scoreChangePoints) {
       alerts.push({
         hubId: now.hubId,

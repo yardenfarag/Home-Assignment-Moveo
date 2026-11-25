@@ -11,22 +11,30 @@ import type { SnapshotToSave, StoredSnapshot } from "../db/scoresRepository";
 import type { Hub } from "../domain/hub";
 import type { DailyWeather } from "../domain/weather";
 import { alertEvent, detectScoreChanges } from "../alerts/scoreChanges";
-import { describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
+import { boundaryLogLine, describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
 import { SCORING_VERSION } from "./config";
 import { computeObservedSignals, scoringWindow } from "./observedSignals";
 import { scoreHub } from "./scoreHub";
+import { dataFreshness } from "./staleness";
 import type { Confidence, FemaSignals, RiskLevel } from "./types";
 
 /** Everything scoring needs from the outside world. */
 export interface ScoringDeps {
+  /** The active hubs. */
   listActiveHubs: () => Promise<Hub[]>;
+  /** A hub's newest stored weather day (the end of its scoring window), or null. */
   getLatestWeatherDate: (hubId: string) => Promise<string | null>;
+  /** A hub's weather days in a range. */
   getWeatherDays: (hubId: string, startDate: string, endDate: string) => Promise<DailyWeather[]>;
+  /** FEMA signals per hub, plus the rows that couldn't be used and why. */
   getFemaSignalsByHub: () => Promise<{ signals: Map<string, FemaSignals>; problems: Map<string, string> }>;
+  /** Saves the run's snapshots in one write. */
   saveScoreSnapshots: (snapshots: SnapshotToSave[]) => Promise<number>;
   /** The latest saved snapshots of the current scoring version (the alert baseline, D124). */
   getLatestSnapshots: () => Promise<StoredSnapshot[] | null>;
+  /** Records an event (never throws). */
   recordEvent: (event: NewEvent) => Promise<boolean>;
+  /** Progress output. */
   log: (line: string) => void;
 }
 
@@ -43,7 +51,7 @@ export interface HubScoringResult {
   overallScore?: number;
   riskLevel?: RiskLevel;
   confidence?: Confidence;
-  /** Non-fatal problem (e.g. unusable FEMA row). */
+  /** Non-fatal problems (missing/unusable FEMA row, stale weather), joined with "; ". */
   warning?: string;
   /** Fatal problem: hub not scored. */
   error?: string;
@@ -105,21 +113,29 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
   const previous = await previousResults(deps);
   const snapshots: SnapshotToSave[] = [];
   const results: HubScoringResult[] = [];
+  /** Hubs scored without usable FEMA data this run: a score change there is an artifact, not weather. */
+  const femaMissing = new Set<string>();
 
   for (const hub of hubs) {
-    const result: HubScoringResult = { hubId: hub.id, warning: femaProblems.get(hub.id) };
+    const result: HubScoringResult = { hubId: hub.id };
+    const fema = femaByHub.get(hub.id) ?? null;
+    if (!fema) {
+      femaMissing.add(hub.id);
+      const problem = femaProblems.get(hub.id);
+      await addWarning(hub, result, problem ? `unusable FEMA record (${problem})` : "no FEMA record stored yet", runId, deps);
+    }
     try {
       const latest = await deps.getLatestWeatherDate(hub.id);
       if (latest === null) throw new Error("no weather data stored yet (run the ingest first)");
       const window = scoringWindow(latest);
       const observed = computeObservedSignals(await deps.getWeatherDays(hub.id, window.start, window.end), window);
-      const score = scoreHub(observed, femaByHub.get(hub.id) ?? null);
+      const score = scoreHub(observed, fema);
       snapshots.push({ hubId: hub.id, runId, window, score, observedPerYear: observed.perYear, coverage: observed.coverage });
       Object.assign(result, { overallScore: score.overallScore, riskLevel: score.riskLevel, confidence: score.confidence });
       deps.log(`   ${hub.name.padEnd(16)} ${String(score.overallScore).padStart(5)} ${score.riskLevel.padEnd(6)} top=${score.topHazard} conf=${score.confidence}`);
     } catch (error) {
       result.error = describeUnknownError(error);
-      deps.log(`   ❌ ${hub.name}: ${result.error}`);
+      deps.log(`   ❌ ${hub.name}: ${boundaryLogLine(error, "runScoring", "database")}`);
       await deps.recordEvent({
         eventType: "scoring.hub_failed",
         source: "scoring",
@@ -132,14 +148,24 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
     results.push(result);
   }
 
+  // A hub whose weather ends days before the others' is scored on older data: say so.
+  const freshness = dataFreshness(snapshots.map((s) => ({ hubId: s.hubId, windowEnd: s.window.end })));
+  const hubById = new Map(hubs.map((hub) => [hub.id, hub]));
+  for (const stale of freshness?.staleHubs ?? []) {
+    const result = results.find((r) => r.hubId === stale.hubId)!;
+    await addWarning(hubById.get(stale.hubId)!, result, `weather data ends ${stale.windowEnd}, ${stale.daysBehind} days behind the newest hub`, runId, deps);
+  }
+
   await deps.saveScoreSnapshots(snapshots);
 
-  // Score-change alerts (D124): the "if" lives in detectScoreChanges.
-  const hubName = new Map(hubs.map((hub) => [hub.id, hub.name]));
+  // Score-change alerts (D124): the "if" lives in detectScoreChanges. Hubs without usable
+  // FEMA data this run are left out: their drop would come from the missing data, not the weather.
   const alerts = previous
     ? detectScoreChanges(
         previous,
-        snapshots.map((s) => ({ hubId: s.hubId, hubName: hubName.get(s.hubId) ?? s.hubId, overallScore: s.score.overallScore, riskLevel: s.score.riskLevel })),
+        snapshots
+          .filter((s) => !femaMissing.has(s.hubId))
+          .map((s) => ({ hubId: s.hubId, hubName: hubById.get(s.hubId)?.name ?? s.hubId, overallScore: s.score.overallScore, riskLevel: s.score.riskLevel })),
       )
     : [];
   for (const alert of alerts) {
@@ -155,20 +181,43 @@ export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Pr
     alerts: alerts.length,
     results,
   };
+  /**
+   * How many hubs ended at a risk level.
+   * @param level - the risk level.
+   * @returns the count.
+   */
   const count = (level: RiskLevel) => results.filter((r) => r.riskLevel === level).length;
+  const warnings = results.filter((r) => r.warning).map((r) => ({ hubId: r.hubId, warning: r.warning! }));
   await deps.recordEvent({
     eventType: "scoring.finished",
     source: "scoring",
-    level: summary.hubsFailed > 0 ? "warn" : "info",
+    level: summary.hubsFailed > 0 || warnings.length > 0 ? "warn" : "info",
     correlationId: runId,
-    message: `${summary.hubsScored} hubs scored (${count("high")} high, ${count("medium")} medium, ${count("low")} low), ${summary.hubsFailed} failed`,
+    message: `${summary.hubsScored} hubs scored (${count("high")} high, ${count("medium")} medium, ${count("low")} low), ${summary.hubsFailed} failed, ${warnings.length} with warnings`,
     payload: {
       scoringVersion: SCORING_VERSION,
       hubsScored: summary.hubsScored,
       hubsFailed: summary.hubsFailed,
       alerts: summary.alerts,
       levels: { high: count("high"), medium: count("medium"), low: count("low") },
+      warnings,
+      alertsSkippedForMissingFema: [...femaMissing],
     },
   });
   return summary;
+}
+
+/**
+ * Records a non-fatal problem for one hub: on its result, in the log (boundary format, because
+ * scoring deliberately continues) and as a `scoring.hub_warning` event.
+ * @param hub - the hub.
+ * @param result - the hub's result, updated in place (warnings are joined with "; ").
+ * @param warning - what's wrong, in plain words.
+ * @param runId - the run's correlation id.
+ * @param deps - scoring dependencies.
+ */
+async function addWarning(hub: Hub, result: HubScoringResult, warning: string, runId: string, deps: ScoringDeps): Promise<void> {
+  result.warning = result.warning ? `${result.warning}; ${warning}` : warning;
+  deps.log(`   ⚠️  ${formatBoundaryMessage({ name: "ScoringDataWarning", message: `${hub.name}: ${warning}`, functionName: "runScoring", boundary: "database" })}`);
+  await deps.recordEvent({ eventType: "scoring.hub_warning", source: "scoring", level: "warn", correlationId: runId, hubId: hub.id, message: warning });
 }

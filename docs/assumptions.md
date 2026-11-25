@@ -136,6 +136,7 @@ national value per hazard, close to typical NWS warning levels:
   receives or stores audio, only the resulting text when you press Ask. Recognition can mishear hub names, which is why
   the words fill the box for you to check instead of being sent straight away. Read-aloud uses the voices installed on the
   device, so it sounds different from one device to another.
+- **A hub whose nightly update failed keeps its last good score** (D133). It stays in the overview and the answers with its older date; the overview lists hubs whose data ends 2+ days before the others as stale. A hub without a usable FEMA record that night gets no alert, because its drop would be a data gap, not weather.
 - **Alerts compare each night with the night before.** A score that creeps up slowly (say 2 points a week) never moves
   10 points in one night, so it raises an alert only when it crosses a level cut-off. Dismissing an alert hides it in
   that browser only; there's no login, so no shared state.

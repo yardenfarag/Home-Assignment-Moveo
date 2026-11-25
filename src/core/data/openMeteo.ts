@@ -6,51 +6,47 @@
  *
  * Data is modeled reanalysis (not station measurements) on a ~9–11 km grid.
  * Free tier is non-commercial; attribution (CC BY 4.0) is required.
+ * The variables, units and field names all come from `WEATHER_VARIABLES` (ingestConfig).
  */
 import { z } from "zod";
-import { OPEN_METEO_DAILY_VARIABLES } from "../config/ingestConfig";
+import { OPEN_METEO_DAILY_VARIABLES, WEATHER_VARIABLES } from "../config/ingestConfig";
 import type { DailyWeather } from "../domain/weather";
 import { BoundaryError } from "../errors/boundaryError";
 import { daysInclusive } from "../utils/dates";
-import { fetchJsonWithRetry, type FetchLike, type SleepFn } from "./http";
+import { fetchJsonWithRetry, type HttpDeps } from "./http";
 
+/** The archive endpoint (no API key on the free tier). */
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
 
 /** What to fetch: one point, one date range. */
 export interface ArchiveRequest {
+  /** Point latitude (WGS84). */
   latitude: number;
+  /** Point longitude (WGS84). */
   longitude: number;
   /** IANA timezone, so "a day" is the hub's local calendar day. */
   timezone: string;
+  /** First day `YYYY-MM-DD` (inclusive). */
   startDate: string;
+  /** Last day `YYYY-MM-DD` (inclusive). */
   endDate: string;
 }
 
-/** Expected units — if Open-Meteo ever changes them we fail loudly instead of storing wrong numbers. */
-const EXPECTED_UNITS = {
-  snowfall_sum: "cm",
-  temperature_2m_min: "°C",
-  precipitation_sum: "mm",
-  wind_gusts_10m_max: "km/h",
-  apparent_temperature_max: "°C",
-} as const;
-
+/** One daily array: a value per day, null when the archive has none. */
 const nullableNumbers = z.array(z.number().nullable());
 
-/** Shape of the archive response we rely on. */
+/** Open-Meteo variable name. */
+type OpenMeteoVariable = (typeof WEATHER_VARIABLES)[number]["openMeteo"];
+
+/**
+ * Shape of the archive response we rely on. The units must be exactly ours — if Open-Meteo
+ * ever changes them we fail loudly instead of storing wrong numbers.
+ */
 const archiveResponseSchema = z.object({
-  daily_units: z.object(
-    Object.fromEntries(OPEN_METEO_DAILY_VARIABLES.map((name) => [name, z.literal(EXPECTED_UNITS[name])])) as {
-      [K in keyof typeof EXPECTED_UNITS]: z.ZodLiteral<(typeof EXPECTED_UNITS)[K]>;
-    },
-  ),
+  daily_units: z.object(Object.fromEntries(WEATHER_VARIABLES.map((v) => [v.openMeteo, z.literal(v.unit)])) as Record<OpenMeteoVariable, z.ZodLiteral<string>>),
   daily: z.object({
     time: z.array(z.string()),
-    snowfall_sum: nullableNumbers,
-    temperature_2m_min: nullableNumbers,
-    precipitation_sum: nullableNumbers,
-    wind_gusts_10m_max: nullableNumbers,
-    apparent_temperature_max: nullableNumbers,
+    ...(Object.fromEntries(WEATHER_VARIABLES.map((v) => [v.openMeteo, nullableNumbers])) as Record<OpenMeteoVariable, typeof nullableNumbers>),
   }),
 });
 
@@ -93,46 +89,36 @@ export function estimateCallWeight(days: number, variableCount: number = OPEN_ME
 export function parseArchiveResponse(json: unknown): DailyWeather[] {
   const { daily } = archiveResponseSchema.parse(json);
   const length = daily.time.length;
-  for (const name of OPEN_METEO_DAILY_VARIABLES) {
-    if (daily[name].length !== length) throw new Error(`Open-Meteo array '${name}' has ${daily[name].length} values, expected ${length}`);
+  for (const { openMeteo } of WEATHER_VARIABLES) {
+    if (daily[openMeteo].length !== length) throw new Error(`Open-Meteo array '${openMeteo}' has ${daily[openMeteo].length} values, expected ${length}`);
   }
 
-  const days: DailyWeather[] = daily.time.map((date, i) => ({
-    date,
-    snowfallCm: daily.snowfall_sum[i],
-    tempMinC: daily.temperature_2m_min[i],
-    precipitationMm: daily.precipitation_sum[i],
-    windGustMaxKmh: daily.wind_gusts_10m_max[i],
-    apparentTempMaxC: daily.apparent_temperature_max[i],
-  }));
+  const days: DailyWeather[] = daily.time.map(
+    (date, i) => ({ date, ...Object.fromEntries(WEATHER_VARIABLES.map((v) => [v.field, daily[v.openMeteo][i]])) }) as DailyWeather,
+  );
 
   let end = days.length;
   while (end > 0 && isEmptyDay(days[end - 1])) end--;
   return days.slice(0, end);
 }
 
-/** True when a day has no values at all. */
+/**
+ * True when a day has no values at all (derived from the variable list, so a new variable can't be forgotten).
+ * @param day - one parsed day.
+ * @returns true when every weather value is null.
+ */
 function isEmptyDay(day: DailyWeather): boolean {
-  return (
-    day.snowfallCm === null &&
-    day.tempMinC === null &&
-    day.precipitationMm === null &&
-    day.windGustMaxKmh === null &&
-    day.apparentTempMaxC === null
-  );
+  return WEATHER_VARIABLES.every((v) => day[v.field] === null);
 }
 
 /**
  * Fetches daily weather for one point and date range.
  * @param request - point, timezone and date range.
- * @param deps - injectable fetch/sleep for tests.
+ * @param deps - injectable fetch/sleep/log and an optional deadline.
  * @returns validated days, oldest first.
  * @throws BoundaryError (openMeteo) on HTTP failure or an unexpected response.
  */
-export async function fetchDailyWeather(
-  request: ArchiveRequest,
-  deps: { fetchImpl?: FetchLike; sleepImpl?: SleepFn } = {},
-): Promise<DailyWeather[]> {
+export async function fetchDailyWeather(request: ArchiveRequest, deps: HttpDeps = {}): Promise<DailyWeather[]> {
   if (daysInclusive(request.startDate, request.endDate) === 0) return [];
   const json = await fetchJsonWithRetry({
     url: buildArchiveUrl(request),

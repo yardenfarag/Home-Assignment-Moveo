@@ -35,7 +35,11 @@ describe("computeWaitMs", () => {
   });
 
   it("refuses a request heavier than a whole window", () => {
-    expect(() => computeWaitMs([], 0, 150, limits)).toThrow(/exceeds the 1-minute limit/);
+    expect(() => computeWaitMs([], 0, 150, limits)).toThrow("Request weight 150 exceeds the per-minute limit of 100");
+  });
+
+  it("names the daily window in plain words", () => {
+    expect(() => computeWaitMs([], 0, 1_500, { perMinute: 2_000, perHour: 2_000, perDay: 1_000 })).toThrow("exceeds the daily limit of 1000");
   });
 });
 

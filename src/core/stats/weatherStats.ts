@@ -29,9 +29,15 @@ export interface DataBounds {
   latest: string;
 }
 
+/** English month names, January first (index = month − 1). */
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** @returns the last day of a month, `YYYY-MM-DD`. */
+/**
+ * The last day of a calendar month (handles leap years and December).
+ * @param year - the year, e.g. 2024.
+ * @param month - the month, 1–12.
+ * @returns the last day of that month, `YYYY-MM-DD`.
+ */
 function lastDayOfMonth(year: number, month: number): string {
   return addDays(`${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`, -1);
 }

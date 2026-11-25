@@ -32,7 +32,7 @@ function respond(status: number, body: unknown): Response {
 }
 
 describe("fetchJsonWithRetry", () => {
-  const base = { url: "https://x.test", boundary: "openMeteo" as const, functionName: "f", errorName: "TestError" };
+  const base = { url: "https://x.test", boundary: "openMeteo" as const, functionName: "f", errorName: "TestError", log: () => {} };
 
   it("returns JSON on success", async () => {
     const fetchImpl: FetchLike = vi.fn(async () => respond(200, { ok: 1 }));
@@ -66,5 +66,56 @@ describe("fetchJsonWithRetry", () => {
       /network error: ECONNRESET/,
     );
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("logs every retry in the boundary format", async () => {
+    const log = vi.fn();
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(respond(503, "busy"))
+      .mockResolvedValueOnce(respond(200, { ok: 3 }));
+    await fetchJsonWithRetry({ ...base, fetchImpl, sleepImpl: noSleep, backoffMs: [2_000], log });
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0][0]).toBe("TestError || Attempt 1 of 2 failed (HTTP 503: busy); retrying in 2 s || f || 🐸");
+  });
+
+  it("caps a huge Retry-After instead of sleeping for an hour", async () => {
+    const sleeps: number[] = [];
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(new Response("slow down", { status: 429, headers: { "retry-after": "3600" } }))
+      .mockResolvedValueOnce(respond(200, { ok: 4 }));
+    await fetchJsonWithRetry({ ...base, fetchImpl, sleepImpl: async (ms) => void sleeps.push(ms), backoffMs: [1], log: () => {} });
+    expect(sleeps).toEqual([30_000]);
+  });
+
+  it("fails at once, without retrying, when a 200 body is not JSON (e.g. a maintenance page)", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => new Response("<!DOCTYPE html><p>Maintenance</p>", { status: 200, headers: { "content-type": "text/html" } }));
+    await expect(fetchJsonWithRetry({ ...base, fetchImpl, sleepImpl: noSleep, backoffMs: [1, 1] })).rejects.toThrow(
+      /^InvalidJsonResponseError \|\| The server answered 200 but not with JSON \(content-type text\/html\): <!DOCTYPE html>.* \|\| f \|\| 🐸$/,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops retrying when the next wait would pass the deadline", async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn<FetchLike>(async () => respond(500, "down"));
+    const run = fetchJsonWithRetry({
+      ...base,
+      fetchImpl,
+      sleepImpl: async (ms) => void (clock += ms),
+      backoffMs: [1_000, 10_000],
+      now: () => clock,
+      deadlineAt: 5_000,
+      log: () => {},
+    });
+    await expect(run).rejects.toThrow(/HTTP 500: down; out of time budget, not retried/);
+    expect(fetchImpl).toHaveBeenCalledTimes(2); // the 10 s wait after the 2nd attempt would end past the deadline
+  });
+
+  it("starts no request at all once the deadline has passed", async () => {
+    const fetchImpl = vi.fn<FetchLike>();
+    await expect(fetchJsonWithRetry({ ...base, fetchImpl, deadlineAt: 0, now: () => 1 })).rejects.toThrow(/not started; out of time budget/);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

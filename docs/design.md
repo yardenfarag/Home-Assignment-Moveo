@@ -87,7 +87,7 @@ Five layers, each in code:
 
 1. **Tools do all the math.** The LLM can't compute a score. It has to call a tool, and the tool returns finished
    numbers from tested functions. Even differences between hubs are computed for it: `rank_hubs` returns a `spread`,
-   and `compare_hubs` returns `gaps` ([`scoreSpread`](../src/core/scoring/ranking.ts#L89), D98).
+   and `compare_hubs` returns `gaps` ([`scoreSpread`](../src/core/scoring/ranking.ts#L91), D98).
 2. **Every input and output has a strict shape (Zod).** Each tool's input is a Zod schema, and so is the final answer
    the LLM must return: [`llmAnswerSchema`](../src/core/agent/answerSchema.ts#L28). It has the answer text, hubs
    mentioned, the numbers used, the premise claim, confidence, assumptions, limitations, follow-ups, an optional
@@ -183,7 +183,7 @@ All numbers live in one file, [src/core/scoring/config.ts](../src/core/scoring/c
   - **Observed weather:** days over a threshold in the last 5 years, from Open-Meteo. Example: snow days ≥ 1 cm.
   - **FEMA's long-term frequency** for the hub's county.
 
-  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L110)).
+  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L126)).
   FEMA counts events per county, so big counties look riskier just for being big. Tornadoes are therefore counted per
   1,000 sq mi (D53), and so is inland flood since scoring v2, with the area never less than a typical county's (D123).
 - **Overall = 0.6 × weighted average + 0.4 × worst hazard** ([`computeOverall`](../src/core/scoring/overall.ts#L24)).
@@ -192,7 +192,7 @@ All numbers live in one file, [src/core/scoring/config.ts](../src/core/scoring/c
 - **Confidence** (High / Medium / Low) is computed, not guessed ([`hybridConfidence`](../src/core/scoring/confidence.ts#L40)).
   It drops when data is missing, or when the two sources **disagree** by more than 40 points. The check compares like
   with like (D56).
-- **Putting it together:** [`scoreHub`](../src/core/scoring/scoreHub.ts#L23) returns a full, explainable breakdown, so
+- **Putting it together:** [`scoreHub`](../src/core/scoring/scoreHub.ts#L28) returns a full, explainable breakdown, so
   the agent can say exactly where every point came from.
 
 What the score does and doesn't mean (it measures exposure, not losses) is spelled out in [assumptions.md](assumptions.md).
@@ -204,18 +204,18 @@ Vercel Cron 06:00 UTC ─► GET /api/cron/ingest ─► runIngestThenScore
                                                    │             (+ re-fetch the last 7, which the source revises)
                                                    └─ runScoring: re-score all 36 hubs → new score snapshot
 ```
-- **Ingest** ([`runIngest`](../src/core/ingest/runIngest.ts#L131)) is **incremental**. For each hub it works out which
-  days are missing ([`planWeatherRange`](../src/core/ingest/planWeatherRange.ts#L34)), fetches them from Open-Meteo
-  ([`fetchDailyWeather`](../src/core/data/openMeteo.ts#L132)), and stores them. FEMA data is fetched once per hub
-  ([`fetchFemaCountyByPoint`](../src/core/data/femaNri.ts#L124)). A rate limiter keeps us under 90% of Open-Meteo's free
-  limits ([`WeightedRateLimiter`](../src/core/ingest/rateLimiter.ts#L62)). That's why the first full load (5 years ×
+- **Ingest** ([`runIngest`](../src/core/ingest/runIngest.ts#L204)) is **incremental**. For each hub it works out which
+  days are missing ([`planWeatherRange`](../src/core/ingest/planWeatherRange.ts#L39)), fetches them from Open-Meteo
+  ([`fetchDailyWeather`](../src/core/data/openMeteo.ts#L121)), and stores them. FEMA data is fetched once per hub
+  ([`fetchFemaCountyByPoint`](../src/core/data/femaNri.ts#L145)). A rate limiter keeps us under 90% of Open-Meteo's free
+  limits ([`WeightedRateLimiter`](../src/core/ingest/rateLimiter.ts#L65)). That's why the first full load (5 years ×
   36 hubs) takes about an hour, while the nightly top-up takes seconds.
-- **Scoring** ([`runScoring`](../src/core/scoring/runScoring.ts#L94)) reads the stored data, scores every hub and saves a
+- **Scoring** ([`runScoring`](../src/core/scoring/runScoring.ts#L102)) reads the stored data, scores every hub and saves a
   snapshot per hub. A hub that failed to ingest is still scored on the data it already has.
-- **The nightly job** ([`GET`](../src/app/api/cron/ingest/route.ts#L21)) runs both
-  ([`runIngestThenScore`](../src/core/pipeline/runIngestThenScore.ts#L23)). It's scheduled in [vercel.json](../vercel.json)
+- **The nightly job** ([`GET`](../src/app/api/cron/ingest/route.ts#L27)) runs both
+  ([`runIngestThenScore`](../src/core/pipeline/runIngestThenScore.ts#L58)). It's scheduled in [vercel.json](../vercel.json)
   and protected by a secret only Vercel sends (`CRON_SECRET`).
-- **Score-change alerts** (bonus, D124). After each re-score, [`detectScoreChanges`](../src/core/alerts/scoreChanges.ts#L57)
+- **Score-change alerts** (bonus, D124). After each re-score, [`detectScoreChanges`](../src/core/alerts/scoreChanges.ts#L60)
   compares every hub with its previous score from the same scoring version. If the risk level changed or the score moved
   10+ points, an `alert.score_changed` event is saved. The app shows these in a "Recent changes" card
   (`GET /api/alerts`, last 30 days), and each one can be dismissed (remembered per browser). `npm run alerts:test`

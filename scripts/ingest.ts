@@ -7,6 +7,7 @@
  * Then re-scores every hub under the same run id (D54).
  * `--refresh-fema` re-fetches FEMA records for all hubs.
  */
+import { listEvents } from "../src/core/db/eventsRepository";
 import { createIngestDeps } from "../src/core/ingest/createIngestDeps";
 import { runIngestThenScore } from "../src/core/pipeline/runIngestThenScore";
 import { createScoringDeps } from "../src/core/scoring/createScoringDeps";
@@ -26,10 +27,15 @@ async function main(): Promise<void> {
   const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`);
   log("🦉 Ingest started");
   const refreshFema = process.argv.includes("--refresh-fema") || process.env.npm_config_refresh_fema === "true";
-  const { ingest, scoring } = await runIngestThenScore(
+  const result = await runIngestThenScore(
     { trigger: "cli", hubIds: parseHubIds(), refreshFema },
-    { ingest: createIngestDeps(log), scoring: createScoringDeps(log) },
+    { ingest: createIngestDeps(log), scoring: createScoringDeps(log), guard: { listEvents: (query) => listEvents(query), now: () => new Date() } },
   );
+  if (result.status === "skipped") {
+    log(`😺 Another run (${result.runningRunId}, started ${result.runningSince}) is still in progress — nothing done. Try again when it has finished.`);
+    process.exit(1);
+  }
+  const { ingest, scoring } = result;
   log(
     `🏁 Done — ${ingest.hubsProcessed} hubs, ${ingest.hubsFailed} failed, ` +
       `${ingest.weatherRowsSaved} weather rows, ${ingest.femaRecordsSaved} FEMA records; ` +
