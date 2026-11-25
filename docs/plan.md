@@ -73,6 +73,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 14 | Three-panel layout that fits the screen, themed scrollbars, phone tabs (D125); US units only (D126) | — |
 | 15 | Voice (bonus): the mic fills the box, voice answers read aloud, 🔊 on every answer (D127); conversation mode + pointer cursors (D128); mic button removed, cleaner read-aloud (D129) | — |
 | 16 | Evals from the UI: Answer quality line + dialog, confirmation with the limits, live progress, 1 run per 30 min and 4 per day for everyone (done: D130) | `JUDGE_MODEL` (now also in Vercel) |
+| 17 | Code review fixes, 5 PRs: 1 session log privacy (D131) · 2 agent and API · 3 data pipeline · 4 frontend · 5 evals, scripts, JSDoc and DRY | — |
 
 ## Later (order to be chosen)
 Reviewed together after Step 11:
