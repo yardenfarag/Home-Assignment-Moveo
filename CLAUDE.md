@@ -108,3 +108,7 @@ Each one: *next time you see X → do Y*.
    ("aren’t") and different phrasings; two of Terra's three "failures" were our regexes.
 23. **Validating an LLM judge** → plant a known-good answer as well as known-bad ones, and check for self-contradicting
    verdicts. A judge that fails everything passes a bad-answers-only test (Qwen flipped its scale on 105 of 160).
+24. **Buttons show the arrow cursor instead of the hand** → Tailwind v4's reset no longer sets `cursor: pointer` on
+   buttons (v3 did). Screenshots never show cursors, so measure `getComputedStyle(el).cursor` in the browser.
+25. **A custom `@layer base { … }` rule has no effect** → check the built CSS (`.next/static/chunks/*.css`). Tailwind
+   v4's Turbopack loader silently dropped our custom base block, while `@layer components` survived.

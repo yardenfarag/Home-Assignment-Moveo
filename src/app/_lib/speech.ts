@@ -27,8 +27,8 @@ export interface RecognizerHandlers {
   /** The words heard so far in this session (interim and final). */
   onText: (text: string) => void;
   onEnd: () => void;
-  /** A friendly message for the person (e.g. microphone blocked). */
-  onError: (message: string) => void;
+  /** A friendly message for the person (e.g. microphone blocked), and the browser's error code. */
+  onError: (message: string, code: string) => void;
 }
 
 type RecognitionCtor = new () => {
@@ -83,7 +83,7 @@ export function createRecognizer(handlers: RecognizerHandlers): Recognizer | nul
   };
   recognition.onerror = (event) => {
     const message = RECOGNITION_ERRORS[event.error];
-    if (message) handlers.onError(message);
+    if (message) handlers.onError(message, event.error);
   };
   recognition.onend = () => handlers.onEnd();
   return { start: () => recognition.start(), stop: () => recognition.stop() };
@@ -106,8 +106,12 @@ export function speakableText(markdown: string): string {
     .replace(/\s*·\s*/g, ", ")
     .replace(/\s*\n+\s*/g, ". ")
     .replace(/\.\s*\./g, ".")
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "") // emoji (🐱 would be read as "cat face")
     .replace(/\s{2,}/g, " ")
-    .trim();
+    .trim()
+    // A closing "For example:" introduces clickable chips on screen, not words to read (D129).
+    .replace(/\s*(for example|e\.g\.|such as)\s*:\s*$/i, "")
+    .replace(/:\s*$/, ".");
 }
 
 // --- What is being read aloud right now (one thing at a time) ---------------------------
