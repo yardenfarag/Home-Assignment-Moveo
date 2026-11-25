@@ -79,6 +79,8 @@ export async function countEvents(query: EventCountQuery, db: Db = getDb()): Pro
 export interface StoredEvent {
   id: string;
   eventType: string;
+  /** Groups the events of one run (e.g. an eval run's start and finish). */
+  correlationId: string | null;
   hubId: string | null;
   message: string | null;
   payload: Json;
@@ -95,7 +97,7 @@ export interface StoredEvent {
 export async function listEvents(query: { eventType: string; since: string; limit: number }, db: Db = getDb()): Promise<StoredEvent[]> {
   const { data, error } = await db
     .from("events")
-    .select("id, event_type, hub_id, message, payload, created_at")
+    .select("id, event_type, correlation_id, hub_id, message, payload, created_at")
     .eq("event_type", query.eventType)
     .gte("created_at", query.since)
     .order("created_at", { ascending: false })
@@ -103,7 +105,7 @@ export async function listEvents(query: { eventType: string; since: string; limi
   if (error) {
     throw new BoundaryError({ name: "EventListError", message: `Could not list '${query.eventType}' events: ${error.message}`, functionName: "listEvents", boundary: "database", cause: error });
   }
-  return data.map((row) => ({ id: String(row.id), eventType: row.event_type, hubId: row.hub_id, message: row.message, payload: row.payload, createdAt: row.created_at }));
+  return data.map((row) => ({ id: String(row.id), eventType: row.event_type, correlationId: row.correlation_id, hubId: row.hub_id, message: row.message, payload: row.payload, createdAt: row.created_at }));
 }
 
 /**

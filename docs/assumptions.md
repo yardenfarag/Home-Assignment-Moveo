@@ -139,6 +139,9 @@ national value per hazard, close to typical NWS warning levels:
 - **Alerts compare each night with the night before.** A score that creeps up slowly (say 2 points a week) never moves
   10 points in one night, so it raises an alert only when it crosses a level cut-off. Dismissing an alert hides it in
   that browser only; there's no login, so no shared state.
+- **Eval runs from the app are shared by everyone** (D130): one every 30 minutes, 4 per day. One visitor can use up the
+  day's runs, and others then see when the next one is possible. A run is paid from the same OpenRouter key as the
+  answers. The "last run" shown is the latest saved one, from the app or from `npm run eval`, so it can be days old.
 - **There is no login** (D113). Anyone with the link can ask questions, and every answer is paid from the same OpenRouter
   key. Request limits cap the damage: 20 questions per 10 minutes and 100 per day per visitor, 300 per day in total
   (D114). Someone switching IP addresses can get around the per-visitor limits, but not the daily total. If the key's

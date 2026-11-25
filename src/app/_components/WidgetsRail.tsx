@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { RISK_LEVEL_CUTOFFS } from "@/core/scoring/config";
 import type { WidgetsData } from "@/core/widgets/widgetsData";
 import { HAZARD_UI, LEVEL_UI, relativeTime } from "../_lib/labels";
+import { EvalQualityRow } from "./EvalQuality";
 import { LevelChip } from "./LevelChip";
 import { RecentChanges } from "./RecentChanges";
 
@@ -76,7 +77,7 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
   }
 
   const button =
-    "w-full rounded-lg px-2 py-[3px] text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
+    "w-full rounded-lg px-2 py-[2px] text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
   return (
     <div className={RAIL}>
       <RecentChanges onAsk={onAsk} />
@@ -139,6 +140,7 @@ export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
             <dt>Hazard data</dt>
             <dd className="text-right text-slate-300">{data.dataStatus.femaVersion}</dd>
           </div>
+          <EvalQualityRow />
         </dl>
       </Panel>
     </div>

@@ -169,7 +169,7 @@ Step by step, with the code:
    they fail, the browser shows "Double-checking my numbers…" while the LLM gets one retry.
 9. **Saved and logged.** The turn, including tool results, is saved for follow-ups
    ([`saveTurn`](../src/core/db/chatRepository.ts#L94)), and an `agent.answered` event is logged with the tools used,
-   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L115)).
+   tokens and confidence ([`recordEvent`](../src/core/db/eventsRepository.ts#L117)).
 10. **The browser shows the checked answer.** Visuals (score breakdown, comparison grid, monthly pattern) are drawn
    **from the tool results**, not from anything the LLM wrote ([src/app/_components/visuals/](../src/app/_components/visuals/)).
 
@@ -328,6 +328,10 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
 - **An independent judge** (an LLM from a different provider, `google/gemini-3.5-flash-lite`) grades each answer
   against the exact tool results ([`judgeAnswer`](../src/core/judge/judgeAnswer.ts#L122)). It's tested before every run
   with planted good and bad answers ([`judgeSelfTest`](../evals/lib/judging.ts#L96)).
+- **Evals can also run from the app** (D130): the overview's *Answer quality* line opens a dialog, and after a
+  confirmation [`runEvalSuite`](../evals/lib/suite.ts#L130) runs the same cases 3 at a time and streams each result.
+  Runs are limited for everyone together ([`EVAL_RUN_LIMITS`](../src/core/api/evalGate.ts#L13), decided by
+  [`decideEvalGate`](../src/core/api/evalGate.ts#L43)), counted from events, with no new table.
 - **The model was picked by measurement.** 9 models were screened, then 4 finalists ran 3 times each, with the rule
   *never wrong on data → most accurate → cheapest → fastest*. `openai/gpt-6.1-terra` won: 39/39, about $0.01 per answer
   ([bakeoff.md](bakeoff.md)). The latest results are in [evals.md](evals.md), and real answers in [examples.md](examples.md).

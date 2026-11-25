@@ -167,6 +167,8 @@ The app has no login, so every route is open, except the nightly job, which need
 | `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |
 | `GET /api/alerts` | Score-change alerts of the last 30 days (a hub's level changed, or its score moved 10+ points) |
 | `POST /api/alerts/test` | Records one clearly marked test alert (for demos). Needs `Authorization: Bearer <CRON_SECRET>` |
+| `GET /api/evals/latest` | The latest eval run (from the app or `npm run eval`) and whether a new run can start now |
+| `POST /api/evals/run` | Run the evals from the app. Streams one JSON line per event (start, judge self-test, each question, done). Limited for everyone together: 1 run per 30 minutes, 4 per day, never two at once (429 with the time the next run is possible) |
 | `GET /api/cron/ingest` | The nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>` |
 
 Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`. `POST /api/chat` answers
@@ -199,6 +201,9 @@ npm run eval -- --publish                      # also write docs/evals.md
 - **Soft metrics:** tool calls, duplicates, untraced numbers, retries, latency, tokens, cost.
 - Prints pass/fail per case and a total, and exits 1 on any failure. Latest results: [docs/evals.md](docs/evals.md).
   How the model was chosen: [docs/bakeoff.md](docs/bakeoff.md).
+- **From the app:** *Overview → About the data → Answer quality* shows the last run and opens a dialog with each
+  question's result. **Run evals…** asks for confirmation (it lists the shared limits: 1 run per 30 minutes, 4 per day),
+  then shows progress question by question. A run from the app takes about a minute.
 
 **The guard has its own eval:** `npm run eval:guard` (add `-- --repeat=3` to check stability, `-- --publish` to write
 [docs/guard-evals.md](docs/guard-evals.md)). It runs 32 messages through the real guard: the brief's questions, terse
