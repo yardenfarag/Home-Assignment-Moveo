@@ -31,6 +31,8 @@ npm run dev                    # http://localhost:3000
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint (includes the rule keeping `src/core` free of Next.js) |
 | `npm run db:check` | Connect to Supabase and list hubs per region |
+| `npm run ingest` | Fetch FEMA + Open-Meteo data for all active hubs (incremental; the first full load takes about 1 h because of Open-Meteo's rate limits) |
+| `npm run ingest -- --hub=dallas,denver` | Same, for selected hubs only |
 | `npm run session:export -- <file.jsonl>` | Export the AI session log to `docs/session/` (scrubbed) |
 
 ## Database

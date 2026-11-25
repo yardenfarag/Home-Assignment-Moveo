@@ -21,7 +21,7 @@ The agent repeats the relevant parts in its answers (the `assumptions` and `limi
 ## Data sources & their limits
 | Source | Used for | Limits |
 |---|---|---|
-| [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) | Daily snowfall, min temperature, precipitation, max wind gust, max apparent temperature, 2021-01-01 → newest | It's **modeled reanalysis, not station measurements**: it smooths peaks, so wind gusts in particular are underestimated. Newest days lag about 5 days and are revised. The free tier is **non-commercial**: a real deployment needs a paid plan. Data is licensed CC-BY 4.0 (attribution shown in the UI). |
+| [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) | Daily snowfall, min temperature, precipitation, max wind gust, max apparent temperature, 2021-01-01 → yesterday, in each hub's local calendar day | It's **modeled reanalysis, not station measurements**: it smooths peaks, so wind gusts in particular are underestimated. The last few days are **preliminary** and get revised, so we re-fetch the last 7 every night. The free tier is **non-commercial**: a real deployment needs a paid plan. Data is licensed CC-BY 4.0 (attribution shown in the UI). |
 | [FEMA National Risk Index v1.20 (Dec 2025)](https://hazards.fema.gov/nri/data-resources) via its public [ArcGIS county service](https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Counties/FeatureServer/0) | Annualized frequency of hurricane, tornado, hail, inland and coastal flooding, ice storm, winter weather, cold wave, heat wave, strong wind | County-level. Built from long historical records, so it **changes slowly** and won't reflect last year's events. Riverine flood is now called `IFLD` (Inland Flooding). |
 
 ## Time window
@@ -40,7 +40,7 @@ national value per hazard, close to typical NWS warning levels:
 | Extreme cold day | min temp ≤ −18 °C (0 °F) | Extreme Cold Warning (replaced Wind Chill Warning on 2024-10-01, [NWS](https://www.weather.gov/news/243009-cold-hazard-simplification)). Locally set, from about 0 °F (South) to −35 °F (North) | Uses air temperature, not wind chill |
 | Heavy rain day | ≥ 50 mm (~2 in) | **No NWS daily rain threshold**: flood warnings are impact-based. NOAA tracks heavy days as the top 1% locally ([USGCRP](https://www.globalchange.gov/indicators/heavy-precipitation)) | Arid hubs rarely reach 50 mm. Their flash-flood exposure comes through FEMA |
 | High wind day | gust ≥ 93 km/h (58 mph) | High Wind Warning: sustained ≥ 40 mph or gusts ≥ 58 mph ([NWSI 10-515](https://www.weather.gov/media/directives/010_pdfs/pd01005015curr.pdf)) | Exact match |
-| Wind advisory day | gust ≥ 72 km/h (45 mph) | Wind Advisory: sustained 30–39 mph (NWSI 10-515). The 45 mph gust value is our own choice | Added because modeled gusts run low. Confirmed in Step 2 |
+| Wind advisory day | gust ≥ 72 km/h (45 mph) | Wind Advisory: sustained 30–39 mph (NWSI 10-515). The 45 mph gust value is our own choice | **The wind signal we actually score on.** The Step 2 check over 5 years: warning-level days were 0–1/yr (13 of 36 hubs at 0, because modeled data smooths peaks, though single storms do show up, e.g. Tampa 153 km/h during Hurricane Milton), while advisory days were 0.2–8.6/yr |
 | Extreme heat day | apparent temp max ≥ 40 °C (~105 °F) | Extreme Heat Warning (renamed from Excessive Heat Warning 2025-03-04, [NWS](https://www.weather.gov/news/250310-heat-hazard)): heat index ~105–110 °F, locally set | Open-Meteo's "apparent temperature" is a different formula from the NWS heat index |
 
 ## Out of scope (Phase 1)
@@ -52,6 +52,11 @@ national value per hazard, close to typical NWS warning levels:
   hazards in our brief).
 - Forecasts and live alerts. Phase 1 is historical exposure only.
 - Cities that aren't in our hub list. The agent says so instead of guessing.
+
+## Operational limits of the demo deployment
+- The OpenRouter key has a **$20 credit cap** and **expires 7 days after creation (around 2026-12-02)**.
+  After that the agent can't answer until a new key is set in Vercel's environment variables.
+- Open-Meteo's free tier is per-IP and non-commercial. A production version needs their paid API.
 
 ## Uncertainty the agent communicates
 - **Confidence** (High / Medium / Low) is computed in code from data completeness (≥95% of days present) and
