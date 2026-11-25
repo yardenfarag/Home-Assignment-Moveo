@@ -11,6 +11,7 @@ import { riskLevelFor } from "../../scoring/overall";
 import { competitionRanks, scoreSpread } from "../../scoring/ranking";
 import { HAZARDS, type Hazard } from "../../scoring/types";
 import type { AgentContext } from "../context";
+import { compareCellKey } from "./compareCells";
 import { hubLabel, runTool, type HubIdSchema, type ToolRuntime } from "./shared";
 
 /**
@@ -52,6 +53,8 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
     hazards.map((h) => [h, competitionRanks(all.map((s) => ({ id: s.hubId, score: s.hazards[h].score })))]),
   ) as Record<Hazard, Map<string, number>>;
 
+  // The same few reasons repeat across cells, so each reason text is listed once with the cells it applies to.
+  const confidenceReasons: Record<string, string[]> = {};
   const hubs = input.hubIds.map((hubId) => {
     const snapshot = ctx.snapshotByHub.get(hubId);
     if (!snapshot) throw new Error(`No score available for hub "${hubId}".`);
@@ -65,6 +68,7 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
       hazards: Object.fromEntries(
         hazards.map((h) => {
           const hz = snapshot.hazards[h];
+          (confidenceReasons[hz.confidenceReason] ??= []).push(compareCellKey(hubId, h));
           return [
             h,
             {
@@ -74,7 +78,6 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
               observedScore: hz.observedScore,
               femaScore: hz.femaScore,
               confidence: hz.confidence,
-              confidenceReason: hz.confidenceReason,
             },
           ];
         }),
@@ -86,6 +89,8 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
   return {
     totalHubs: all.length,
     hubs,
+    /** Reason text → the cells ("hubId/hazard") whose confidence it explains. */
+    confidenceReasons,
     /** Gaps between the compared hubs, computed in code — quote these instead of subtracting (E10). */
     gaps: {
       overall: spreadOf((id) => ctx.snapshotByHub.get(id)!.overallScore),

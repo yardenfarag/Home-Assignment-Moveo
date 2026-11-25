@@ -51,22 +51,24 @@ export function rankHubsOutput(ctx: AgentContext, input: { metric: RankMetric; r
     scores: { overall: s.overallScore, ...Object.fromEntries(HAZARDS.map((h) => [h, s.hazards[h].score])) },
   }));
   const ranked = rankHubs(rows, { metric, region: input.region ?? undefined, order: input.order, limit: input.limit });
+  // Kept small (every later step pays for it again): facts shared by all rows are stated once at
+  // the top, a row's region only when the list spans regions, its rank within the region only when
+  // there is one, and a confidence reason only when the confidence isn't high (prompt rule 4).
   const results = ranked.map((r) => {
     const snapshot = ctx.snapshotByHub.get(r.hubId)!;
     const hazard = metric === "overall" ? null : snapshot.hazards[metric];
+    const confidence = hazard ? hazard.confidence : snapshot.confidence;
     return {
       hubId: r.hubId,
       hub: hubLabel(ctx.hubById.get(r.hubId)!),
-      region: ctx.hubById.get(r.hubId)!.region,
+      ...(input.region ? {} : { region: ctx.hubById.get(r.hubId)!.region }),
       score: r.score,
       level: metric === "overall" ? snapshot.riskLevel : riskLevelFor(r.score),
       rankAmongAll: r.rankAmongAll,
-      totalHubs: r.totalHubs,
-      rankInSelection: r.rankInSelection,
-      selectionSize: r.selectionSize,
+      ...(input.region ? { rankInRegion: r.rankInSelection } : {}),
       topHazard: snapshot.topHazard,
-      confidence: hazard ? hazard.confidence : snapshot.confidence,
-      confidenceReason: hazard ? hazard.confidenceReason : undefined,
+      confidence,
+      ...(hazard && confidence !== "high" ? { confidenceReason: hazard.confidenceReason } : {}),
     };
   });
   // Report the newest scoring run among the snapshots (they normally all come from one run).
@@ -75,6 +77,9 @@ export function rankHubsOutput(ctx: AgentContext, input: { metric: RankMetric; r
     metric,
     region: input.region,
     order: input.order,
+    totalHubs: rows.length,
+    // An empty result means the region has no hubs (limit is at least 1).
+    ...(input.region ? { hubsInRegion: ranked[0]?.selectionSize ?? 0 } : {}),
     scoringVersion: newest.scoringVersion,
     scoredWindow: newest.window,
     results,

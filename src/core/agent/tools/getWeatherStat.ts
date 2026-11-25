@@ -68,11 +68,11 @@ export async function weatherStatOutput(ctx: AgentContext, input: { hubId: strin
     hub: hubLabel(ctx.hubById.get(input.hubId)!),
     metric: input.metric,
     metricLabel: metric.label,
+    /** Both unit systems in one text, e.g. "≥ 0.4 in of snow (≥ 1 cm of snow)" (the app is US-only, D126). */
     threshold: formatDual(metric.threshold, ctx.units),
-    /** Both spellings, so the UI's unit switch can flip instantly (U4). */
-    thresholdBySystem: metric.threshold,
     usedInRiskScore: metric.scored,
-    period,
+    // The period's notes are sent once, among the caveats.
+    period: { start: period.start, end: period.end, label: period.label },
     ...stat,
     /** Hazard days per calendar month in the period (seasonality strip, U3b). */
     byMonth: computeMonthlyCounts(days, input.metric, period),

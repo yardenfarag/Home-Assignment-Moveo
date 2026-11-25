@@ -7,6 +7,7 @@
 import type { CompareHubsOutput } from "@/core/agent/tools/compareHubs";
 import type { Hazard } from "@/core/scoring/types";
 import { CONFIDENCE_UI, HAZARD_UI, LEVEL_UI } from "../../_lib/labels";
+import { compareCellReason } from "../../_lib/toolResults";
 import { Disclosure } from "../answer/Disclosure";
 import { LevelChip } from "../LevelChip";
 
@@ -53,12 +54,14 @@ export function ComparisonGrid({ data }: ComparisonGridProps) {
                 {data.hubs.map((hub) => {
                   const cell = hub.hazards[hazard];
                   const ui = LEVEL_UI[cell.level];
+                  const reason = compareCellReason(data, hub.hubId, hazard);
+                  const rank = rankText(cell.rankAmongAll, data.totalHubs);
                   return (
                     <td
                       key={hub.hubId}
                       className="rounded-md border px-2 py-1 tabular-nums"
                       style={{ background: ui.bg, borderColor: ui.border }}
-                      title={`${cell.confidenceReason} (${rankText(cell.rankAmongAll, data.totalHubs)})`}
+                      title={reason ? `${reason} (${rank})` : rank}
                     >
                       <span className="font-medium" style={{ color: ui.text }}>
                         {cell.score}
@@ -87,13 +90,14 @@ export function ComparisonGrid({ data }: ComparisonGridProps) {
           {data.hubs.flatMap((hub) =>
             hazards.map((hazard) => {
               const cell = hub.hazards[hazard];
+              const reason = compareCellReason(data, hub.hubId, hazard);
               return (
                 <li key={`${hub.hubId}-${hazard}`}>
                   <span className="text-slate-200">
                     {hub.hub} · {HAZARD_UI[hazard].label}
                   </span>
                   : {rankText(cell.rankAmongAll, data.totalHubs)}
-                  {cell.confidence ? ` · ${CONFIDENCE_UI[cell.confidence].label}` : ""}. <span className="text-slate-400">{cell.confidenceReason}</span>
+                  {cell.confidence ? ` · ${CONFIDENCE_UI[cell.confidence].label}` : ""}.{reason && <span className="text-slate-400"> {reason}</span>}
                 </li>
               );
             }),
