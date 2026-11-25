@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "db:check": "tsx --env-file=.env.local scripts/check-db.ts",
     "session:export": "tsx scripts/export-session.ts",
-    "ingest": "tsx --env-file=.env.local scripts/ingest.ts"
+    "ingest": "tsx --env-file=.env.local scripts/ingest.ts",
+    "fema:anchors": "tsx scripts/compute-fema-anchors.ts",
+    "score": "tsx --env-file=.env.local scripts/score.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

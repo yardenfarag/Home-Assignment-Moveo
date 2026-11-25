@@ -10,6 +10,7 @@ const denverResponse = {
         COUNTY: "Denver",
         STATEABBRV: "CO",
         NRI_VER: "December 2025",
+        AREA: 156.2874729,
         HRCN_AFREQ: null,
         TRND_AFREQ: 0.1598618749736841,
         HAIL_AFREQ: 8.290857574357961,
@@ -33,6 +34,7 @@ describe("parseCountyResponse", () => {
       countyName: "Denver",
       stateCode: "CO",
       nriVersion: "December 2025",
+      countyAreaSqMi: 156.2874729,
       hrcnAfreq: null,
       cfldAfreq: null,
       wntwAfreq: 13.73781288571919,
@@ -57,6 +59,7 @@ describe("buildCountyQueryUrl", () => {
     const url = new URL(buildCountyQueryUrl(39.7392, -104.9903));
     expect(url.searchParams.get("geometry")).toBe("-104.9903,39.7392");
     expect(url.searchParams.get("outFields")).toContain("IFLD_AFREQ");
+    expect(url.searchParams.get("outFields")).toContain("AREA");
     expect(url.searchParams.get("returnGeometry")).toBe("false");
   });
 });

@@ -140,6 +140,7 @@ export type Database = {
       fema_nri: {
         Row: {
           cfld_afreq: number | null;
+          county_area_sq_mi: number | null;
           county_fips: string;
           county_name: string;
           created_at: string;
@@ -159,6 +160,7 @@ export type Database = {
         };
         Insert: {
           cfld_afreq?: number | null;
+          county_area_sq_mi?: number | null;
           county_fips: string;
           county_name: string;
           created_at?: string;
@@ -178,6 +180,7 @@ export type Database = {
         };
         Update: {
           cfld_afreq?: number | null;
+          county_area_sq_mi?: number | null;
           county_fips?: string;
           county_name?: string;
           created_at?: string;

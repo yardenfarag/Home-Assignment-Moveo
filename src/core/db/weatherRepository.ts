@@ -67,3 +67,56 @@ export async function upsertWeatherDays(hubId: string, days: DailyWeather[], db:
   }
   return days.length;
 }
+
+/** PostgREST returns at most this many rows per request (Supabase default `max_rows`). */
+const PAGE_SIZE = 1_000;
+
+/**
+ * Reads a hub's daily weather for a date range, oldest first. Pages through the
+ * results, because Supabase caps each response at 1,000 rows and a scoring
+ * window is ~1,826 days.
+ * @param hubId - hub slug.
+ * @param startDate - first day (inclusive).
+ * @param endDate - last day (inclusive).
+ * @param db - database client (injectable).
+ * @returns the days in the range.
+ * @throws BoundaryError (database) when a query fails.
+ */
+export async function getWeatherDays(
+  hubId: string,
+  startDate: string,
+  endDate: string,
+  db: Db = getDb(),
+): Promise<DailyWeather[]> {
+  const days: DailyWeather[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await db
+      .from("weather_daily")
+      .select("date, snowfall_cm, temp_min_c, precipitation_mm, wind_gust_max_kmh, apparent_temp_max_c")
+      .eq("hub_id", hubId)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new BoundaryError({
+        name: "SupabaseQueryError",
+        message: `Could not read weather for ${hubId} (${startDate}..${endDate}): ${error.message}`,
+        functionName: "getWeatherDays",
+        boundary: "database",
+        cause: error,
+      });
+    }
+    days.push(
+      ...data.map((row) => ({
+        date: row.date,
+        snowfallCm: row.snowfall_cm === null ? null : Number(row.snowfall_cm),
+        tempMinC: row.temp_min_c === null ? null : Number(row.temp_min_c),
+        precipitationMm: row.precipitation_mm === null ? null : Number(row.precipitation_mm),
+        windGustMaxKmh: row.wind_gust_max_kmh === null ? null : Number(row.wind_gust_max_kmh),
+        apparentTempMaxC: row.apparent_temp_max_c === null ? null : Number(row.apparent_temp_max_c),
+      })),
+    );
+    if (data.length < PAGE_SIZE) return days;
+  }
+}

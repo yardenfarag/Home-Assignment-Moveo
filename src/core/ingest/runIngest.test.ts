@@ -74,6 +74,13 @@ describe("runIngest", () => {
     expect(ids).toEqual(new Set([summary.runId]));
   });
 
+  it("re-fetches FEMA for every hub when refreshFema is set", async () => {
+    const deps = makeDeps();
+    const summary = await runIngest({ trigger: "cli", refreshFema: true }, deps);
+    expect(deps.fetchFemaCountyByPoint).toHaveBeenCalledTimes(2); // houston too, although it had a record
+    expect(summary.femaRecordsSaved).toBe(2);
+  });
+
   it("can be limited to specific hubs", async () => {
     const deps = makeDeps();
     const summary = await runIngest({ trigger: "cli", hubIds: ["houston", "atlantis"] }, deps);
