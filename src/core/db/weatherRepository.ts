@@ -120,3 +120,27 @@ export async function getWeatherDays(
     if (data.length < PAGE_SIZE) return days;
   }
 }
+
+/**
+ * Returns the first and last day of weather data across all hubs.
+ * @param db - database client (injectable).
+ * @returns earliest and latest dates, or null when the table is empty.
+ * @throws BoundaryError (database) when a query fails.
+ */
+export async function getWeatherBounds(db: Db = getDb()): Promise<{ earliest: string; latest: string } | null> {
+  const pick = async (ascending: boolean) => {
+    const { data, error } = await db.from("weather_daily").select("date").order("date", { ascending }).limit(1).maybeSingle();
+    if (error) {
+      throw new BoundaryError({
+        name: "SupabaseQueryError",
+        message: `Could not read weather date bounds: ${error.message}`,
+        functionName: "getWeatherBounds",
+        boundary: "database",
+        cause: error,
+      });
+    }
+    return data?.date ?? null;
+  };
+  const [earliest, latest] = await Promise.all([pick(true), pick(false)]);
+  return earliest && latest ? { earliest, latest } : null;
+}

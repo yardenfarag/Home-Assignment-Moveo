@@ -5,6 +5,7 @@
  * check constraints are kept in the same order as the SQL, and
  * `db/schemaDrift.test.ts` fails if they drift.
  */
+import { z } from "zod";
 
 /** The six hazards we score, in weight order (heaviest first). */
 export const HAZARDS = ["hurricane", "winter", "flood", "severeStorms", "wind", "heat"] as const;
@@ -45,37 +46,54 @@ export interface FemaSignals {
 }
 
 /** Which data source a signal comes from. */
-export type SignalSource = "observed" | "fema";
+export const signalSourceSchema = z.enum(["observed", "fema"]);
 
-/** One input that went into a hazard score — kept so the agent can explain the number. */
-export interface SignalInput {
+/** Observed weather or FEMA. */
+export type SignalSource = z.infer<typeof signalSourceSchema>;
+
+/**
+ * One input that went into a hazard score — kept so the agent can explain the number.
+ * Defined as a Zod schema so stored snapshots are validated with the SAME definition (single source of truth).
+ */
+export const signalInputSchema = z.object({
   /** Machine name, e.g. `snowDays`, `tornadoPer1000SqMi`. */
-  signal: string;
-  source: SignalSource;
+  signal: z.string(),
+  source: signalSourceSchema,
   /** Raw value (per year), or null when not available. */
-  value: number | null;
+  value: z.number().nullable(),
   /** Human unit, e.g. "days/yr", "events/yr". */
-  unit: string;
+  unit: z.string(),
   /** The value that maps to 100. */
-  anchor100: number;
+  anchor100: z.number(),
   /** 0–100 score of this input, or null when the value is missing. */
-  score: number | null;
-}
+  score: z.number().nullable(),
+});
+
+/** One scored input. */
+export type SignalInput = z.infer<typeof signalInputSchema>;
 
 /** The score of one hazard, with everything needed to explain it. */
-export interface HazardScore {
-  hazard: Hazard;
+export const hazardScoreSchema = z.object({
+  hazard: z.enum(HAZARDS),
   /** 0–100, 1 decimal. */
-  score: number;
+  score: z.number(),
   /** Observed-weather half (null when the hazard has none, or data is missing). */
-  observedScore: number | null;
+  observedScore: z.number().nullable(),
   /** FEMA half (null when missing). */
-  femaScore: number | null;
-  confidence: Confidence;
+  femaScore: z.number().nullable(),
+  confidence: z.enum(CONFIDENCE_LEVELS),
   /** Plain-language reason for the confidence level. */
-  confidenceReason: string;
-  inputs: SignalInput[];
-}
+  confidenceReason: z.string(),
+  inputs: z.array(signalInputSchema),
+});
+
+/** One hazard's score. */
+export type HazardScore = z.infer<typeof hazardScoreSchema>;
+
+/** Hazard → score, for all six hazards. */
+export const hazardScoresSchema = z.object(
+  Object.fromEntries(HAZARDS.map((h) => [h, hazardScoreSchema])) as Record<Hazard, typeof hazardScoreSchema>,
+);
 
 /** The full deterministic result for one hub. */
 export interface HubScore {

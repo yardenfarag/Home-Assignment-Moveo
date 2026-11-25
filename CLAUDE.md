@@ -76,3 +76,9 @@ Each one: *next time you see X → do Y*.
    1,000 rows by default and silently returns the first page (a 1,826-day window would have been cut off).
 9. **A rule-based label fires on almost everything (32 of 36 hubs "Medium")** → check whether it's flagging
    *structural* differences (two sources that measure different things) rather than real problems. Compare like with like (D56).
+10. **"No object generated: could not parse the response"** from the AI SDK → inspect each step's
+   `finishReason` before blaming the parser. Ours was `length`: the output cap cut the JSON off mid-way.
+11. **Writing AI SDK v7 code from memory** → check `node_modules/ai/docs` and the `.d.ts` first. v7 has
+   `responseMessages` (not `response.messages`), `isStepCount` (not `stepCountIs`), and `Output.object` alongside tools.
+12. **A validator rejects a follow-up's numbers** → check that it trusts the conversation's earlier tool
+   results, not just the current turn's (D65).

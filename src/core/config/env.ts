@@ -20,12 +20,23 @@ const supabaseEnvSchema = z.object({
 /** Validated Supabase settings. */
 export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
 
+/** Environment variables for the LLM (OpenRouter). Server-side only. */
+const openRouterEnvSchema = z.object({
+  OPENROUTER_API_KEY: z.string().min(20),
+  /** OpenRouter model slug, e.g. `anthropic/claude-sonnet-5.5` (chosen in G9; re-chosen by the Step 8 bakeoff). */
+  OPENROUTER_MODEL: z.string().regex(/^[a-z0-9-]+\/[a-z0-9.:-]+$/, "expected provider/model, e.g. anthropic/claude-sonnet-5.5"),
+});
+
+/** Validated OpenRouter settings. */
+export type OpenRouterEnv = z.infer<typeof openRouterEnvSchema>;
+
 /**
  * Every env schema, by feature. Add new feature schemas here so the
  * `.env.example` drift test covers them automatically.
  */
 export const ENV_SCHEMAS = {
   supabase: supabaseEnvSchema,
+  openRouter: openRouterEnvSchema,
 } as const;
 
 /**
@@ -58,4 +69,14 @@ function parseEnv<T extends z.ZodType>(schema: T, source: EnvSource, functionNam
  */
 export function getSupabaseEnv(source: EnvSource = process.env): SupabaseEnv {
   return parseEnv(supabaseEnvSchema, source, "getSupabaseEnv");
+}
+
+/**
+ * Returns validated OpenRouter settings.
+ * @param source - variables to read (defaults to `process.env`; injectable for tests).
+ * @returns the API key and model slug.
+ * @throws BoundaryError when a variable is missing or malformed.
+ */
+export function getOpenRouterEnv(source: EnvSource = process.env): OpenRouterEnv {
+  return parseEnv(openRouterEnvSchema, source, "getOpenRouterEnv");
 }
