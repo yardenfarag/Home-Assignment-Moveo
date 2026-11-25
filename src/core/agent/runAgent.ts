@@ -90,13 +90,30 @@ async function attempt(
     },
   });
 
+  /**
+   * Wraps a failed model call (timeout, network, provider error) in the 🦉 boundary format.
+   * A step timeout makes the partial-output stream itself throw (D108), so the loop below is guarded too.
+   */
+  const callFailed = (cause: unknown) =>
+    new BoundaryError({
+      name: "LlmCallError",
+      message: `The model call failed: ${describeUnknownError(cause)}`,
+      functionName: "runAgent",
+      boundary: "llm",
+      cause,
+    });
+
   let sent = 0;
-  for await (const partial of result.partialOutputStream) {
-    const text = (partial as Partial<LlmAnswer> | undefined)?.answer;
-    if (typeof text === "string" && text.length > sent) {
-      callbacks.onAnswerDelta?.(text.slice(sent));
-      sent = text.length;
+  try {
+    for await (const partial of result.partialOutputStream) {
+      const text = (partial as Partial<LlmAnswer> | undefined)?.answer;
+      if (typeof text === "string" && text.length > sent) {
+        callbacks.onAnswerDelta?.(text.slice(sent));
+        sent = text.length;
+      }
     }
+  } catch (error) {
+    throw callFailed(streamError ?? error);
   }
 
   let raw: LlmAnswer | null = null;
@@ -104,18 +121,10 @@ async function attempt(
   try {
     raw = await result.output;
   } catch (error) {
-    if (streamError) {
-      throw new BoundaryError({
-        name: "LlmCallError",
-        message: `The model call failed: ${describeUnknownError(streamError)}`,
-        functionName: "runAgent",
-        boundary: "llm",
-        cause: streamError,
-      });
-    }
+    if (streamError) throw callFailed(streamError);
     if (NoObjectGeneratedError.isInstance(error) || NoOutputGeneratedError.isInstance(error)) {
       problem = `Your final answer did not match the required JSON schema (${describeUnknownError(error)}).`;
-    } else throw error;
+    } else throw callFailed(error);
   }
   const usage = await result.totalUsage;
   return {

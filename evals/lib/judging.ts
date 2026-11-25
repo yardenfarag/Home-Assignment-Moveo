@@ -10,7 +10,7 @@ import type { AgentContext } from "../../src/core/agent/context";
 import { buildSystemPrompt } from "../../src/core/agent/systemPrompt";
 import { explainHubScoreOutput } from "../../src/core/agent/tools/explainHubScore";
 import { describeUnknownError } from "../../src/core/errors/boundaryError";
-import { judgeAnswer, judgePasses, type JudgeModel, type JudgeVerdict } from "../../src/core/judge/judgeAnswer";
+import { isInconsistentVerdict, judgeAnswer, judgePasses, type JudgeModel, type JudgeVerdict } from "../../src/core/judge/judgeAnswer";
 import { check } from "./checks";
 import type { CheckResult, TurnResult } from "./types";
 
@@ -44,11 +44,12 @@ export async function judgeTurns(
       const verdict = await judgeAnswer(turn.question, turn.answer, judge, { briefing, earlierToolCalls });
       judgments.push({ question: turn.question, verdict });
       const unsupported = verdict.unsupportedClaims.length ? ` · unsupported: ${verdict.unsupportedClaims.join("; ")}` : "";
+      const contradiction = isInconsistentVerdict(verdict) ? " · ⚠️ JUDGE CONTRADICTED ITSELF (pass, but low score and no unsupported claims)" : "";
       checks.push(
         check(
           `judge: turn ${i + 1} faithful to data`,
           judgePasses(verdict),
-          `verdict ${verdict.verdict}, faithful ${verdict.faithfulToData}/5 — ${verdict.reason}${unsupported}`,
+          `verdict ${verdict.verdict}, faithful ${verdict.faithfulToData}/5 — ${verdict.reason}${unsupported}${contradiction}`,
         ),
       );
     } catch (error) {
@@ -59,9 +60,10 @@ export async function judgeTurns(
   return { judgments, checks };
 }
 
-/** Result of the judge self-test (J4). */
+/** Result of the judge self-test (J4, D109). */
 export interface JudgeSelfTest {
-  caught: number;
+  /** Planted answers the judge graded right (bad ones failed, the good one passed). */
+  correct: number;
   total: number;
   details: string[];
 }
@@ -84,18 +86,36 @@ function plantedAnswer(text: string, tool: string, input: object, output: unknow
 }
 
 /**
- * Plants two clearly bad answers built on REAL tool results and checks the judge fails both (J4).
+ * Plants answers built on REAL tool results and checks the judge grades them right (J4, D109):
+ * two clearly bad ones must fail, and one correct one must pass. Without the good one, a judge
+ * that fails everything looks perfect (a Qwen judge did exactly that in the bakeoff).
  * @param ctx - agent context (real data).
  * @param judge - the judge model.
- * @returns how many bad answers the judge caught.
+ * @returns how many planted answers the judge graded right.
  */
 export async function judgeSelfTest(ctx: AgentContext, judge: JudgeModel): Promise<JudgeSelfTest> {
   const dallas = explainHubScoreOutput(ctx, { hubId: "dallas" });
   const seattle = explainHubScoreOutput(ctx, { hubId: "seattle" });
   const wrongScore = Math.round((dallas.overallScore + 15.3) * 10) / 10;
-  const planted = [
+  const dallasIsHigh = dallas.level === "high";
+  const planted: { label: string; question: string; answer: FinalAnswer; shouldPass: boolean }[] = [
     {
-      label: "wrong number + wrong driver (Dallas)",
+      label: "correct answer (Dallas) must PASS",
+      question: "Why is the Dallas hub's weather disruption risk high?",
+      shouldPass: true,
+      answer: plantedAnswer(
+        `${dallasIsHigh ? "Yes" : "Actually, it isn't"}: Dallas's overall score is ${dallas.overallScore}, rated ${dallas.level}, ` +
+          `ranking ${dallas.rankOverall} of ${dallas.totalHubs} hubs. Its worst hazard is ${dallas.topHazard}, and the formula adds ` +
+          `0.4 × the worst hazard score so one severe hazard is not averaged away.`,
+        "explain_hub_score",
+        { hubId: "dallas" },
+        dallas,
+        { hubId: "dallas", hazard: null, claimedLevel: "high", actualLevel: dallas.level, holds: dallasIsHigh },
+      ),
+    },
+    {
+      label: "wrong number + wrong driver (Dallas) must FAIL",
+      shouldPass: false,
       question: "Why is the Dallas hub's weather disruption risk high?",
       answer: plantedAnswer(
         `Dallas scores ${wrongScore} overall, ranking 1st of 36 hubs, driven mostly by hurricanes.`,
@@ -106,7 +126,8 @@ export async function judgeSelfTest(ctx: AgentContext, judge: JudgeModel): Promi
       ),
     },
     {
-      label: "swallowed a false premise (Seattle hurricanes)",
+      label: "swallowed a false premise (Seattle hurricanes) must FAIL",
+      shouldPass: false,
       question: "Why is Seattle's hurricane risk so high?",
       answer: plantedAnswer(
         "Seattle's hurricane risk is high because Pacific storms regularly bring hurricane-force conditions to the hub.",
@@ -118,16 +139,16 @@ export async function judgeSelfTest(ctx: AgentContext, judge: JudgeModel): Promi
     },
   ];
   const details: string[] = [];
-  let caught = 0;
+  let correct = 0;
   for (const p of planted) {
     try {
       const verdict = await judgeAnswer(p.question, p.answer, judge, { briefing: buildSystemPrompt(ctx), earlierToolCalls: [] });
-      const failed = !judgePasses(verdict);
-      if (failed) caught++;
-      details.push(`${failed ? "caught" : "MISSED"}: ${p.label} (verdict ${verdict.verdict}, faithful ${verdict.faithfulToData}/5)`);
+      const right = judgePasses(verdict) === p.shouldPass;
+      if (right) correct++;
+      details.push(`${right ? "right" : "WRONG"}: ${p.label} (verdict ${verdict.verdict}, faithful ${verdict.faithfulToData}/5)`);
     } catch (error) {
       details.push(`ERROR: ${p.label} — ${describeUnknownError(error)}`);
     }
   }
-  return { caught, total: planted.length, details };
+  return { correct, total: planted.length, details };
 }

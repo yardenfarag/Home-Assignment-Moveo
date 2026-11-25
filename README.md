@@ -67,13 +67,15 @@ curl -u "$APP_USERNAME:$APP_PASSWORD" -H "Content-Type: application/json" \
 
 ## Evals
 ```bash
-npm run eval                                   # 13 cases on OPENROUTER_MODEL, about 3 min, about $1 on Sonnet
+npm run eval                                   # 13 cases on OPENROUTER_MODEL, about 3 min, about $0.20 on gpt-6.1-terra
 npm run eval -- --model=openai/gpt-6.1-terra   # try another model
 npm run eval -- --repeat=3                     # consistency check
 npm run eval -- --url=https://your-app.vercel.app   # test a deployment
 npm run eval -- --no-judge                     # skip the independent judge
 npm run eval -- --rejudge=evals/results/<file>.json   # re-check + re-judge saved answers (cents, no agent calls)
+npm run bakeoff -- evals/results/<a>.json <b>.json … --publish   # compare models from saved runs → docs/bakeoff.md
 ```
+The model was chosen by a bakeoff of 9 models on this eval set: see [docs/bakeoff.md](docs/bakeoff.md).
 Prints pass/fail per case and check, plus soft metrics (tool calls, duplicates, latency, tokens, cost), and exits 1 on failure.
 Every answer is also graded by an **independent judge** (`JUDGE_MODEL`, a cheap model from another provider) against
 the actual tool results. Only its faithful-to-data score (≥ 4) is a hard check. Before each run the judge must catch
