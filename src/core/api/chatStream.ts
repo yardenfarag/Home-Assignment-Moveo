@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { QuestionResult } from "../agent/answerQuestion";
 import type { FinalAnswer } from "../agent/answerSchema";
 import type { AgentCallbacks } from "../agent/runAgent";
-import { describeUnknownError, formatBoundaryMessage } from "../errors/boundaryError";
+import { boundaryLogLine } from "../errors/boundaryError";
 import { toUserError, type UserError } from "../errors/userErrors";
 import { progressLabel } from "./progressLabels";
 
@@ -56,11 +56,15 @@ export function buildChatStream(request: ChatRequest, run: TurnRunner) {
   return createUIMessageStream<SneakoscopeUIMessage>({
     execute: async ({ writer }) => {
       writer.write({ type: "start" });
-      const pending = new Map<string, { id: string; label: string }[]>(); // tool name → running calls (FIFO)
+      // Running calls by the SDK's call id (parallel calls to one tool stay apart). Without an id
+      // (tests, older callers) they're matched first-in-first-out per tool name.
+      const pending = new Map<string, { id: string; label: string }[]>();
+      const key = (tool: string, callId?: string) => callId ?? `tool:${tool}`;
       let callCount = 0;
       let textId: string | null = null;
       let attempt = 0;
 
+      /** Closes the open answer-text part, if any (a new attempt or a restart opens a fresh one). */
       const endText = () => {
         if (textId) writer.write({ type: "text-end", id: textId });
         textId = null;
@@ -69,13 +73,13 @@ export function buildChatStream(request: ChatRequest, run: TurnRunner) {
       try {
         const result = await run(request, {
           onSession: (sessionId) => writer.write({ type: "data-session", id: "session", data: { sessionId } }),
-          onToolStart: (tool, input) => {
-            const call = { id: `progress-${++callCount}`, label: progressLabel(tool, input) };
-            pending.set(tool, [...(pending.get(tool) ?? []), call]);
+          onToolStart: (tool, input, callId, label) => {
+            const call = { id: `progress-${++callCount}`, label: label ?? progressLabel(tool, input) };
+            pending.set(key(tool, callId), [...(pending.get(key(tool, callId)) ?? []), call]);
             writer.write({ type: "data-progress", id: call.id, data: { tool, label: call.label, status: "running" } });
           },
-          onToolEnd: (tool, output) => {
-            const call = pending.get(tool)?.shift();
+          onToolEnd: (tool, output, callId) => {
+            const call = pending.get(key(tool, callId))?.shift();
             if (!call) return;
             const failed = !!output && typeof output === "object" && "error" in output;
             writer.write({ type: "data-progress", id: call.id, data: { tool, label: call.label, status: failed ? "failed" : "done" } });
@@ -87,6 +91,11 @@ export function buildChatStream(request: ChatRequest, run: TurnRunner) {
             }
             writer.write({ type: "text-delta", id: textId, delta });
           },
+          // The model started its answer text over: the UI shows the newest text part, so open a new one.
+          onAnswerRestart: () => {
+            endText();
+            attempt++;
+          },
           onRetry: () => {
             endText();
             attempt++;
@@ -97,14 +106,7 @@ export function buildChatStream(request: ChatRequest, run: TurnRunner) {
         writer.write({ type: "data-answer", id: "answer", data: result.answer });
       } catch (error) {
         endText();
-        console.error(
-          formatBoundaryMessage({
-            name: error instanceof Error ? error.name : "UnknownError",
-            message: describeUnknownError(error),
-            functionName: "buildChatStream",
-            boundary: "apiRoute",
-          }),
-        );
+        console.error(boundaryLogLine(error, "buildChatStream", "apiRoute"));
         const { code, message, hint, retryable } = toUserError(error);
         writer.write({ type: "data-error", id: "error", data: { code, message, hint, retryable } });
       }

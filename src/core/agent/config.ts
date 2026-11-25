@@ -2,6 +2,7 @@
  * @module core/agent/config
  *
  * Agent limits (G8) and memory size (G7) — the single source of truth.
+ * (The model's timeouts live with every other deadline in `config/timeouts.ts`.)
  */
 
 /** Hard limits on one agent turn. */
@@ -10,13 +11,14 @@ export const AGENT_LIMITS = {
   maxUserMessageChars: 1_000,
   /** Tool-calling steps before the final answer must be produced. */
   maxToolSteps: 6,
-  /** Timeouts for the whole turn, each model step, and each tool call. */
-  timeouts: { totalMs: 60_000, stepMs: 25_000, toolMs: 10_000 },
   /** Max tokens the model may write per step (G14: raised from 1,500 after a long answer was cut off mid-JSON). */
   maxOutputTokens: 3_000,
   /** Extra attempts when the final answer fails validation (G3/G8). */
   validationRetries: 1,
 } as const;
+
+/** How many chats a browser remembers, and how many `GET /api/chat/sessions` accepts at once. */
+export const REMEMBERED_CHATS_LIMIT = 50;
 
 /** How many past turns (user message + agent reply) the model sees (G7). */
 export const HISTORY_TURNS = 10;

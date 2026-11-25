@@ -19,6 +19,7 @@ function deps(counts: { burst: number; daily: number; global: number }, failCoun
       },
       countEvents: async (q: EventCountQuery) => {
         if (failCount) throw new Error("db down");
+        if (q.eventType !== "chat.request") return 0; // no earlier refusal logged
         if (!q.visitor) return counts.global;
         return q.since.endsWith("T00:00:00.000Z") ? counts.daily : counts.burst;
       },
@@ -61,5 +62,33 @@ describe("checkChatGate (D114)", () => {
     expect(await checkChatGate(visitorHeaders(), d)).toBeNull();
     expect(log.mock.calls[0][0]).toMatch(/RateLimitCountError \|\| .* \|\| checkChatGate \|\| 🐘/);
     log.mockRestore();
+  });
+});
+
+describe("checkChatGate under parallel requests", () => {
+  it("refuses when the count after recording shows another request slipped in at the same moment", async () => {
+    const max = RATE_LIMITS.visitorBurst.max;
+    let recorded = false;
+    const recordEvent = async () => {
+      recorded = true;
+      return true;
+    };
+    // Before recording: 19 in the window. After: 21 (this one plus a parallel one).
+    const countEvents = async (q: EventCountQuery) => (q.visitor && !q.since.endsWith("T00:00:00.000Z") ? (recorded ? max + 1 : max - 1) : 0);
+    const error = await checkChatGate(visitorHeaders(), { secret: SECRET, now: () => new Date("2026-11-25T12:00:00Z"), recordEvent, countEvents });
+    expect(error).toMatchObject({ code: "too_many_requests" });
+  });
+
+  it("logs a refusal only once per visitor per window", async () => {
+    const events: NewEvent[] = [];
+    const counts: Record<string, number> = { "chat.request": RATE_LIMITS.visitorBurst.max, "chat.rate_limited": 1 };
+    const d = {
+      secret: SECRET,
+      now: () => new Date("2026-11-25T12:00:00Z"),
+      recordEvent: async (e: NewEvent) => (events.push(e), true),
+      countEvents: async (q: EventCountQuery) => (q.visitor ? counts[q.eventType] : 0),
+    };
+    expect(await checkChatGate(visitorHeaders(), d)).toMatchObject({ code: "too_many_requests" });
+    expect(events).toEqual([]);
   });
 });

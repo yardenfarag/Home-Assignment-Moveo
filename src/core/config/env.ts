@@ -21,7 +21,7 @@ const supabaseEnvSchema = z.object({
 export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
 
 /** An OpenRouter model slug: `provider/model`, e.g. `anthropic/claude-sonnet-5.5`. */
-const modelSlug = z.string().regex(/^[a-z0-9-]+\/[a-z0-9.:-]+$/, "expected provider/model, e.g. anthropic/claude-sonnet-5.5");
+const modelSlug = z.string().regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._:-]+$/, "expected provider/model, e.g. anthropic/claude-sonnet-5.5");
 
 /** Environment variables for the LLM (OpenRouter). Server-side only. */
 const openRouterEnvSchema = z.object({
@@ -77,7 +77,7 @@ export const ENV_SCHEMAS = {
  * Validates `source` against `schema` and throws a readable config error listing
  * the bad variable names (values are never included).
  * @param schema - Zod schema for the variables.
- * @param source - where to read variables from (defaults to `process.env`).
+ * @param source - where to read variables from (the public getters pass `process.env` by default).
  * @param functionName - caller name for the error message.
  * @returns the parsed variables.
  */

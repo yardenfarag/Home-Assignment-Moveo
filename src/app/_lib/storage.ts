@@ -4,9 +4,11 @@
  * What this BROWSER remembers (U5b): the ids of its own chats (newest first) and the
  * alerts it dismissed. Nothing sensitive: the chats live on the server. US units only (D126).
  */
+import { REMEMBERED_CHATS_LIMIT } from "@/core/agent/config";
+
 const SESSIONS_KEY = "sneakoscope.sessions";
-/** How many past chats the side nav remembers. */
-const MAX_SESSIONS = 50;
+/** How many past chats the side nav remembers (the sessions API accepts the same number). */
+const MAX_SESSIONS = REMEMBERED_CHATS_LIMIT;
 
 /** True when running in a browser with localStorage available. */
 const hasStorage = () => typeof window !== "undefined" && !!window.localStorage;

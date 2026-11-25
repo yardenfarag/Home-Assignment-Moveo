@@ -7,6 +7,7 @@
 import { modelMessageSchema, type ModelMessage } from "ai";
 import { z } from "zod";
 import type { FinalAnswer } from "../agent/answerSchema";
+import { RETRY_FEEDBACK_PREFIX } from "../agent/config";
 import { BoundaryError } from "../errors/boundaryError";
 import type { Json } from "./database.types";
 import { getDb, type Db } from "./client";
@@ -42,7 +43,8 @@ export async function ensureSession(sessionId: string | null, db: Db = getDb()):
 
 /**
  * Loads the last `turns` turns of a conversation as model messages (oldest first).
- * A turn starts at a user message.
+ * A turn starts at a user message that the user wrote: the validation-retry feedback is stored
+ * with the user role too (the model must see it as such), but it doesn't start a turn.
  * @param sessionId - session id.
  * @param turns - how many recent turns to include.
  * @param db - database client (injectable).
@@ -50,16 +52,18 @@ export async function ensureSession(sessionId: string | null, db: Db = getDb()):
  * @throws BoundaryError (database) when a query fails or a stored message is malformed.
  */
 export async function loadHistory(sessionId: string, turns: number, db: Db = getDb()): Promise<ModelMessage[]> {
-  const starts = await db
+  // At most one feedback message per turn, so twice as many user rows always hold `turns` real ones.
+  const userRows = await db
     .from("chat_messages")
-    .select("created_at")
+    .select("created_at, content")
     .eq("session_id", sessionId)
     .eq("role", "user")
     .order("created_at", { ascending: false })
-    .limit(turns);
-  if (starts.error) throw dbError("loadHistory", "Could not read chat history", starts.error);
-  if (starts.data.length === 0) return [];
-  const from = starts.data[starts.data.length - 1].created_at;
+    .limit(turns * 2);
+  if (userRows.error) throw dbError("loadHistory", "Could not read chat history", userRows.error);
+  const starts = userRows.data.filter((row) => !isRetryFeedback(row.content)).slice(0, turns);
+  if (starts.length === 0) return [];
+  const from = starts[starts.length - 1].created_at;
 
   const { data, error } = await db
     .from("chat_messages")
@@ -82,6 +86,16 @@ export async function loadHistory(sessionId: string, turns: number, db: Db = get
 }
 
 /**
+ * Whether a stored user message is the validation-retry feedback rather than a question.
+ * @param content - the stored message (a ModelMessage as JSON).
+ * @returns true for retry feedback.
+ */
+export function isRetryFeedback(content: Json): boolean {
+  const text = (content as { content?: unknown } | null)?.content;
+  return typeof text === "string" && text.startsWith(RETRY_FEEDBACK_PREFIX);
+}
+
+/**
  * Saves one turn. Rows get strictly increasing timestamps (1 ms apart) so their
  * order is unambiguous — a batch insert would otherwise give them all the same `now()`.
  * @param sessionId - session id.
@@ -99,9 +113,9 @@ export async function saveTurn(
   db: Db = getDb(),
 ): Promise<void> {
   const base = Date.now();
-  const lastAssistant = messages.map((m) => m.role).lastIndexOf("assistant");
-  const rows = messages
-    .filter((m) => m.role !== "system")
+  const kept = messages.filter((m) => m.role !== "system");
+  const lastAssistant = kept.map((m) => m.role).lastIndexOf("assistant"); // index into the saved rows
+  const rows = kept
     .map((message, index) => ({
       session_id: sessionId,
       role: message.role,

@@ -7,20 +7,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { metricCaveats } from "../../scoring/caveats";
-import { CONFIDENCE_RULES } from "../../scoring/config";
 import { DAY_METRIC_IDS, DAY_METRICS, type DayMetricId } from "../../scoring/dayMetrics";
-import type { Confidence } from "../../scoring/types";
+import { coverageConfidence } from "../../scoring/confidence";
 import { computeMonthlyCounts, computeWeatherStat, resolvePeriod, type PeriodRequest } from "../../stats/weatherStats";
 import { formatDual } from "../../utils/units";
 import type { AgentContext } from "../context";
 import { hubLabel, runTool, type HubIdSchema, type ToolRuntime } from "./shared";
-
-/** Confidence of a stat from its data coverage (G6). */
-function coverageConfidence(coverage: number): Confidence {
-  if (coverage >= CONFIDENCE_RULES.completeCoverage) return "high";
-  if (coverage >= CONFIDENCE_RULES.minimumCoverage) return "medium";
-  return "low";
-}
 
 /**
  * Builds the get_weather_stat tool for one request.
@@ -41,11 +33,11 @@ export function buildGetWeatherStatTool(ctx: AgentContext, runtime: ToolRuntime,
       periodKind: z.enum(["year", "range", "last12Months"]),
       year: z.number().int().nullable().describe("For periodKind 'year'."),
       month: z.number().int().min(1).max(12).nullable().describe("Optional month (1-12) within the year."),
-      startDate: z.string().nullable().describe("YYYY-MM-DD, for periodKind 'range'."),
-      endDate: z.string().nullable().describe("YYYY-MM-DD, for periodKind 'range'."),
+      startDate: z.iso.date().nullable().describe("YYYY-MM-DD (a real calendar date), for periodKind 'range'."),
+      endDate: z.iso.date().nullable().describe("YYYY-MM-DD (a real calendar date), for periodKind 'range'."),
     }),
-    execute: (input) =>
-      runTool("get_weather_stat", input, runtime, () => weatherStatOutput(ctx, input as Parameters<typeof weatherStatOutput>[1])),
+    execute: (input, { toolCallId }) =>
+      runTool("get_weather_stat", input, runtime, () => weatherStatOutput(ctx, input as Parameters<typeof weatherStatOutput>[1]), toolCallId),
   });
 }
 
@@ -70,6 +62,7 @@ export async function weatherStatOutput(ctx: AgentContext, input: { hubId: strin
   const days = await ctx.getWeatherDays(input.hubId, period.start, period.end);
   const stat = computeWeatherStat(days, input.metric, period);
   const metric = DAY_METRICS[input.metric];
+  const confidence = coverageConfidence(stat.coverage); // G6: from data coverage, with a reason to quote
   return {
     hubId: input.hubId,
     hub: hubLabel(ctx.hubById.get(input.hubId)!),
@@ -84,7 +77,8 @@ export async function weatherStatOutput(ctx: AgentContext, input: { hubId: strin
     /** Hazard days per calendar month in the period (seasonality strip, U3b). */
     byMonth: computeMonthlyCounts(days, input.metric, period),
     hubIds: [input.hubId],
-    confidence: coverageConfidence(stat.coverage),
+    confidence: confidence.confidence,
+    confidenceReason: confidence.reason,
     caveats: [...metricCaveats(input.metric, ctx.units), ...period.notes],
   };
 }

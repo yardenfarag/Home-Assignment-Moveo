@@ -5,7 +5,8 @@
 import { connection } from "next/server";
 import { z } from "zod";
 import { loadTranscript } from "@/core/db/chatTranscript";
-import { failure, json } from "../../_lib/http";
+import { INVALID_CHAT_LINK, userError } from "@/core/errors/userErrors";
+import { errorResponse, failure, json } from "../../_lib/http";
 
 /**
  * Returns one session's transcript.
@@ -15,8 +16,9 @@ import { failure, json } from "../../_lib/http";
 export async function GET(request: Request): Promise<Response> {
   await connection(); // per-request only; keep outside try/catch (D78)
   try {
-    const sessionId = z.uuid().parse(new URL(request.url).searchParams.get("sessionId"));
-    return json({ sessionId, turns: await loadTranscript(sessionId) });
+    const parsed = z.uuid().safeParse(new URL(request.url).searchParams.get("sessionId"));
+    if (!parsed.success) return errorResponse(userError("invalid_request", INVALID_CHAT_LINK.message, INVALID_CHAT_LINK.hint));
+    return json({ sessionId: parsed.data, turns: await loadTranscript(parsed.data) });
   } catch (error) {
     return failure(error, "GET /api/chat/history");
   }

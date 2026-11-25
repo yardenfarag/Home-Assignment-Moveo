@@ -5,9 +5,9 @@ import { runAgent } from "./runAgent";
 import { ctx } from "./testFixtures";
 
 // Shrink the step timeout so the tests run in well under a second.
-vi.mock("./config", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./config")>();
-  return { ...original, AGENT_LIMITS: { ...original.AGENT_LIMITS, timeouts: { totalMs: 2_000, stepMs: 200, toolMs: 1_000 } } };
+vi.mock("../config/timeouts", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../config/timeouts")>();
+  return { ...original, AGENT_TIMEOUTS: { attemptMs: 2_000, stepMs: 200, toolMs: 1_000, turnMs: 5_000 } };
 });
 
 /** A model that never responds: it waits until the SDK aborts the step. */

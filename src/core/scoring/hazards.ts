@@ -15,7 +15,7 @@
  * Hazard score = average of the halves that exist.
  * \* per 1,000 sq mi of county, with the area floored at the median US county (D123).
  */
-import { FEMA_ANCHORS_P95 as FEMA, INLAND_FLOOD_AREA_FLOOR_SQ_MI, OBSERVED_ANCHORS as OBS } from "./config";
+import { FEMA_ANCHORS_P95 as FEMA, INLAND_FLOOD_AREA_FLOOR_SQ_MI, OBSERVED_ANCHORS as OBS, HALF_BLEND } from "./config";
 import { femaOnlyConfidence, hybridConfidence, type ConfidenceResult } from "./confidence";
 import { linearScore } from "./normalize";
 import type { ObservedSignals } from "./observedSignals";
@@ -73,8 +73,11 @@ function assemble(recipe: HazardRecipe): HazardScore {
   const { hazard, observed, fema, crossCheck, coverage, hasFemaRecord } = recipe;
   const observedScore = observed.inputs.length > 0 ? combine(observed.inputs, observed.how) : null;
   const femaScore = hasFemaRecord ? combine(fema.inputs, fema.how) : null;
-  const halves = [observedScore, femaScore].filter((s): s is number => s !== null);
-  const score = halves.length === 0 ? 0 : halves.reduce((a, b) => a + b, 0) / halves.length;
+  // Both halves: the configured blend. One half: that half alone. Neither: 0.
+  const score =
+    observedScore !== null && femaScore !== null
+      ? observedScore * HALF_BLEND.observed + femaScore * HALF_BLEND.fema
+      : (observedScore ?? femaScore ?? 0);
 
   let comparableFemaScore: number | null | "not-comparable" = femaScore;
   if (crossCheck === "none") comparableFemaScore = "not-comparable";

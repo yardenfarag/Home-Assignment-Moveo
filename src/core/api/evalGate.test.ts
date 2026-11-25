@@ -44,3 +44,18 @@ describe("wonRunSlot (two clicks at once)", () => {
     expect(wonRunSlot(starts, [event("b", ago(2))], "c", now)).toBe(true);
   });
 });
+
+describe("decideEvalGate edge cases", () => {
+  it("still counts a run started just before midnight UTC as running / too soon", () => {
+    const justAfterMidnight = new Date("2026-11-26T00:05:00Z");
+    const start = event("late", "2026-11-25T23:58:00.000Z");
+    expect(decideEvalGate([start], [], justAfterMidnight)).toMatchObject({ reason: "running", runsLeftToday: EVAL_RUN_LIMITS.runsPerDay });
+    expect(decideEvalGate([start], [event("late", "2026-11-25T23:59:30.000Z")], justAfterMidnight)).toMatchObject({ reason: "too_soon" });
+  });
+
+  it("doesn't count a run that lost a two-click race against the day's runs", () => {
+    const skipped = { ...event("lost", ago(100)), payload: { summary: null, skipped: true } };
+    const status = decideEvalGate([event("lost", ago(100))], [skipped], now);
+    expect(status).toMatchObject({ allowed: true, runsLeftToday: EVAL_RUN_LIMITS.runsPerDay });
+  });
+});

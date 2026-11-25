@@ -5,7 +5,7 @@
  * the cron secret check and friendly JSON errors (A4). The site has no login (D113).
  */
 import { getCronEnv } from "@/core/config/env";
-import { describeUnknownError, formatBoundaryMessage } from "@/core/errors/boundaryError";
+import { boundaryLogLine } from "@/core/errors/boundaryError";
 import { toUserError, userError, type UserError } from "@/core/errors/userErrors";
 import { isCronAuthorized } from "@/core/security/auth";
 
@@ -23,15 +23,14 @@ export function json(body: unknown, status = 200): Response {
 }
 
 /**
- * Friendly error response `{ error: { code, message, hint, retryable } }`.
+ * Friendly error response `{ error: { code, message, hint, retryable }, ...extra }`.
  * @param error - the user error.
+ * @param extra - more top-level fields for the UI (e.g. the eval limit status).
  * @returns the response.
  */
-export function errorResponse(error: UserError): Response {
+export function errorResponse(error: UserError, extra: Record<string, unknown> = {}): Response {
   const { status, ...body } = error;
-  const headers: Record<string, string> = { ...NO_STORE };
-  if (status === 401) headers["WWW-Authenticate"] = 'Basic realm="Sneakoscope", charset="UTF-8"';
-  return Response.json({ error: body }, { status, headers });
+  return Response.json({ error: body, ...extra }, { status, headers: NO_STORE });
 }
 
 /**
@@ -41,14 +40,7 @@ export function errorResponse(error: UserError): Response {
  * @returns the error response.
  */
 export function failure(error: unknown, functionName: string): Response {
-  console.error(
-    formatBoundaryMessage({
-      name: error instanceof Error ? error.name : "UnknownError",
-      message: describeUnknownError(error),
-      functionName,
-      boundary: "apiRoute",
-    }),
-  );
+  console.error(boundaryLogLine(error, functionName, "apiRoute"));
   return errorResponse(toUserError(error));
 }
 

@@ -29,8 +29,8 @@ export function buildExplainHubScoreTool(ctx: AgentContext, runtime: ToolRuntime
       "Full breakdown of ONE hub's risk score: every hazard with its inputs, weights, the overall formula with its numbers, " +
       "level, rank and confidence reasons. Use for 'why is X risky?' and BEFORE agreeing with any claim about a hub's level.",
     inputSchema: z.object({ hubId: hubIdSchema }),
-    execute: (input) =>
-      runTool("explain_hub_score", input, runtime, () => explainHubScoreOutput(ctx, input as { hubId: string })),
+    execute: (input, { toolCallId }) =>
+      runTool("explain_hub_score", input, runtime, () => explainHubScoreOutput(ctx, input as { hubId: string }), toolCallId),
   });
 }
 
@@ -45,6 +45,7 @@ export function explainHubScoreOutput(ctx: AgentContext, input: { hubId: string 
   if (!snapshot) throw new Error(`No score available for hub "${input.hubId}".`);
   const hub = ctx.hubById.get(input.hubId)!;
   const all = [...ctx.snapshotByHub.values()];
+  /** This hub's rank among all hubs on some score (ties share a rank). */
   const rankOf = (score: (s: StoredSnapshot) => number) =>
     competitionRanks(all.map((s) => ({ id: s.hubId, score: score(s) }))).get(input.hubId);
   const worst = snapshot.hazards[snapshot.topHazard].score;

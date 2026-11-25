@@ -6,7 +6,7 @@
  * caveats in the final answer must trace back to entries here.
  */
 import type { ModelMessage } from "ai";
-import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS } from "../scoring/config";
+import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS, HALF_BLEND } from "../scoring/config";
 import { DAY_METRICS } from "../scoring/dayMetrics";
 import type { Confidence } from "../scoring/types";
 import type { ToolCallRecord } from "./answerSchema";
@@ -43,9 +43,6 @@ export function collectNumbers(value: unknown, into: number[] = []): number[] {
   return into;
 }
 
-/** Share of each half in a mixed hazard (hazards.ts averages the observed and FEMA halves). */
-const HALF_BLEND_PERCENT = 50;
-
 /**
  * Fixed facts of the METHOD that answers may always quote (they come from the
  * system prompt, not from a tool) — all derived from config, never retyped:
@@ -64,7 +61,8 @@ export const ALWAYS_KNOWN_NUMBERS: readonly number[] = [
   OVERALL_MIX.weightedAverage * 100,
   OVERALL_MIX.worstHazard * 100,
   ...Object.values(HAZARD_WEIGHTS).flatMap((w) => [w, w * 100]),
-  HALF_BLEND_PERCENT,
+  HALF_BLEND.observed * 100,
+  HALF_BLEND.fema * 100,
   SCORING_WINDOW_DAYS,
   Math.round(SCORING_WINDOW_DAYS / 365.25),
   ...collectNumbers(Object.values(DAY_METRICS).map((m) => m.threshold)),
@@ -112,10 +110,15 @@ export function toolOutputsFromHistory(messages: readonly ModelMessage[]): ToolO
  * from earlier turns of the same conversation (D25 — follow-ups may reuse them).
  */
 export class ToolLedger {
+  /** Every call of this turn, in order (becomes the answer's `meta.toolCalls`). */
   readonly calls: ToolCallRecord[] = [];
+  /** This turn's tool outputs. */
   private readonly outputs: ToolOutputBase[] = [];
+  /** Tool outputs from earlier turns of the conversation (D65). */
   private historyOutputs: ToolOutputBase[] = [];
+  /** Numbers the system prompt states (hub count, this year and last year, D122). */
   private extraKnown: number[] = [];
+  /** Keys of calls already started in this answer (duplicate detection, E8). */
   private readonly claimed = new Set<string>();
 
   /**
