@@ -47,17 +47,18 @@ export interface QuestionResult {
  * Answers one chat message end to end.
  * @param input - session, message and unit system.
  * @param deps - model, data access and logging.
- * @param callbacks - live progress hooks.
+ * @param callbacks - live progress hooks, plus `onSession` (called as soon as the session id is known).
  * @returns the session id, the checked answer and token usage.
  * @throws AgentInputError / BoundaryError — also logged as an `agent.failed` event.
  */
 export async function answerQuestion(
   input: QuestionInput,
   deps: AnswerQuestionDeps,
-  callbacks: AgentCallbacks = {},
+  callbacks: AgentCallbacks & { onSession?: (sessionId: string) => void } = {},
 ): Promise<QuestionResult> {
   const correlationId = randomUUID();
   const sessionId = await deps.ensureSession(input.sessionId);
+  callbacks.onSession?.(sessionId);
   try {
     const [context, history] = await Promise.all([
       deps.loadContext({ today: deps.today(), units: input.units }),

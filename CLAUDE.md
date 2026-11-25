@@ -82,3 +82,8 @@ Each one: *next time you see X → do Y*.
    `responseMessages` (not `response.messages`), `isStepCount` (not `stepCountIs`), and `Output.object` alongside tools.
 12. **A validator rejects a follow-up's numbers** → check that it trusts the conversation's earlier tool
    results, not just the current turn's (D65).
+13. **Need env values inside a shell command** → read them with Node (or dotenv), NEVER `source .env.local` in
+   bash. Secrets with special characters get interpreted, and bash printed a fragment of `CRON_SECRET` into the
+   session log. Rotate any secret that leaks, even partially.
+14. **A GET route handler logs "needs to bail out of prerendering"** → call `await connection()` first, outside any
+   try/catch (Cache Components tries to prerender GET handlers, and catching its signal hides it).

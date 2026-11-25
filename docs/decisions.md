@@ -100,6 +100,17 @@ All numbers below live in **one file**, [`src/core/scoring/config.ts`](../src/co
 | D29 | **Username + password** on the whole site and API (Basic Auth now, themed login page later). $20 credit cap on the OpenRouter key. Message-length and agent-step limits. (Q16) | Stops strangers spending the LLM budget. Simplest thing that works first. |
 | D30 | Out-of-scope guard: **Jev (`typesafe/jev-1.14`) via OpenRouter**, pinned version. Decline below **0.4** probability of being in scope. Give up after 2 s and let the question through. Jev sees the last 2 turns. Every decision is logged. (Q19, Q20, Q26) | 0.4 is a middle ground. Too high a cutoff refuses real follow-ups like "why?". The final cutoff will be tuned on eval data. More abuse protection is planned later. |
 
+### API details (Step 5, round A1–A5)
+| # | Decision | Why |
+|---|---|---|
+| D73 | **`POST /api/chat` streams the AI SDK chat protocol** (A1): `data-session` first, then `data-progress` (one per tool call, updated in place, with friendly labels like "Breaking down Dallas's risk score…"), then answer text deltas, `data-retry` if validation failed (the UI drops the draft), and finally `data-answer` (validated) **or** `data-error`. Body: `{ sessionId \| null, message, units }`, Zod-validated. | The UI can show live progress *and* only trust the validated answer. The stream builder lives in `src/core/api` so it's unit-tested without Next.js. |
+| D74 | **Two auth layers** (A2): `src/proxy.ts` (Basic Auth on everything except `/api/cron` and static assets) **plus** a re-check inside every API route, using one constant-time function (`core/security/auth.ts`). Cron accepts only `Bearer <CRON_SECRET>`. | Next 16's own docs say proxy alone isn't a full authorization solution. Constant-time comparison avoids timing leaks. |
+| D75 | **Nightly job at 06:00 UTC** (`vercel.json`), running the same `runIngestThenScore` as the CLI. `maxDuration` 300 s (measured: 60 s). Status 207 if some hubs failed. | Open-Meteo has yesterday's data by then. Hobby cron fires within the hour. |
+| D76 | **Friendly errors, UX-first** (A4, "even friendlier"): every error is `{ code, message, hint, retryable }`. **All copy lives in `core/errors/userErrors.ts`**. In the stream it arrives as a structured `data-error` (not bare text), so the UI can show the hint and a "Try again" button. Technical detail only goes to logs and `events`. | Yarden: "we care a lot about UX". The model-failure message stays honest: "I couldn't put together an answer I can stand behind… I'd rather say so than guess." |
+| D77 | **`GET /api/widgets`** (A5): top 5 hubs, leader per hazard, data freshness. A pure, tested function over the latest snapshots. No health route. | Deterministic dashboard data, and fewer routes. |
+| D78 | GET routes call **`await connection()` first**, outside try/catch. | With Cache Components on, Next tried to prerender them at build. Reading headers threw its "bail out" signal, which our try/catch swallowed. Next's docs recommend `connection()`. |
+| D79 | `AgentInputError` moved to `core/errors/`, and its messages are friendlier ("That message is too long for me — please keep it under 1,000 characters."). | Error classes belong with errors. The error module no longer pulls in the whole agent. |
+
 ## Engineering
 
 | # | Decision | Why |

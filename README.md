@@ -39,6 +39,23 @@ npm run dev                    # http://localhost:3000
 | `npm run fema:anchors` | Recompute the national 95th-percentile FEMA anchors (for review before changing `scoring/config.ts`) |
 | `npm run session:export -- <file.jsonl>` | Export the AI session log to `docs/session/` (scrubbed) |
 
+## API
+Every route requires the site login (HTTP Basic Auth: `APP_USERNAME` / `APP_PASSWORD`), except the cron route.
+
+| Route | What it does |
+|---|---|
+| `POST /api/chat` | Body `{ "sessionId": null \| "<uuid>", "message": "…", "units": "us" \| "metric" }`. Streams the AI SDK chat protocol: `data-session`, `data-progress`, answer text, then `data-answer` (validated) or `data-error`. |
+| `GET /api/widgets` | Top 5 hubs, the leading hub per hazard, data freshness. |
+| `GET /api/cron/ingest` | Nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>`. |
+
+Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`.
+
+```bash
+curl -u "$APP_USERNAME:$APP_PASSWORD" -H "Content-Type: application/json" \
+  -d '{"sessionId":null,"message":"Which Midwest hubs are most exposed to winter?","units":"us"}' \
+  http://localhost:3000/api/chat
+```
+
 ## Database
 SQL migrations live in [supabase/migrations/](supabase/migrations/). Apply them in order to a fresh
 Supabase project (SQL editor or Supabase CLI). The second migration seeds the 36 hubs.
