@@ -80,3 +80,10 @@ describe("bare username", () => {
     expect(scrubText("someoneelse", rules)).toBe("someoneelse");
   });
 });
+
+describe("email leak check on JSON-escaped text", () => {
+  it("doesn't mistake an escaped tab or newline before @ for an address, but still finds real ones", () => {
+    expect(findLeaks(String.raw`"content":"1\t@AGENTS.md" and \n@proxy.route`, { homeDir, secretValues: [] })).toEqual([]);
+    expect(findLeaks(String.raw`"text":"\njane.doe@example.com"`, { homeDir, secretValues: [] })).toEqual(["email addresses: 1"]);
+  });
+});

@@ -30,12 +30,14 @@ export interface TranscriptRecord {
 }
 
 /**
- * Keeps only main-thread user/assistant records.
+ * Keeps only user/assistant records: from the main thread, or (for a sub-agent's own transcript,
+ * where every record is a "sidechain") from that sub-agent.
  * @param record - a parsed JSONL line.
+ * @param sidechain - true when reading a sub-agent's transcript.
  * @returns true when the record belongs in the exported log.
  */
-export function isConversationRecord(record: TranscriptRecord): boolean {
-  return (record.type === "user" || record.type === "assistant") && !record.isSidechain && !!record.message;
+export function isConversationRecord(record: TranscriptRecord, sidechain = false): boolean {
+  return (record.type === "user" || record.type === "assistant") && !!record.isSidechain === sidechain && !!record.message;
 }
 
 /** Content block types that hold the model's private reasoning (never exported, D41). */
@@ -107,11 +109,12 @@ function renderBlock(block: ContentBlock): string {
  * Renders a list of records as one Markdown document.
  * @param records - parsed transcript records (already scrubbed).
  * @param title - document heading.
+ * @param sidechain - true for a sub-agent's transcript.
  * @returns the Markdown text.
  */
-export function renderTranscript(records: TranscriptRecord[], title: string): string {
+export function renderTranscript(records: TranscriptRecord[], title: string, sidechain = false): string {
   const parts = [`# ${title}`, ""];
-  for (const record of records.filter(isConversationRecord)) {
+  for (const record of records.filter((r) => isConversationRecord(r, sidechain))) {
     const content = record.message?.content;
     const blocks: ContentBlock[] = typeof content === "string" ? [{ type: "text", text: content }] : (content ?? []);
     const body = blocks.map(renderBlock).filter((text) => text.trim().length > 0).join("\n\n");

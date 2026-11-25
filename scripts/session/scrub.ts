@@ -43,8 +43,12 @@ export const TOKEN_PATTERNS: readonly { pattern: RegExp; label: string }[] = [
   { pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/g, label: "Bearer [token removed]" },
 ];
 
-/** Email addresses (npm specifiers like `zod@4.6.7` don't match: no dot-letters domain). */
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+/**
+ * Email addresses (npm specifiers like `zod@4.6.7` don't match: no dot-letters domain). An address
+ * can't start right after a backslash: in JSON-escaped text a tab before `@AGENTS.md` reads `\t@AGENTS.md`,
+ * which isn't an address (a real one still matches from its first letter).
+ */
+const EMAIL = /(?<!\\)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 /**
  * Escapes a string so it can be used literally inside a RegExp.

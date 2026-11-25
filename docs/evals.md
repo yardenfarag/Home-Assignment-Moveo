@@ -1,6 +1,6 @@
 # Eval results
 
-Latest run: **remote https://sneakoscope.vercel.app** · 2026-11-25 16:45 UTC · 1 run(s) per case.
+Latest run: **openai/gpt-6.1-terra** · 2026-11-25 20:42 UTC · 1 run(s) per case.
 Run it yourself: `npm run eval` (see [README](../README.md)). Expected values are computed from the live data at run time.
 
 **13/13 cases passed** (a case passes only if every run passed).
@@ -26,16 +26,16 @@ Run it yourself: `npm run eval` (see [README](../README.md)). Expected values ar
 |---|---|
 | Avg tool calls per answer | 1.1 |
 | Duplicate tool calls (total) | 0 |
-| Numbers in text not traced to tools | 2 |
+| Numbers in text not traced to tools | 0 |
 | Answers that needed a validation retry | 0 |
-| Avg / p95 seconds per answer | 13.0 / 20.2 |
-| Tokens (in / out) | n/a (remote run: the API stream doesn't report tokens) |
-| Estimated cost | n/a |
+| Avg / p95 seconds per answer | 8.5 / 12.5 |
+| Tokens (in / out) | 123,310 in (109,111 from the prompt cache, 88%) / 6,421 out |
+| Cost | $0.055 charged by OpenRouter |
 
 ## Independent judge
 Each answer is graded by **google/gemini-3.5-flash-lite** (a different provider than the answering model) against the actual tool results.
 Hard check: faithful to data ≥ 4 (included in the results above). Everything else here is a soft metric:
-graded twice on identical answers, the pass/fail verdict flipped on 4 of 14, so it can't fail a case on its own (D103).
+graded twice on identical answers, the pass/fail verdict wasn't stable, so it can't fail a case on its own (D103).
 
 **Judge self-test:** 3/3 planted answers graded right ✅ — the judge's verdicts can be trusted
 - right: correct answer (Dallas) must PASS (verdict pass, faithful 5/5)
@@ -46,10 +46,10 @@ graded twice on identical answers, the pass/fail verdict flipped on 4 of 14, so 
 |---|---|
 | Faithful to data | 5.0 |
 | Answers the question | 5.0 |
-| Honest about limits | 5.0 |
+| Honest about limits | 4.9 |
 | Premise handling (when there was one) | 5.0 |
 | Clarity | 5.0 |
 | "Pass" verdicts | 14/14 |
 | Unsupported claims about our data | 0 |
-| General-knowledge claims (allowed, D104) | 1 |
+| General-knowledge claims (allowed, D104) | 0 |
 | Self-contradicting verdicts (D109) | 0 |
