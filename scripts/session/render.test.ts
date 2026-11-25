@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isConversationRecord, renderTranscript, truncate } from "./render";
+import { isConversationRecord, renderTranscript, truncate, withoutReasoning } from "./render";
+
+describe("withoutReasoning", () => {
+  it("drops reasoning blocks from the record itself, and records that held only reasoning", () => {
+    const record = { type: "assistant", message: { content: [{ type: "thinking", text: "private" }, { type: "text", text: "Hi" }] } };
+    expect(withoutReasoning(record)?.message?.content).toEqual([{ type: "text", text: "Hi" }]);
+    expect(withoutReasoning({ type: "assistant", message: { content: [{ type: "redacted_thinking" }] } })).toBeNull();
+    expect(withoutReasoning({ type: "user", message: { content: "plain" } })?.message?.content).toBe("plain");
+  });
+});
 
 describe("isConversationRecord", () => {
   it("keeps main-thread user/assistant records only", () => {

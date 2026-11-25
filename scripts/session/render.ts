@@ -38,6 +38,22 @@ export function isConversationRecord(record: TranscriptRecord): boolean {
   return (record.type === "user" || record.type === "assistant") && !record.isSidechain && !!record.message;
 }
 
+/** Content block types that hold the model's private reasoning (never exported, D41). */
+const REASONING_BLOCKS = new Set(["thinking", "redacted_thinking"]);
+
+/**
+ * Removes the model's private reasoning blocks from a record (for the raw JSONL export).
+ * @param record - a conversation record.
+ * @returns a copy without reasoning blocks, or null when nothing else was in it.
+ */
+export function withoutReasoning(record: TranscriptRecord): TranscriptRecord | null {
+  const content = record.message?.content;
+  if (!Array.isArray(content)) return record;
+  const kept = content.filter((block) => !REASONING_BLOCKS.has(block.type));
+  if (kept.length === 0) return null;
+  return { ...record, message: { ...record.message, content: kept } };
+}
+
 /**
  * Shortens long text and notes how much was cut.
  * @param text - text to shorten.

@@ -112,3 +112,5 @@ Each one: *next time you see X → do Y*.
    buttons (v3 did). Screenshots never show cursors, so measure `getComputedStyle(el).cursor` in the browser.
 25. **A custom `@layer base { … }` rule has no effect** → check the built CSS (`.next/static/chunks/*.css`). Tailwind
    v4's Turbopack loader silently dropped our custom base block, while `@layer components` survived.
+26. **A leak check passes** → make sure it can't share the scrubber's blind spot. Ours used the same literal path, so a
+   path escaped twice (`C:\\Users\\…`) passed both. Scrub parsed string values, not raw JSON lines, and check for the bare username.
