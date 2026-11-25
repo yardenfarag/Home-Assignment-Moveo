@@ -106,8 +106,12 @@ export function speakableText(markdown: string): string {
     .replace(/\s*·\s*/g, ", ")
     .replace(/\s*\n+\s*/g, ". ")
     .replace(/\.\s*\./g, ".")
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "") // emoji (🐱 would be read as "cat face")
     .replace(/\s{2,}/g, " ")
-    .trim();
+    .trim()
+    // A closing "For example:" introduces clickable chips on screen, not words to read (D129).
+    .replace(/\s*(for example|e\.g\.|such as)\s*:\s*$/i, "")
+    .replace(/:\s*$/, ".");
 }
 
 // --- What is being read aloud right now (one thing at a time) ---------------------------

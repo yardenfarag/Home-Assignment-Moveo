@@ -2,12 +2,10 @@
 /**
  * The message box (U7): Enter sends, Shift+Enter adds a line, Stop while answering.
  *
- * Voice (Step 15, D127, D128), hidden in browsers that can't listen:
- * - Microphone button: speak a question; the words fill the box so a misheard hub name can be
- *   fixed before pressing Ask.
- * - Conversation mode (sound-waves button), hands-free: listen → when you stop talking, send
- *   automatically → the answer is read aloud → listen again. The mic stays off while the answer
- *   is being read, so it never hears itself. Ends on a click, or when it hears nothing.
+ * Two ways to ask (D129): type, or conversation mode (the sound-waves button, hidden in browsers
+ * that can't listen). Conversation mode is hands-free: listen → when you pause, send automatically
+ * → the answer is read aloud → listen again. The mic stays off while the answer is being read, so
+ * it never hears itself. Ends on a click, or when it hears nothing.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import { AGENT_LIMITS } from "@/core/agent/config";
@@ -25,17 +23,6 @@ const RELISTEN_DELAY_MS = 700;
 /** Support never changes during a visit, so there's nothing to subscribe to. */
 const noSubscribe = () => () => {};
 
-/** A microphone, drawn in the button's text color (the emoji rendered unclearly in some fonts). */
-function MicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
-      <path d="M12 18v4M8 22h8" />
-    </svg>
-  );
-}
-
 /** Sound waves: conversation mode. */
 function WavesIcon() {
   return (
@@ -45,19 +32,10 @@ function WavesIcon() {
   );
 }
 
-/** A small filled square: "stop listening". */
-function StopIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-      <rect x="6" y="6" width="12" height="12" rx="2" />
-    </svg>
-  );
-}
-
 /** Props for {@link Composer}. */
 interface ComposerProps {
   busy: boolean;
-  /** `byVoice` is true when the question came from the mic (its answer is then read aloud). */
+  /** `byVoice` is true in conversation mode (the answer is then read aloud). */
   onSend: (text: string, byVoice: boolean) => void;
   onStop: () => void;
 }
@@ -65,7 +43,6 @@ interface ComposerProps {
 /** Renders the composer. */
 export function Composer({ busy, onSend, onStop }: ComposerProps) {
   const [text, setText] = useState("");
-  const [fromVoice, setFromVoice] = useState(false);
   const [listening, setListening] = useState(false);
   const [conversation, setConversation] = useState(false);
   const [voiceHint, setVoiceHint] = useState<string | null>(null);
@@ -100,16 +77,15 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
     if (hint) setVoiceHint(hint);
   }, []);
 
-  /** Starts one listening session. In conversation mode the question is sent when the person stops talking. */
+  /** Starts one listening session: the question is sent when the person stops talking. */
   const startListening = useCallback(
-    (prefix: string) => {
+    () => {
       heard.current = "";
       hadError.current = false;
       recognizer.current = createRecognizer({
         onText: (words) => {
           heard.current = words;
-          setText(prefix + words);
-          if (words) setFromVoice(true);
+          setText(words);
         },
         onEnd: () => {
           setListening(false);
@@ -118,7 +94,6 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
           if (question) {
             onSendRef.current(question, true);
             setText("");
-            setFromVoice(false);
           } else {
             // Nothing heard: leave conversation mode (a blocked mic already showed its own hint).
             endConversation(hadError.current ? undefined : "Conversation mode ended: I didn't hear anything.");
@@ -142,17 +117,9 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
   // Conversation loop: whenever nothing is being sent or read aloud, listen for the next question.
   useEffect(() => {
     if (!conversation || busy || speaking || listening) return;
-    const timer = setTimeout(() => startListening(""), RELISTEN_DELAY_MS);
+    const timer = setTimeout(startListening, RELISTEN_DELAY_MS);
     return () => clearTimeout(timer);
   }, [conversation, busy, speaking, listening, startListening]);
-
-  const toggleMic = () => {
-    if (listening) {
-      recognizer.current?.stop();
-      return;
-    }
-    startListening(text.trim() ? `${text.trim()} ` : "");
-  };
 
   const toggleConversation = () => {
     if (conversation) {
@@ -170,9 +137,8 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
     const trimmed = text.trim();
     if (!trimmed || busy || tooLong) return;
     recognizer.current?.stop();
-    onSend(trimmed, fromVoice);
+    onSend(trimmed, false);
     setText("");
-    setFromVoice(false);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -210,10 +176,7 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
           id="question"
           rows={1}
           value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            if (!event.target.value.trim()) setFromVoice(false);
-          }}
+          onChange={(event) => setText(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder={listening ? "Listening… ask your question" : "Ask about a hub, hazard or region…"}
           className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-3 py-2 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none"
@@ -236,20 +199,6 @@ export function Composer({ busy, onSend, onStop }: ComposerProps) {
             }`}
           >
             <WavesIcon />
-          </button>
-        )}
-        {micSupported && !busy && !conversation && (
-          <button
-            type="button"
-            onClick={toggleMic}
-            aria-pressed={listening}
-            aria-label={listening ? "Stop listening" : "Ask by voice"}
-            title={listening ? "Stop listening" : "Ask by voice"}
-            className={`rounded-xl px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 ${
-              listening ? "animate-pulse bg-rose-500/80 text-white motion-reduce:animate-none" : "border border-white/15 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            {listening ? <StopIcon /> : <MicIcon />}
           </button>
         )}
         {busy ? (

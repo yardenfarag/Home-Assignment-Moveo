@@ -15,6 +15,13 @@ describe("speakableText", () => {
     );
   });
 
+  it("skips emoji and a closing 'For example:' (the examples are on-screen chips)", () => {
+    expect(
+      speakableText("I can only help with weather risk for our 36 hubs. 🐱 I can rank them, compare them, look at past weather, or explain a hub's score. For example:"),
+    ).toBe("I can only help with weather risk for our 36 hubs. I can rank them, compare them, look at past weather, or explain a hub's score.");
+    expect(speakableText("Ice storms ❄️ come from FEMA only.")).toBe("Ice storms come from FEMA only.");
+  });
+
   it("keeps dates and negative numbers intact", () => {
     expect(speakableText("Weather data 2021-01-01 to 2026-11-24, lows of -18 °F.")).toBe("Weather data 2021-01-01 to 2026-11-24, lows of -18 °F.");
   });
