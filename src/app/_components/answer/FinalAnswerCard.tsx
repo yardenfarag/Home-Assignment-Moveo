@@ -14,10 +14,13 @@ import { Disclosure } from "./Disclosure";
 import { Markdown } from "./Markdown";
 import { PremiseBanner } from "./PremiseBanner";
 import { RecommendationBox } from "./RecommendationBox";
+import { SpeakButton } from "./SpeakButton";
 
 /** Props for {@link FinalAnswerCard}. */
 interface FinalAnswerCardProps {
   answer: FinalAnswer;
+  /** Identifies this answer for the read-aloud button (the message id). */
+  speechKey: string;
   /** Ask a follow-up question. */
   onAsk: (question: string) => void;
 }
@@ -37,7 +40,7 @@ function Visual({ visual }: { visual: AnswerVisual }) {
 }
 
 /** Renders the final answer card. */
-export function FinalAnswerCard({ answer, onAsk }: FinalAnswerCardProps) {
+export function FinalAnswerCard({ answer, speechKey, onAsk }: FinalAnswerCardProps) {
   const visuals = pickVisuals(answer);
   const steps = [...new Set(answer.meta.toolCalls.map((c) => progressLabel(c.tool, c.input).replace(/…$/, "")))];
   const caveats = [...answer.assumptions, ...answer.limitations];
@@ -55,12 +58,15 @@ export function FinalAnswerCard({ answer, onAsk }: FinalAnswerCardProps) {
 
       {answer.recommendation && <RecommendationBox recommendation={answer.recommendation} />}
 
-      {answer.confidence && (
-        <p className="flex items-center gap-2 text-xs text-slate-400" title="Computed by code from data completeness and whether the sources agree">
-          <span className="h-2 w-2 rounded-full" style={{ background: CONFIDENCE_UI[answer.confidence].dot }} aria-hidden="true" />
-          {CONFIDENCE_UI[answer.confidence].label}
-        </p>
-      )}
+      <div className="flex items-center gap-2">
+        {answer.confidence && (
+          <p className="flex items-center gap-2 text-xs text-slate-400" title="Computed by code from data completeness and whether the sources agree">
+            <span className="h-2 w-2 rounded-full" style={{ background: CONFIDENCE_UI[answer.confidence].dot }} aria-hidden="true" />
+            {CONFIDENCE_UI[answer.confidence].label}
+          </p>
+        )}
+        <SpeakButton speechKey={speechKey} text={answer.answer} />
+      </div>
 
       {(caveats.length > 0 || steps.length > 0) && (
         <div className="space-y-2">

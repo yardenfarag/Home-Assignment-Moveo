@@ -69,7 +69,7 @@ flowchart TB
 
 | Part | Where | What it does | Talks to |
 |---|---|---|---|
-| **Chat UI** | [src/app/_components/](../src/app/_components/) | One screen, three framed panels: earlier chats, the conversation, the overview. The page never scrolls; each panel scrolls inside itself (bottom tabs on phones). Entry: [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L56) | Only our own API routes, never the LLM |
+| **Chat UI** | [src/app/_components/](../src/app/_components/) | One screen, three framed panels: earlier chats, the conversation, the overview. The page never scrolls; each panel scrolls inside itself (bottom tabs on phones). Voice in and out uses the browser's speech APIs ([src/app/_lib/speech.ts](../src/app/_lib/speech.ts), D127). Entry: [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L57) | Only our own API routes, never the LLM |
 | **API routes** | [src/app/api/](../src/app/api/) | Thin: validate the request with Zod, call `src/core`, turn errors into friendly JSON | `src/core` |
 | **Guard** | [src/core/guard/](../src/core/guard/) | Checks each message with Jev before the agent runs; declines off-topic or manipulative ones | OpenRouter (Jev) |
 | **Agent** | [src/core/agent/](../src/core/agent/) | Runs the LLM with tools, checks the answer, retries once | OpenRouter, the tools |
@@ -142,7 +142,7 @@ sequenceDiagram
 
 Step by step, with the code:
 
-1. **The browser sends the question.** [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L56) uses the AI SDK's
+1. **The browser sends the question.** [`SneakoscopeApp`](../src/app/_components/SneakoscopeApp.tsx#L57) uses the AI SDK's
    `useChat` to `POST /api/chat` with `{ sessionId, message, units }`. The session id lives in the browser's
    localStorage, so earlier chats can be reopened from the side menu.
 2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L24) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L19)), and starts a
