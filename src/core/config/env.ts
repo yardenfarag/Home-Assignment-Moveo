@@ -30,6 +30,17 @@ const openRouterEnvSchema = z.object({
 /** Validated OpenRouter settings. */
 export type OpenRouterEnv = z.infer<typeof openRouterEnvSchema>;
 
+/** Site access (Basic Auth, Q16/A2) and the nightly job's secret (A3). */
+const accessEnvSchema = z.object({
+  APP_USERNAME: z.string().min(3),
+  APP_PASSWORD: z.string().min(12, "use at least 12 characters"),
+  /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically. */
+  CRON_SECRET: z.string().min(16, "use at least 16 random characters"),
+});
+
+/** Validated access settings. */
+export type AccessEnv = z.infer<typeof accessEnvSchema>;
+
 /**
  * Every env schema, by feature. Add new feature schemas here so the
  * `.env.example` drift test covers them automatically.
@@ -37,6 +48,7 @@ export type OpenRouterEnv = z.infer<typeof openRouterEnvSchema>;
 export const ENV_SCHEMAS = {
   supabase: supabaseEnvSchema,
   openRouter: openRouterEnvSchema,
+  access: accessEnvSchema,
 } as const;
 
 /**
@@ -79,4 +91,14 @@ export function getSupabaseEnv(source: EnvSource = process.env): SupabaseEnv {
  */
 export function getOpenRouterEnv(source: EnvSource = process.env): OpenRouterEnv {
   return parseEnv(openRouterEnvSchema, source, "getOpenRouterEnv");
+}
+
+/**
+ * Returns validated access settings (site login + cron secret).
+ * @param source - variables to read (defaults to `process.env`; injectable for tests).
+ * @returns username, password and cron secret.
+ * @throws BoundaryError when a variable is missing or too weak.
+ */
+export function getAccessEnv(source: EnvSource = process.env): AccessEnv {
+  return parseEnv(accessEnvSchema, source, "getAccessEnv");
 }

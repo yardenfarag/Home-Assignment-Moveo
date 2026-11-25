@@ -19,7 +19,10 @@ import {
   type LanguageModel,
   type ModelMessage,
 } from "ai";
+import { AgentInputError } from "../errors/agentInputError";
 import { BoundaryError, describeUnknownError } from "../errors/boundaryError";
+
+export { AgentInputError };
 import { buildSystemPrompt } from "./systemPrompt";
 import { llmAnswerSchema, type FinalAnswer, type LlmAnswer } from "./answerSchema";
 import { AGENT_LIMITS } from "./config";
@@ -59,14 +62,6 @@ export interface AgentResult {
   usage: { inputTokens: number; outputTokens: number };
 }
 
-/** Error shown to users when the question itself is invalid (maps to HTTP 400). */
-export class AgentInputError extends Error {
-  /** @param message - user-facing reason. */
-  constructor(message: string) {
-    super(message);
-    this.name = "AgentInputError";
-  }
-}
 
 /**
  * Runs one model attempt and streams the answer text.
@@ -141,9 +136,9 @@ async function attempt(
  */
 export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks: AgentCallbacks = {}): Promise<AgentResult> {
   const message = request.message.trim();
-  if (message.length === 0) throw new AgentInputError("Please type a question.");
+  if (message.length === 0) throw new AgentInputError("Please type a question first — for example: “Why is the Dallas hub risky?”");
   if (message.length > AGENT_LIMITS.maxUserMessageChars) {
-    throw new AgentInputError(`That message is too long (max ${AGENT_LIMITS.maxUserMessageChars} characters).`);
+    throw new AgentInputError(`That message is too long for me — please keep it under ${AGENT_LIMITS.maxUserMessageChars.toLocaleString("en-US")} characters.`);
   }
 
   const ledger = new ToolLedger();
