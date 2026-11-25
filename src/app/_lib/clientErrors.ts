@@ -3,64 +3,31 @@
  *
  * Friendly copy for problems that happen in the BROWSER (no connection, a hung request, a chart
  * that can't be drawn), and the mapping from a failed chat request to one friendly card (B5).
- * The API's own error copy stays in `core/errors/userErrors.ts`; this file only adds what the
- * server can't know about. Never shows raw error text.
+ * All the copy lives in `core/errors/userErrors.ts` (single source); this file maps browser
+ * failures to it and logs UI errors (🦋). Never shows raw error text.
  */
-import type { SneakoscopeDataParts } from "@/core/api/chatStream";
-import { STREAM_INTERRUPTED, USER_ERROR_CODES, USER_ERRORS, userError, type UserErrorCode } from "@/core/errors/userErrors";
+import { boundaryLogLine } from "@/core/errors/boundaryError";
+import {
+  ANSWER_STALLED,
+  CONNECTION_FAILED,
+  STREAM_INTERRUPTED,
+  USER_ERROR_CODES,
+  USER_ERRORS,
+  userError,
+  type ChatError,
+  type UserErrorCode,
+} from "@/core/errors/userErrors";
 
-/** The error card's content (same shape as the stream's `data-error` part). */
-export type ChatError = SneakoscopeDataParts["error"];
-
-/** The request never reached us (offline, DNS, the network dropped before the answer began). */
-export const CONNECTION_FAILED: ChatError = {
-  code: "internal_error",
-  message: "I couldn't reach Sneakoscope just now. 🙀",
-  hint: "Check your internet connection, then try again.",
-  retryable: true,
-};
-
-/** Nothing new arrived for a long while (the watchdog stopped waiting) or the request timed out. */
-export const ANSWER_STALLED: ChatError = {
-  code: "internal_error",
-  message: "The answer stalled, so I stopped waiting.",
-  hint: "Please try again in a moment.",
-  retryable: true,
-};
-
-/** A saved chat couldn't be loaded (B2). */
-export const CHAT_OPEN_FAILED = "Couldn't open that chat. Try again.";
-
-/** The chat list couldn't be loaded (S4). */
-export const SESSIONS_FAILED = "Couldn't load your chats right now.";
-
-/** One chart under an answer couldn't be drawn (S11). The answer text itself was already checked. */
-export const VISUAL_FAILED = "This chart couldn't be drawn. The answer above is unaffected.";
-
-/** A whole saved answer couldn't be shown (e.g. it was stored in an older format). */
-export const MESSAGE_FAILED = "I couldn't show this answer. Try asking the question again.";
-
-/** Eval run (D130): copy for a run streamed in this browser. */
-export const EVAL_COPY = {
-  couldNotStart: "The evals couldn't start right now. Please try again later.",
-  noConnection: "The evals couldn't start right now. Please check your connection and try again.",
-  dropped: "The connection dropped before the run finished. The results may still show up here in a few minutes.",
-  stalled: "I haven't heard from the run for a while, so I stopped watching. The results may still show up here in a few minutes.",
-  unreadable: "Some progress updates couldn't be read. The results may still show up here in a few minutes.",
-} as const;
-
-/** Fixed animal emoji for errors caught while drawing the UI (the server's boundaries have theirs in `boundaryError.ts`). */
-export const UI_BOUNDARY_EMOJI = "🦋";
+// The browser-side copy lives with the rest in core/errors/userErrors.ts; re-exported for the UI.
+export { ANSWER_STALLED, CHAT_OPEN_FAILED, CONNECTION_FAILED, EVAL_COPY, MESSAGE_FAILED, SESSIONS_FAILED, VISUAL_FAILED, type ChatError } from "@/core/errors/userErrors";
 
 /**
- * Logs a UI rendering failure in the project's format: `ErrorName || message || where || emoji`.
+ * Logs a UI rendering failure in the project's format: `ErrorName || message || where || 🦋`.
  * @param error - what was thrown.
  * @param where - the part of the UI that failed.
  */
 export function logUiError(error: unknown, where: string): void {
-  const name = error instanceof Error ? error.name : "RenderError";
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`${name} || ${message} || ${where} || ${UI_BOUNDARY_EMOJI}`);
+  console.error(boundaryLogLine(error, where, "ui"));
 }
 
 /**

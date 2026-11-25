@@ -2,7 +2,7 @@
  * @module app/_lib/copy
  *
  * Small pieces of UI copy used in more than one place (single source of truth). Error copy
- * lives in `clientErrors.ts` (browser-side problems) and `core/errors/userErrors.ts` (the API's).
+ * lives in `core/errors/userErrors.ts` (the API's and the browser's).
  */
 
 /** Shown while the agent hasn't reported anything yet. */
