@@ -17,6 +17,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createAnswerQuestionDeps } from "../src/core/agent/createAnswerQuestionDeps";
+import { getCronEnv } from "../src/core/config/env";
 import { recordEvent } from "../src/core/db/eventsRepository";
 import { createJudgeModel } from "../src/core/judge/judgeAnswer";
 import { EVAL_CASES } from "../evals/cases";
@@ -102,7 +103,7 @@ async function main(): Promise<void> {
         evalCase,
         getResults: () =>
           url
-            ? runRemote(evalCase, { baseUrl: url })
+            ? runRemote(evalCase, { baseUrl: url, operatorKey: getCronEnv().CRON_SECRET })
             : runInProcess(evalCase, deps.agentModel, context),
       }));
   const runs: CaseRun[] = [];

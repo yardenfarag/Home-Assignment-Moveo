@@ -17,6 +17,7 @@ the result, and code checks the explanation before you see it.
 - [How it works, in one minute](#how-it-works-in-one-minute)
 - [Assignment requirements: where each one is met](#assignment-requirements-where-each-one-is-met)
 - [Run it locally](#run-it-locally)
+- [Deploy your own copy](#deploy-your-own-copy)
 - [Scripts](#scripts)
 - [API](#api)
 - [Evals](#evals)
@@ -25,7 +26,8 @@ the result, and code checks the explanation before you see it.
 
 ## Try it
 - **Live app:** the Vercel URL is added here at deployment (Step 10).
-- **No sign-in needed.** Just open the link.
+- **No sign-in needed.** Just open the link. To protect the shared budget, each visitor can ask **20 questions per
+  10 minutes and 100 per day**, and everyone together **300 per day**.
 - Click one of the example questions on the start screen, or type your own. Use the **US / Metric** switch for
   units, and the side menu to reopen earlier chats.
 
@@ -108,6 +110,20 @@ npm run ingest
 npm run dev
 ```
 
+## Deploy your own copy
+1. **Import** the repo in Vercel (it's detected as Next.js through [vercel.json](vercel.json), which also pins the
+   region next to the database and schedules the nightly job).
+2. **Environment variables** (Production): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENROUTER_API_KEY`,
+   `OPENROUTER_MODEL`, `CRON_SECRET`. Mark the secret ones as *sensitive*. `JUDGE_MODEL` is only needed for evals.
+3. **Firewall rule** (flood protection for every route, D114). In the Vercel dashboard: your project → **Firewall** →
+   **Configure** → **+ New Rule**:
+   - *Name:* `flood shield`
+   - *If:* **Request Path** **starts with** `/`
+   - *Then:* **Rate Limit**, **Fixed Window**, **60 seconds**, **100 requests**, keyed by **IP**, action
+     **Too Many Requests (429)**
+   - **Save**, then **Publish**.
+4. Merge to `main`: Vercel deploys it. The nightly job runs at 06:00 UTC (Hobby plans run it within that hour).
+
 ## Scripts
 | Command | What it does |
 |---|---|
@@ -135,7 +151,9 @@ The app has no login, so every route is open, except the nightly job, which need
 | `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |
 | `GET /api/cron/ingest` | The nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>` |
 
-Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`.
+Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`. `POST /api/chat` answers
+**429** with code `too_many_requests` or `daily_limit` when a [request limit](docs/design.md#9-errors-security-and-limits)
+is reached.
 
 ```bash
 curl -H "Content-Type: application/json" \

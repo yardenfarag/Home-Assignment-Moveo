@@ -12,7 +12,7 @@ import { AgentInputError } from "./agentInputError";
 import { BoundaryError } from "./boundaryError";
 
 /** Error codes the API can return. */
-export const USER_ERROR_CODES = ["invalid_request", "unauthorized", "no_data", "agent_failed", "internal_error"] as const;
+export const USER_ERROR_CODES = ["invalid_request", "unauthorized", "too_many_requests", "daily_limit", "no_data", "agent_failed", "internal_error"] as const;
 
 /** One of the API error codes. */
 export type UserErrorCode = (typeof USER_ERROR_CODES)[number];
@@ -42,6 +42,18 @@ export const USER_ERRORS: Record<UserErrorCode, Omit<UserError, "code">> = {
     status: 401,
     message: "This address is only for Sneakoscope's nightly data job.",
     hint: "To use Sneakoscope, open the home page and ask a question. 🐱",
+    retryable: false,
+  },
+  too_many_requests: {
+    status: 429,
+    message: "You're asking faster than I can keep up. 😸",
+    hint: "Please take a short break and try again in a few minutes.",
+    retryable: false,
+  },
+  daily_limit: {
+    status: 429,
+    message: "Sneakoscope has answered a lot of questions today. 🐱",
+    hint: "The daily limit resets at midnight UTC. Please come back tomorrow.",
     retryable: false,
   },
   no_data: {

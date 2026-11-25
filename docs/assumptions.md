@@ -124,8 +124,10 @@ national value per hazard, close to typical NWS warning levels:
 
 ## Operational limits of the demo deployment
 - **There is no login** (D113). Anyone with the link can ask questions, and every answer is paid from the same OpenRouter
-  key. If the key's credit runs out, the agent stops answering (with a friendly error) until a new key is set.
-  A chat can be reopened by anyone who knows its random id.
+  key. Request limits cap the damage: 20 questions per 10 minutes and 100 per day per visitor, 300 per day in total
+  (D114). Someone switching IP addresses can get around the per-visitor limits, but not the daily total. If the key's
+  credit runs out, the agent stops answering (with a friendly error) until a new key is set. A chat can be reopened
+  by anyone who knows its random id.
 - The OpenRouter key has a **$20 credit cap** and **expires 7 days after creation (around 2026-12-02)**.
   After that the agent can't answer until a new key is set in Vercel's environment variables.
 - Open-Meteo's free tier is per-IP and non-commercial. A production version needs their paid API.
