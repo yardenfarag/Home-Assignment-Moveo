@@ -11,11 +11,20 @@ import { formatBoundaryMessage } from "../errors/boundaryError";
 import type { Json } from "./database.types";
 import { getDb, type Db } from "./client";
 
-/** Which part of the system produced the event (matches the DB check constraint). */
-export type EventSource = "ingest" | "scoring" | "agent" | "api" | "guard" | "cron" | "eval";
+/**
+ * Parts of the system that produce events. Mirrors the `events.source` check
+ * constraint in the migrations — `schemaDrift.test.ts` fails if they drift.
+ */
+export const EVENT_SOURCES = ["ingest", "scoring", "agent", "api", "guard", "cron", "eval"] as const;
+
+/** Which part of the system produced the event. */
+export type EventSource = (typeof EVENT_SOURCES)[number];
+
+/** Event severities. Mirrors the `events.level` check constraint. */
+export const EVENT_LEVELS = ["info", "warn", "error"] as const;
 
 /** Severity of an event. */
-export type EventLevel = "info" | "warn" | "error";
+export type EventLevel = (typeof EVENT_LEVELS)[number];
 
 /** A new event to record. */
 export interface NewEvent {

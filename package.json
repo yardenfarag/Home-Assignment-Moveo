@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:check": "tsx --env-file=.env.local scripts/check-db.ts",
-    "session:export": "tsx scripts/export-session.ts"
+    "session:export": "tsx scripts/export-session.ts",
+    "ingest": "tsx --env-file=.env.local scripts/ingest.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

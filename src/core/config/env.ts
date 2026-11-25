@@ -21,6 +21,14 @@ const supabaseEnvSchema = z.object({
 export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
 
 /**
+ * Every env schema, by feature. Add new feature schemas here so the
+ * `.env.example` drift test covers them automatically.
+ */
+export const ENV_SCHEMAS = {
+  supabase: supabaseEnvSchema,
+} as const;
+
+/**
  * Validates `source` against `schema` and throws a readable config error listing
  * the bad variable names (values are never included).
  * @param schema - Zod schema for the variables.
