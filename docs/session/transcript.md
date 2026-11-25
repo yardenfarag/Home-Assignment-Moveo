@@ -46545,3 +46545,2007 @@ The file ~\Home-Assignment-Moveo\docs\plan.md has been updated successfully. (no
 </details>
 
 ---
+
+### ⚙️ Tool output · 2026-11-25T17:06:49.655Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+fixed 0
+ Test Files  46 passed (46)
+      Tests  216 passed (216)
+🔒 Leak check passed: no emails, secrets, scrub terms or home path left.
+✓ no .env.local value in the export
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:07:04.692Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\pr16.md",
+  "content": "## Step 12: scoring v2, inland flood per county area (with a floor)\n\nInland flood is now counted **per 1,000 sq mi of county, but no county counts as smaller than the median US county (646 sq mi)**. `scoring_version` → **v2** (D123).\n\n### Why the floor (measured before choosing)\n| Hub (county area) | FEMA flood half v1 | pure per-area (the D97 plan) | **v2: per-area with floor** |\n|---|---|---|---|\n| Phoenix (9,319 sq mi) | 100 | 11 | **19** |\n| Las Vegas (8,142) | 100 | 10 | **19** |\n| Los Angeles (4,797) | 100 | 44 | **44** (coastal) |\n| St. Louis City (67) | 36 | **100** ❌ | **42** |\n| Manhattan (34) | 76 | **100** ❌ | **76** |\n| Denver (156) | 23 | 61 ❌ | **27** |\n\nPure per-area works for tornadoes (county-size correlation +0.62, D53). Flood warnings barely scale with county size (+0.21), so dividing fully by area overcorrects tiny city-counties. The floor fixes the huge counties without that blow-up. The anchor is recomputed nationally the same way: p95 = **4.7** (`npm run fema:anchors` reproduces every value in the config).\n\n### Effect on overall scores (please review)\n| Hub | Overall v1 → v2 | Level | Rank |\n|---|---|---|---|\n| Los Angeles | 42.4 → 27.9 | medium → **low** | 27 → 34 |\n| Houston | 69.1 → 63.7 | **high → medium** | 8 → 8 |\n| Las Vegas | 38.0 → 33.1 | medium → **low** | 32 → 33 |\n| Phoenix | 54.5 → 49.7 | medium | 16 → 22 |\n| Miami | 69.3 → 66.1 | **high → medium** | 6 → 7 |\n\nAll other hubs move by under 1.5 points.\n\n**Honest caveat:** Houston is a real weakness of the per-area method. Harris County is large (1,795 sq mi) but urban throughout, so dividing by area understates it. Its flood score stays High (72) thanks to observed heavy-rain days, and its rank is unchanged. Miami misses the High cutoff by under one point (66.1). This is now written in assumptions.md, and the flood caveat the agent shows says it too. **11 hubs are still capped at 100** on FEMA flood (15 in v1), and among them observed rain decides the ranking.\n\n### Safe rollout\n`getLatestSnapshots` reads only snapshots of the current scoring version. So **I already re-scored all 36 hubs with v2** (written next to v1). The live v1 site keeps working until this merges, and the v2 deploy finds its data immediately.\n\n### Changes\n- `src/core/scoring/config.ts`: `SCORING_VERSION = \"v2\"`, `INLAND_FLOOD_AR
+… [truncated 1268 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:07:04.901Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\pr16.md (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:07:11.097Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git add -A && (git diff --cached --name-only | grep -i \"results/\\|\\.env\\.local\\|\\.vercel\" || echo \"-- nothing private staged\") && git commit -q -F - <<'EOF'\nfeat(step-12): scoring v2, inland flood per county area with a median-county floor\n\n- Inland flood per 1,000 sq mi, county area floored at the US median (646 sq mi); anchor p95 4.7\n- SCORING_VERSION v2 (v1 snapshots kept; v2 already scored for a safe rollout)\n- Flood caveat + prompt explain per-area counting; tests now cover flood (Minneapolis, floor cases)\n- Docs: D123, assumptions, design, plan (Steps 12-16, Later list reviewed)\n\nCo-Authored-By: Claude Opus 5.5 <[email removed]>\nEOF\ngit push -q -u origin step-12-flood-v2 2>&1 | tail -1; S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\" && node -e 'const fs=require(\"fs\");fs.writeFileSync(process.argv[1]+\"/pr16.json\",JSON.stringify({title:\"Step 12: scoring v2, inland flood per county area (with a floor)\",head:\"step-12-flood-v2\",base:\"main\",body:fs.readFileSync(process.argv[1]+\"/pr16.md\",\"utf8\")}))' \"$S\" && gh api -X POST repos/yardenfarag/Home-Assignment-Moveo/pulls --input \"$S/pr16.json\" --include 2>&1 | head -1; gh api \"repos/yardenfarag/Home-Assignment-Moveo/pulls?head=yardenfarag:step-12-flood-v2&state=all\" --jq '.[] | \"\\(.number) \\(.state) \\(.html_url) | body chars: \\(.body|length)\"' 2>&1 | tail -1",
+  "description": "Commit, push and open the Step 12 PR",
+  "timeout": 180000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:07:22.363Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+-- nothing private staged
+remote: 
+HTTP/2.0 201 Created
+16 open https://github.com/yardenfarag/Home-Assignment-Moveo/pull/16 | body chars: 3571
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:07:46.130Z
+
+<details><summary>🔧 Tool call: <code>AskUserQuestion</code></summary>
+
+```json
+{
+  "questions": [
+    {
+      "question": "When should a score-change alert fire? (Checked after every nightly re-score, always comparing two snapshots of the SAME scoring version, so the v1→v2 switch never fires alerts.)",
+      "header": "Alert rule",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "Level change OR ±10 points (Recommended)",
+          "description": "A hub's overall risk level changes (e.g. Medium → High), or its overall score moves 10+ points since the previous run. Your original idea from the brief. Rare in practice (scores move slowly), so every alert matters."
+        },
+        {
+          "label": "Also per-hazard level changes",
+          "description": "Additionally alert when any single hazard changes level (e.g. Dallas heat Medium → High). More alerts, more detail, more noise."
+        }
+      ]
+    },
+    {
+      "question": "Where should alerts go?",
+      "header": "Delivery",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "In the app + optional webhook (Recommended)",
+          "description": "Every alert is saved (the existing events log, no new table) and shown in a 'Recent changes' card in the overview. If ALERT_WEBHOOK_URL is set, each alert is also POSTed there in Slack's format, so it works with a Slack incoming webhook and with generic webhook receivers."
+        },
+        {
+          "label": "Webhook only",
+          "description": "No UI; alerts only go to the webhook. Less to build, but invisible in the demo unless the webhook is connected."
+        },
+        {
+          "label": "In the app only",
+          "description": "A 'Recent changes' card, no webhook. Simplest; doesn't show 'webhook-triggered' from the brief."
+        }
+      ]
+    },
+    {
+      "question": "Scores move slowly, so real alerts may not fire before the interview. How should we demo it?",
+      "header": "Demo",
+      "multiSelect": false,
+      "options": [
+        {
+          "label": "Test-alert command + clearly marked test (Recommended)",
+          "description": "`npm run alerts:test` (and a cron-secret-protected route) sends one alert marked 'TEST' through the exact same path: saved, shown in the card with a 'test' tag, and POSTed to the webhook. Real alerts are never faked."
+        },
+        {
+          "label": "Replay the v1→v2 switch as a demo",
+          "description": "Use today's v1→v2 changes (LA, Houston, Miami, Las Vegas) as a one-off demo batch, clearly labeled 
+… [truncated 1057 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:10:35.999Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The user answered: "When should a score-change alert fire? (Checked after every nightly re-score, always comparing two snapshots of the SAME scoring version, so the v1→v2 switch never fires alerts.)"="Level change OR ±10 points (Recommended)", "Where should alerts go?"="In the app + optional webhook (Recommended)", "Scores move slowly, so real alerts may not fire before the interview. How should we demo it?"="Test-alert command + clearly marked test (Recommended)", "For the webhook, do you have somewhere to receive it?"="no webhook needed. if something changes in the daily fetch, theres an 'if' in the code that triggers an alert and the frontend will show with a dismissal option". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:10:53.135Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git checkout -q -b step-13-alerts && sed -n 20,64p src/core/scoring/runScoring.ts; sed -n 64,140p src/core/scoring/runScoring.ts | grep -n \"deps\\.\\|saveScoreSnapshots\\|getLatest\\|recordEvent\" | head; grep -n \"export\" src/app/_lib/storage.ts",
+  "description": "Read runScoring deps/flow and the browser storage helpers"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:10:54.291Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+export interface ScoringDeps {
+  listActiveHubs: () => Promise<Hub[]>;
+  getLatestWeatherDate: (hubId: string) => Promise<string | null>;
+  getWeatherDays: (hubId: string, startDate: string, endDate: string) => Promise<DailyWeather[]>;
+  getFemaSignalsByHub: () => Promise<{ signals: Map<string, FemaSignals>; problems: Map<string, string> }>;
+  saveScoreSnapshots: (snapshots: SnapshotToSave[]) => Promise<number>;
+  recordEvent: (event: NewEvent) => Promise<boolean>;
+  log: (line: string) => void;
+}
+
+/** Options for one scoring run. */
+export interface ScoringOptions {
+  trigger: "cli" | "cron" | "ingest";
+  /** Reuse the ingest run id so one id covers fetch + score. A new id is made otherwise. */
+  runId?: string;
+}
+
+/** What happened to one hub. */
+export interface HubScoringResult {
+  hubId: string;
+  overallScore?: number;
+  riskLevel?: RiskLevel;
+  confidence?: Confidence;
+  /** Non-fatal problem (e.g. unusable FEMA row). */
+  warning?: string;
+  /** Fatal problem: hub not scored. */
+  error?: string;
+}
+
+/** Summary of a scoring run. */
+export interface ScoringSummary {
+  runId: string;
+  scoringVersion: string;
+  hubsScored: number;
+  hubsFailed: number;
+  results: HubScoringResult[];
+}
+
+/**
+ * Scores all active hubs and saves the snapshots.
+ * @param options - trigger and optional run id.
+ * @param deps - injected I/O.
+ * @returns the run summary (also stored as the `scoring.finished` event).
+ * @throws only if the hub list, FEMA table or the final save fail; per-hub problems are recorded.
+ */
+4:  await deps.recordEvent({
+11:  const hubs = await deps.listActiveHubs();
+12:  const { signals: femaByHub, problems: femaProblems } = await deps.getFemaSignalsByHub();
+19:      const latest = await deps.getLatestWeatherDate(hub.id);
+22:      const observed = computeObservedSignals(await deps.getWeatherDays(hub.id, window.start, window.end), window);
+26:      deps.log(`   ${hub.name.padEnd(16)} ${String(score.overallScore).padStart(5)} ${score.riskLevel.padEnd(6)} top=${score.topHazard} conf=${score.confidence}`);
+29:      deps.log(`   ❌ ${hub.name}: ${result.error}`);
+30:      await deps.recordEvent({
+42:  await deps.saveScoreSnapshots(snapshots);
+51:  await deps.recordEvent({
+18:export function loadUnits(): UnitSystem {
+25:export function saveUnits(units: UnitSystem): void {
+31:export function loadSessionIds(): string[] {
+46:export function rememberSession(id: string): string[] {
+66:export function subscribeToStorage(callback: () => void): () => void {
+83:exp
+… [truncated 87 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:12.883Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 1,95p src/app/_lib/storage.ts; grep -n \"export function WidgetsRail\\|<section\\|className=\\\"glass\\|fetch(\\|useEffect\" src/app/_components/WidgetsRail.tsx | head -12; sed -n 95,150p src/core/db/scoresRepository.ts | grep -n \"export async function getLatestSnapshots\" -A14",
+  "description": "Read storage helpers, widgets rail structure and snapshot reader"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:13.441Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+/**
+ * @module app/_lib/storage
+ *
+ * What this BROWSER remembers (U5b, D60): the unit system, and the ids of its
+ * own chats (newest first). Nothing sensitive — the chats live on the server.
+ */
+import { UNIT_SYSTEMS, type UnitSystem } from "@/core/utils/units";
+
+const UNITS_KEY = "sneakoscope.units";
+const SESSIONS_KEY = "sneakoscope.sessions";
+/** How many past chats the side nav remembers. */
+const MAX_SESSIONS = 50;
+
+/** True when running in a browser with localStorage available. */
+const hasStorage = () => typeof window !== "undefined" && !!window.localStorage;
+
+/** @returns the saved unit system (default US). */
+export function loadUnits(): UnitSystem {
+  if (!hasStorage()) return "us";
+  const saved = window.localStorage.getItem(UNITS_KEY);
+  return (UNIT_SYSTEMS as readonly string[]).includes(saved ?? "") ? (saved as UnitSystem) : "us";
+}
+
+/** @param units - the unit system to remember. */
+export function saveUnits(units: UnitSystem): void {
+  if (hasStorage()) window.localStorage.setItem(UNITS_KEY, units);
+  notify();
+}
+
+/** @returns ids of this browser's chats, newest first. */
+export function loadSessionIds(): string[] {
+  if (!hasStorage()) return [];
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(SESSIONS_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Remembers a chat id (moves it to the top).
+ * @param id - session id.
+ * @returns the updated list.
+ */
+export function rememberSession(id: string): string[] {
+  const ids = [id, ...loadSessionIds().filter((existing) => existing !== id)].slice(0, MAX_SESSIONS);
+  if (hasStorage()) window.localStorage.setItem(SESSIONS_KEY, JSON.stringify(ids));
+  notify();
+  return ids;
+}
+
+/** Fired in this tab when we change stored values (the "storage" event only fires in OTHER tabs). */
+const CHANGE_EVENT = "sneakoscope-storage";
+
+/** Tells subscribers in this tab that stored values changed. */
+function notify(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+/**
+ * Subscribes to stored-value changes (this tab and other tabs), for useSyncExternalStore.
+ * @param callback - called on every change.
+ * @returns the unsubscribe function.
+ */
+export function subscribeToStorage(callback: () => void): () => void {
+  window.addEventListener(CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    wi
+… [truncated 1713 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:15.224Z
+
+Writing the pure detection logic first. It holds the `if` you described, with the rule in one config object:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:26.426Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\alerts\\scoreChanges.ts",
+  "content": "/**\n * @module core/alerts/scoreChanges\n *\n * Score-change alerts (Step 13, bonus, D124). After every scoring run (the nightly job\n * fetches new weather, then re-scores), each hub's new overall score is compared with\n * its previous one. An alert fires when the risk LEVEL changes or the score moves by\n * 10+ points. Both snapshots always come from the same scoring version (D22), so a\n * formula change never looks like a weather change.\n *\n * Alerts are stored as `alert.score_changed` events (no new table, D34). The app shows\n * them in a \"Recent changes\" card with a dismiss button (remembered per browser).\n * Pure functions only; the scoring run does the I/O.\n */\nimport type { NewEvent } from \"../db/eventsRepository\";\nimport type { RiskLevel } from \"../scoring/types\";\n\n/** The alert rule: the single source of truth. */\nexport const ALERT_RULES = {\n  /** Fire when the overall score moves by at least this many points. */\n  scoreChangePoints: 10,\n  /** How far back the app shows alerts. */\n  showDays: 30,\n} as const;\n\n/** Event type for real alerts and for the clearly marked test alert. */\nexport const ALERT_EVENT = \"alert.score_changed\";\n\n/** One hub's overall result in a scoring run. */\nexport interface HubResult {\n  hubId: string;\n  hubName: string;\n  overallScore: number;\n  riskLevel: RiskLevel;\n}\n\n/** A score-change alert. */\nexport interface ScoreChangeAlert {\n  hubId: string;\n  hubName: string;\n  fromScore: number;\n  toScore: number;\n  /** toScore − fromScore, rounded to 0.1. */\n  change: number;\n  fromLevel: RiskLevel;\n  toLevel: RiskLevel;\n  /** True for the demo alert from `npm run alerts:test`, never for a real change. */\n  test: boolean;\n}\n\n/**\n * Compares each hub's new result with its previous one and returns the alerts.\n * Hubs without a previous result (e.g. newly added) never alert.\n * @param previous - previous results by hub id (same scoring version).\n * @param current - this run's results.\n * @returns one alert per hub whose level changed or whose score moved 10+ points.\n */\nexport function detectScoreChanges(previous: ReadonlyMap<string, Omit<HubResult, \"hubName\">>, current: readonly HubResult[]): ScoreChangeAlert[] {\n  const alerts: ScoreChangeAlert[] = [];\n  for (const now of current) {\n    const before = previous.get(now.hubId);\n    if (!before) continue;\n    const change
+… [truncated 1189 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:26.647Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\core\alerts\scoreChanges.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:28.720Z
+
+Now wiring it into `runScoring`:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:29.570Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "offset": 64,
+  "limit": 70
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:29.797Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+64	 */
+65	export async function runScoring(options: ScoringOptions, deps: ScoringDeps): Promise<ScoringSummary> {
+66	  const runId = options.runId ?? randomUUID();
+67	  await deps.recordEvent({
+68	    eventType: "scoring.started",
+69	    source: "scoring",
+70	    correlationId: runId,
+71	    payload: { trigger: options.trigger, scoringVersion: SCORING_VERSION },
+72	  });
+73	
+74	  const hubs = await deps.listActiveHubs();
+75	  const { signals: femaByHub, problems: femaProblems } = await deps.getFemaSignalsByHub();
+76	  const snapshots: SnapshotToSave[] = [];
+77	  const results: HubScoringResult[] = [];
+78	
+79	  for (const hub of hubs) {
+80	    const result: HubScoringResult = { hubId: hub.id, warning: femaProblems.get(hub.id) };
+81	    try {
+82	      const latest = await deps.getLatestWeatherDate(hub.id);
+83	      if (latest === null) throw new Error("no weather data stored yet (run the ingest first)");
+84	      const window = scoringWindow(latest);
+85	      const observed = computeObservedSignals(await deps.getWeatherDays(hub.id, window.start, window.end), window);
+86	      const score = scoreHub(observed, femaByHub.get(hub.id) ?? null);
+87	      snapshots.push({ hubId: hub.id, runId, window, score, observedPerYear: observed.perYear, coverage: observed.coverage });
+88	      Object.assign(result, { overallScore: score.overallScore, riskLevel: score.riskLevel, confidence: score.confidence });
+89	      deps.log(`   ${hub.name.padEnd(16)} ${String(score.overallScore).padStart(5)} ${score.riskLevel.padEnd(6)} top=${score.topHazard} conf=${score.confidence}`);
+90	    } catch (error) {
+91	      result.error = describeUnknownError(error);
+92	      deps.log(`   ❌ ${hub.name}: ${result.error}`);
+93	      await deps.recordEvent({
+94	        eventType: "scoring.hub_failed",
+95	        source: "scoring",
+96	        level: "error",
+97	        correlationId: runId,
+98	        hubId: hub.id,
+99	        message: result.error,
+100	      });
+101	    }
+102	    results.push(result);
+103	  }
+104	
+105	  await deps.saveScoreSnapshots(snapshots);
+106	  const summary: ScoringSummary = {
+107	    runId,
+108	    scoringVersion: SCORING_VERSION,
+109	    hubsScored: snapshots.length,
+110	    hubsFailed: results.filter((r) => r.error).length,
+111	    results,
+112	  };
+113	  const count = (level: RiskLevel) => results.filter((r) => r.riskLevel === level).length;
+114	  await deps.recordEvent({
+115	    eventType: "scoring.finished",
+116	    source: "scoring",
+117	    level: summary.hubsFail
+… [truncated 498 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:32.770Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "old_string": "  const hubs = await deps.listActiveHubs();\n  const { signals: femaByHub, problems: femaProblems } = await deps.getFemaSignalsByHub();",
+  "new_string": "  const hubs = await deps.listActiveHubs();\n  const { signals: femaByHub, problems: femaProblems } = await deps.getFemaSignalsByHub();\n  const previous = await previousResults(deps);"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:37.071Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "old_string": "  await deps.saveScoreSnapshots(snapshots);\n  const summary: ScoringSummary = {\n    runId,\n    scoringVersion: SCORING_VERSION,\n    hubsScored: snapshots.length,\n    hubsFailed: results.filter((r) => r.error).length,\n    results,\n  };",
+  "new_string": "  await deps.saveScoreSnapshots(snapshots);\n\n  // Score-change alerts (D124): the \"if\" lives in detectScoreChanges.\n  const hubName = new Map(hubs.map((hub) => [hub.id, hub.name]));\n  const alerts = previous\n    ? detectScoreChanges(\n        previous,\n        snapshots.map((s) => ({ hubId: s.hubId, hubName: hubName.get(s.hubId) ?? s.hubId, overallScore: s.score.overallScore, riskLevel: s.score.riskLevel })),\n      )\n    : [];\n  for (const alert of alerts) {\n    deps.log(`   🔔 ${alert.hubName}: ${alert.fromScore} → ${alert.toScore} (${alert.fromLevel} → ${alert.toLevel})`);\n    await deps.recordEvent(alertEvent(alert, runId));\n  }\n\n  const summary: ScoringSummary = {\n    runId,\n    scoringVersion: SCORING_VERSION,\n    hubsScored: snapshots.length,\n    hubsFailed: results.filter((r) => r.error).length,\n    alerts: alerts.length,\n    results,\n  };"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:38.719Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "old_string": "      hubsFailed: summary.hubsFailed,\n      levels: { high: count(\"high\"), medium: count(\"medium\"), low: count(\"low\") },",
+  "new_string": "      hubsFailed: summary.hubsFailed,\n      alerts: summary.alerts,\n      levels: { high: count(\"high\"), medium: count(\"medium\"), low: count(\"low\") },"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:42.919Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "old_string": "  hubsFailed: number;\n  results: HubScoringResult[];\n}",
+  "new_string": "  hubsFailed: number;\n  /** Score-change alerts raised by this run (D124). */\n  alerts: number;\n  results: HubScoringResult[];\n}\n\n/**\n * The previous run's results for the same scoring version, for the alert comparison.\n * A failure here never stops scoring: alerts are skipped for this run and the problem logged.\n * @param deps - scoring dependencies.\n * @returns results by hub id, or null when unavailable.\n */\nasync function previousResults(deps: ScoringDeps): Promise<Map<string, { hubId: string; overallScore: number; riskLevel: RiskLevel }> | null> {\n  try {\n    const snapshots = await deps.getLatestSnapshots();\n    if (!snapshots) return null;\n    return new Map(snapshots.map((s) => [s.hubId, { hubId: s.hubId, overallScore: s.overallScore, riskLevel: s.riskLevel }]));\n  } catch (error) {\n    deps.log(\n      formatBoundaryMessage({\n        name: \"AlertBaselineError\",\n        message: `Could not read the previous scores, so no alerts this run: ${describeUnknownError(error)}`,\n        functionName: \"runScoring\",\n        boundary: \"database\",\n      }),\n    );\n    return null;\n  }\n}"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:44.868Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\scoring\\runScoring.ts",
+  "old_string": "  saveScoreSnapshots: (snapshots: SnapshotToSave[]) => Promise<number>;",
+  "new_string": "  saveScoreSnapshots: (snapshots: SnapshotToSave[]) => Promise<number>;\n  /** The latest saved snapshots of the current scoring version (the alert baseline, D124). */\n  getLatestSnapshots: () => Promise<StoredSnapshot[] | null>;"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:46.277Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 1,19p src/core/scoring/runScoring.ts | grep -n \"import\"; grep -n \"overallScore\\|riskLevel\" src/core/db/scoresRepository.ts | head -5",
+  "description": "Check runScoring imports and StoredSnapshot fields"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:46.477Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\scoring\runScoring.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:46.728Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\scoring\runScoring.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:47.027Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\scoring\runScoring.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:47.240Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\scoring\runScoring.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:47.447Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\scoring\runScoring.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:47.847Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+8:import { randomUUID } from "node:crypto";
+9:import type { NewEvent } from "../db/eventsRepository";
+10:import type { SnapshotToSave } from "../db/scoresRepository";
+11:import type { Hub } from "../domain/hub";
+12:import type { DailyWeather } from "../domain/weather";
+13:import { describeUnknownError } from "../errors/boundaryError";
+14:import { SCORING_VERSION } from "./config";
+15:import { computeObservedSignals, scoringWindow } from "./observedSignals";
+16:import { scoreHub } from "./scoreHub";
+17:import type { Confidence, FemaSignals, RiskLevel } from "./types";
+42:    overall_score: s.score.overallScore,
+43:    risk_level: s.score.riskLevel,
+149:    overallScore: row.overall_score,
+151:    riskLevel: row.risk_level,
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:11:51.983Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");const p=\"src/core/scoring/runScoring.ts\";let t=fs.readFileSync(p,\"utf8\");\nconst rep=(a,b)=>{if(!t.includes(a))throw new Error(\"missing \"+a);t=t.replace(a,b);};\nrep('import type { SnapshotToSave } from \"../db/scoresRepository\";','import type { SnapshotToSave, StoredSnapshot } from \"../db/scoresRepository\";');\nrep('import { describeUnknownError } from \"../errors/boundaryError\";','import { alertEvent, detectScoreChanges } from \"../alerts/scoreChanges\";\\nimport { describeUnknownError, formatBoundaryMessage } from \"../errors/boundaryError\";');\nfs.writeFileSync(p,t);\nEOF\ngrep -rn \"saveScoreSnapshots:\" src scripts --include=*.ts | grep -v \"runScoring.ts:\" ; npx tsc --noEmit 2>&1 | head",
+  "description": "Add imports; find where ScoringDeps are built; typecheck"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:11:58.078Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+src/core/scoring/createScoringDeps.ts:24:    saveScoreSnapshots: (snapshots) => saveScoreSnapshots(snapshots),
+src/core/scoring/runScoring.test.ts:49:    saveScoreSnapshots: vi.fn(async (rows) => rows.length),
+src/core/scoring/createScoringDeps.ts(19,3): error TS2741: Property 'getLatestSnapshots' is missing in type '{ listActiveHubs: () => Promise<{ id: string; name: string; state: string; region: "Northeast" | "Midwest" | "South" | "West"; latitude: number; longitude: number; timezone: string; countyFips: string | null; countyName: string | null; isActive: boolean; }[]>; ... 5 more ...; log: (line: string) => void; }' but required in type 'ScoringDeps'.
+src/core/scoring/runScoring.test.ts(44,3): error TS2322: Type '{ listActiveHubs: () => Promise<Hub[]>; getLatestWeatherDate: (hubId: string) => Promise<string | null>; getWeatherDays: (hubId: string, startDate: string, endDate: string) => Promise<DailyWeather[]>; ... 4 more ...; log: (line: string) => void; }' is not assignable to type 'ScoringDeps'.
+  Types of property 'getLatestSnapshots' are incompatible.
+    Type '(() => Promise<StoredSnapshot[] | null>) | undefined' is not assignable to type '() => Promise<StoredSnapshot[] | null>'.
+      Type 'undefined' is not assignable to type '() => Promise<StoredSnapshot[] | null>'.
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:00.191Z
+
+The typechecker found both places that build scoring dependencies, as expected. The production factory gets the real reader. Then I'll look at the existing test's fakes to extend them:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:01.595Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 1,30p src/core/scoring/createScoringDeps.ts | grep -n \"import\\|saveScoreSnapshots\"; sed -n 30,70p src/core/scoring/runScoring.test.ts",
+  "description": "Read the deps factory imports and the runScoring test fakes"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:01.957Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+6:import { recordEvent } from "../db/eventsRepository";
+7:import { getFemaSignalsByHub } from "../db/femaRepository";
+8:import { listActiveHubs } from "../db/hubsRepository";
+9:import { saveScoreSnapshots } from "../db/scoresRepository";
+10:import { getLatestWeatherDate, getWeatherDays } from "../db/weatherRepository";
+11:import type { ScoringDeps } from "./runScoring";
+24:    saveScoreSnapshots: (snapshots) => saveScoreSnapshots(snapshots),
+  heatWave: 0,
+  strongWind: 0,
+};
+
+const calmDay = (date: string): DailyWeather => ({
+  date,
+  snowfallCm: 0,
+  tempMinC: 20,
+  precipitationMm: 0,
+  windGustMaxKmh: 20,
+  apparentTempMaxC: 30,
+});
+
+function makeDeps(overrides: Partial<ScoringDeps> = {}): ScoringDeps {
+  return {
+    listActiveHubs: vi.fn(async () => [hub("miami"), hub("ghost")]),
+    getLatestWeatherDate: vi.fn(async (id: string) => (id === "miami" ? "2026-11-24" : null)),
+    getWeatherDays: vi.fn(async () => [calmDay("2026-11-23"), calmDay("2026-11-24")]),
+    getFemaSignalsByHub: vi.fn(async () => ({ signals: new Map([["miami", fema]]), problems: new Map() })),
+    saveScoreSnapshots: vi.fn(async (rows) => rows.length),
+    recordEvent: vi.fn(async () => true),
+    log: () => {},
+    ...overrides,
+  };
+}
+
+describe("runScoring", () => {
+  it("scores each hub with data, skips hubs without weather, and saves in one write", async () => {
+    const deps = makeDeps();
+    const summary = await runScoring({ trigger: "cli" }, deps);
+
+    expect(summary.hubsScored).toBe(1);
+    expect(summary.hubsFailed).toBe(1);
+    expect(summary.results.find((r) => r.hubId === "ghost")?.error).toMatch(/no weather data/);
+    expect(deps.saveScoreSnapshots).toHaveBeenCalledTimes(1);
+    const [saved] = vi.mocked(deps.saveScoreSnapshots).mock.calls[0];
+    expect(saved[0].hubId).toBe("miami");
+    expect(saved[0].window).toEqual({ start: "2021-11-25", end: "2026-11-24" });
+    expect(saved[0].score.hazards.hurricane.score).toBe(100);
+  });
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:06.936Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,pairs)=>{let t=fs.readFileSync(p,\"utf8\");for(const [a,b] of pairs){if(!t.includes(a))throw new Error(p+\" missing \"+a.slice(0,60));t=t.replace(a,b);}fs.writeFileSync(p,t);};\nedit(\"src/core/scoring/createScoringDeps.ts\",[\n ['import { saveScoreSnapshots } from \"../db/scoresRepository\";','import { getLatestSnapshots, saveScoreSnapshots } from \"../db/scoresRepository\";'],\n [\"    saveScoreSnapshots: (snapshots) => saveScoreSnapshots(snapshots),\",\"    saveScoreSnapshots: (snapshots) => saveScoreSnapshots(snapshots),\\n    getLatestSnapshots: () => getLatestSnapshots(),\"],\n]);\nedit(\"src/core/scoring/runScoring.test.ts\",[\n [\"    saveScoreSnapshots: vi.fn(async (rows) => rows.length),\\n    recordEvent:\",\"    saveScoreSnapshots: vi.fn(async (rows) => rows.length),\\n    getLatestSnapshots: vi.fn(async () => null),\\n    recordEvent:\"],\n]);\nEOF\nnpx tsc --noEmit 2>&1 | head -5",
+  "description": "Wire the real reader and a default fake; typecheck"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:12.500Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:16.538Z
+
+Typecheck is clean. Tests: the `if` rule's edges (9.9 points vs exactly 10, level changes, new hubs), plus `runScoring` actually recording alerts, and surviving a failed baseline read:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:23.990Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\alerts\\scoreChanges.test.ts",
+  "content": "import { describe, expect, it } from \"vitest\";\nimport { ALERT_EVENT, ALERT_RULES, alertEvent, detectScoreChanges, type HubResult } from \"./scoreChanges\";\n\nconst now = (hubId: string, overallScore: number, riskLevel: HubResult[\"riskLevel\"]): HubResult => ({ hubId, hubName: hubId.toUpperCase(), overallScore, riskLevel });\n\ndescribe(\"detectScoreChanges (D124)\", () => {\n  it(\"fires on a level change or a move of 10+ points, and stays quiet otherwise\", () => {\n    const previous = new Map([\n      [\"level\", { hubId: \"level\", overallScore: 66.4, riskLevel: \"medium\" as const }],\n      [\"jump\", { hubId: \"jump\", overallScore: 40, riskLevel: \"medium\" as const }],\n      [\"drop\", { hubId: \"drop\", overallScore: 60, riskLevel: \"medium\" as const }],\n      [\"quiet\", { hubId: \"quiet\", overallScore: 50, riskLevel: \"medium\" as const }],\n    ]);\n    const alerts = detectScoreChanges(previous, [\n      now(\"level\", 67.1, \"high\"), // +0.7 but the level changed\n      now(\"jump\", 40 + ALERT_RULES.scoreChangePoints, \"medium\"), // exactly +10\n      now(\"drop\", 50.1, \"medium\"), // −9.9: no alert\n      now(\"quiet\", 52, \"medium\"),\n      now(\"new-hub\", 90, \"high\"), // no previous result: never alerts\n    ]);\n    expect(alerts.map((a) => a.hubId)).toEqual([\"level\", \"jump\"]);\n    expect(alerts[0]).toMatchObject({ fromLevel: \"medium\", toLevel: \"high\", change: 0.7, test: false });\n    expect(alerts[1]).toMatchObject({ change: 10, fromLevel: \"medium\", toLevel: \"medium\" });\n  });\n});\n\ndescribe(\"alertEvent\", () => {\n  it(\"stores the alert as an event with a readable message, marking tests clearly\", () => {\n    const alert = { hubId: \"dallas\", hubName: \"Dallas\", fromScore: 64.2, toScore: 72.4, change: 8.2, fromLevel: \"medium\" as const, toLevel: \"high\" as const, test: false };\n    const event = alertEvent(alert, \"run-1\");\n    expect(event).toMatchObject({ eventType: ALERT_EVENT, source: \"scoring\", level: \"warn\", hubId: \"dallas\", correlationId: \"run-1\" });\n    expect(event.message).toBe(\"Dallas 64.2 → 72.4 (+8.2), medium → high\");\n    expect(alertEvent({ ...alert, test: true }, \"t\").message).toMatch(/^TEST: /);\n  });\n});\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:25.093Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"^});\\|^describe\\|^import\" src/core/scoring/runScoring.test.ts | tail -6",
+  "description": "Find the end of the runScoring tests"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:25.297Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\core\alerts\scoreChanges.test.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:25.591Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+4:import { runScoring, type ScoringDeps } from "./runScoring";
+5:import type { FemaSignals } from "./types";
+18:});
+41:});
+57:describe("runScoring", () => {
+89:});
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:32.420Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "cat >> src/core/scoring/runScoring.test.ts <<'EOF'\n\ndescribe(\"runScoring alerts (D124)\", () => {\n  /** The previous run's Miami result, as getLatestSnapshots would return it. */\n  const previousMiami = (overallScore: number, riskLevel: \"low\" | \"medium\" | \"high\") =>\n    [{ hubId: \"miami\", overallScore, riskLevel }] as unknown as StoredSnapshot[];\n\n  it(\"records an alert when a hub's level changed since the previous run\", async () => {\n    const deps = makeDeps({ getLatestSnapshots: vi.fn(async () => previousMiami(10, \"low\")) });\n    const summary = await runScoring({ trigger: \"cron\" }, deps);\n    expect(summary.alerts).toBe(1);\n    const events = vi.mocked(deps.recordEvent).mock.calls.map(([e]) => e);\n    expect(events.find((e) => e.eventType === \"alert.score_changed\")).toMatchObject({ hubId: \"miami\", payload: { fromScore: 10, fromLevel: \"low\", test: false } });\n  });\n\n  it(\"keeps scoring (no alerts) when the previous scores can't be read\", async () => {\n    const deps = makeDeps({\n      getLatestSnapshots: vi.fn(async () => {\n        throw new Error(\"db down\");\n      }),\n    });\n    const summary = await runScoring({ trigger: \"cron\" }, deps);\n    expect(summary.hubsScored).toBe(1);\n    expect(summary.alerts).toBe(0);\n  });\n});\nEOF\nsed -i 's#^import type { FemaSignals } from \"./types\";#import type { StoredSnapshot } from \"../db/scoresRepository\";\\nimport type { FemaSignals } from \"./types\";#' src/core/scoring/runScoring.test.ts && npx tsc --noEmit 2>&1 | head -3; npx vitest run src/core/scoring src/core/alerts 2>&1 | grep -E \"×|FAIL|Expected|Received|Tests \"",
+  "description": "Add runScoring alert tests and run them",
+  "timeout": 200000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:44.136Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+      Tests  56 passed (56)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:51.336Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\db\\eventsRepository.ts",
+  "old_string": "/**\n * Records one event. Never throws — failures are printed to the console.",
+  "new_string": "/** A stored event, as read back. */\nexport interface StoredEvent {\n  id: string;\n  eventType: string;\n  hubId: string | null;\n  message: string | null;\n  payload: Json;\n  createdAt: string;\n}\n\n/**\n * Lists recent events of one type, newest first (uses the `(event_type, created_at)` index).\n * @param query - event type, start time, max rows.\n * @param db - database client (injectable for tests).\n * @returns the events.\n * @throws BoundaryError (database) when the query fails.\n */\nexport async function listEvents(query: { eventType: string; since: string; limit: number }, db: Db = getDb()): Promise<StoredEvent[]> {\n  const { data, error } = await db\n    .from(\"events\")\n    .select(\"id, event_type, hub_id, message, payload, created_at\")\n    .eq(\"event_type\", query.eventType)\n    .gte(\"created_at\", query.since)\n    .order(\"created_at\", { ascending: false })\n    .limit(query.limit);\n  if (error) {\n    throw new BoundaryError({ name: \"EventListError\", message: `Could not list '${query.eventType}' events: ${error.message}`, functionName: \"listEvents\", boundary: \"database\", cause: error });\n  }\n  return data.map((row) => ({ id: String(row.id), eventType: row.event_type, hubId: row.hub_id, message: row.message, payload: row.payload, createdAt: row.created_at }));\n}\n\n/**\n * Records one event. Never throws — failures are printed to the console."
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:12:52.788Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npx tsc --noEmit 2>&1 | head -5; grep -n \"id:\" src/core/db/database.types.ts | sed -n 1,3p; grep -n \"events: {\" -A12 src/core/db/database.types.ts | grep \"id\"",
+  "description": "Typecheck the events query against the DB types"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:52.998Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\db\eventsRepository.ts has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:12:59.141Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+23:          id: string;
+26:          session_id: string;
+36:          session_id: string;
+85-          correlation_id: string | null;
+88-          hub_id: string | null;
+89-          id: number;
+93-          session_id: string | null;
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:13.198Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\alerts\\recentAlerts.ts",
+  "content": "/**\n * @module core/alerts/recentAlerts\n *\n * Reads recent score-change alerts back for the app (D124), and creates the clearly\n * marked TEST alert used to demo the feature (`npm run alerts:test`). Real alerts are\n * never faked: a test alert carries `test: true` and the app labels it as a test.\n */\nimport { randomUUID } from \"node:crypto\";\nimport { z } from \"zod\";\nimport type { NewEvent, StoredEvent } from \"../db/eventsRepository\";\nimport type { StoredSnapshot } from \"../db/scoresRepository\";\nimport { riskLevelFor } from \"../scoring/overall\";\nimport { RISK_LEVELS } from \"../scoring/types\";\nimport { ALERT_EVENT, ALERT_RULES, alertEvent, type ScoreChangeAlert } from \"./scoreChanges\";\n\n/** An alert as the app receives it. */\nexport interface RecentAlert extends ScoreChangeAlert {\n  /** The event id: stable, used to remember a dismissal in the browser. */\n  id: string;\n  createdAt: string;\n}\n\n/** The stored payload of an alert event (validated on the way out). */\nconst alertPayloadSchema = z.object({\n  hubId: z.string(),\n  hubName: z.string(),\n  fromScore: z.number(),\n  toScore: z.number(),\n  change: z.number(),\n  fromLevel: z.enum(RISK_LEVELS),\n  toLevel: z.enum(RISK_LEVELS),\n  test: z.boolean(),\n});\n\n/** What reading alerts needs (injectable for tests). */\nexport interface RecentAlertsDeps {\n  listEvents: (query: { eventType: string; since: string; limit: number }) => Promise<StoredEvent[]>;\n  now: () => Date;\n}\n\n/**\n * The alerts of the last 30 days, newest first. Malformed rows are skipped.\n * @param deps - event reader and clock.\n * @returns the alerts.\n */\nexport async function loadRecentAlerts(deps: RecentAlertsDeps): Promise<RecentAlert[]> {\n  const since = new Date(deps.now().getTime() - ALERT_RULES.showDays * 86_400_000).toISOString();\n  const events = await deps.listEvents({ eventType: ALERT_EVENT, since, limit: 20 });\n  return events.flatMap((event) => {\n    const parsed = alertPayloadSchema.safeParse(event.payload);\n    return parsed.success ? [{ ...parsed.data, id: event.id, createdAt: event.createdAt }] : [];\n  });\n}\n\n/**\n * Builds the TEST alert: the top hub's real current score, shown as if it had risen\n * by exactly the alert threshold, marked `test: true`.\n * @param snapshots - the latest snapshots.\n * @param hubName - hub id → display name.\n * @returns the event to record, 
+… [truncated 746 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:14.805Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"export const RISK_LEVELS\\|export function riskLevelFor\" src/core/scoring/types.ts src/core/scoring/overall.ts; cat src/app/api/widgets/route.ts | head -8; sed -n 1,20p src/core/widgets/loadWidgetsData.ts",
+  "description": "Confirm imports exist and see how widget data is loaded"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:15.029Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\core\alerts\recentAlerts.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:15.419Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+src/core/scoring/types.ts:17:export const RISK_LEVELS = ["low", "medium", "high"] as const;
+src/core/scoring/overall.ts:38:export function riskLevelFor(score: number): RiskLevel {
+/**
+ * GET /api/widgets — data for the dashboard widgets (A5): top hubs, hazard
+ * leaders, data freshness. Deterministic, no LLM.
+ */
+import { connection } from "next/server";
+import { loadWidgetsData } from "@/core/widgets/loadWidgetsData";
+import { failure, json } from "../_lib/http";
+
+/**
+ * @module core/widgets/loadWidgetsData
+ *
+ * Loads what the widgets need from the database and builds their data.
+ */
+import { listActiveHubs } from "../db/hubsRepository";
+import { getLatestSnapshots } from "../db/scoresRepository";
+import { getWeatherBounds } from "../db/weatherRepository";
+import { BoundaryError } from "../errors/boundaryError";
+import { buildWidgetsData, type WidgetsData } from "./widgetsData";
+
+/**
+ * Reads hubs, latest snapshots and the weather date range, then builds the widget data.
+ * @returns the widget data.
+ * @throws BoundaryError (database) — `NoDataError` when nothing has been scored yet.
+ */
+export async function loadWidgetsData(): Promise<WidgetsData> {
+  const [hubs, snapshots, weatherBounds] = await Promise.all([listActiveHubs(), getLatestSnapshots(), getWeatherBounds()]);
+  if (!snapshots || snapshots.length === 0 || !weatherBounds) {
+    throw new BoundaryError({
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:18.975Z
+
+Now the production wiring, the two routes and the script:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:23.263Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\alerts\\sendTestAlert.ts",
+  "content": "/**\n * @module core/alerts/sendTestAlert\n *\n * Records one clearly marked TEST alert through the same path as real alerts (D124),\n * so the feature can be demoed even when no score has really changed.\n * Used by `npm run alerts:test` and `POST /api/alerts/test` (cron secret required).\n */\nimport { recordEvent } from \"../db/eventsRepository\";\nimport { listActiveHubs } from \"../db/hubsRepository\";\nimport { getLatestSnapshots } from \"../db/scoresRepository\";\nimport { BoundaryError } from \"../errors/boundaryError\";\nimport { testAlertEvent } from \"./recentAlerts\";\n\n/**\n * Records the test alert.\n * @returns the alert's message.\n * @throws BoundaryError (database) when there are no scores yet or the event can't be saved.\n */\nexport async function sendTestAlert(): Promise<string> {\n  const [hubs, snapshots] = await Promise.all([listActiveHubs(), getLatestSnapshots()]);\n  const names = new Map(hubs.map((hub) => [hub.id, hub.name]));\n  const event = testAlertEvent(snapshots ?? [], (id) => names.get(id) ?? id);\n  if (!event || !(await recordEvent(event))) {\n    throw new BoundaryError({ name: \"TestAlertError\", message: \"Could not record the test alert (no scores yet, or the insert failed)\", functionName: \"sendTestAlert\", boundary: \"database\" });\n  }\n  return event.message ?? \"test alert recorded\";\n}\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:26.263Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\api\\alerts\\route.ts",
+  "content": "/**\n * GET /api/alerts — score-change alerts of the last 30 days, newest first (D124).\n * Deterministic, no LLM. The browser remembers which ones it dismissed.\n */\nimport { connection } from \"next/server\";\nimport { loadRecentAlerts } from \"@/core/alerts/recentAlerts\";\nimport { listEvents } from \"@/core/db/eventsRepository\";\nimport { failure, json } from \"../_lib/http\";\n\n/**\n * Returns the recent alerts.\n * @returns `{ alerts: RecentAlert[] }` or a friendly error.\n */\nexport async function GET(): Promise<Response> {\n  await connection(); // always per-request: never prerender (Cache Components), and keep it outside the try/catch\n  try {\n    return json({ alerts: await loadRecentAlerts({ listEvents: (query) => listEvents(query), now: () => new Date() }) });\n  } catch (error) {\n    return failure(error, \"GET /api/alerts\");\n  }\n}\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:29.013Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\api\\alerts\\test\\route.ts",
+  "content": "/**\n * POST /api/alerts/test — records one clearly marked TEST alert (D124), for demos.\n * Needs `Authorization: Bearer <CRON_SECRET>`, so random visitors can't create alerts.\n */\nimport { sendTestAlert } from \"@/core/alerts/sendTestAlert\";\nimport { failure, json, requireCronAuth } from \"../../_lib/http\";\n\n/**\n * Records the test alert.\n * @param request - the HTTP request.\n * @returns `{ ok: true, message }` or a friendly error.\n */\nexport async function POST(request: Request): Promise<Response> {\n  try {\n    const denied = requireCronAuth(request);\n    if (denied) return denied;\n    return json({ ok: true, message: await sendTestAlert() });\n  } catch (error) {\n    return failure(error, \"POST /api/alerts/test\");\n  }\n}\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:31.414Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\scripts\\alerts-test.ts",
+  "content": "/**\n * @module scripts/alerts-test\n *\n * `npm run alerts:test` — records one clearly marked TEST score-change alert (D124), so the\n * \"Recent changes\" card can be demoed without waiting for the weather to move a score.\n */\nimport { sendTestAlert } from \"../src/core/alerts/sendTestAlert\";\n\nsendTestAlert()\n  .then((message) => console.log(`🔔 Recorded: ${message}\\nOpen the app: it appears under \"Recent changes\", tagged as a test.`))\n  .catch((error: unknown) => {\n    console.error(error instanceof Error ? error.message : error);\n    process.exit(1);\n  });\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:33.218Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node -e '\nconst fs=require(\"fs\");const p=JSON.parse(fs.readFileSync(\"package.json\",\"utf8\"));p.scripts[\"alerts:test\"]=\"tsx --env-file=.env.local scripts/alerts-test.ts\";fs.writeFileSync(\"package.json\",JSON.stringify(p,null,2)+\"\\n\");' && npx tsc --noEmit 2>&1 | head -5; npx eslint 2>&1 | tail -3",
+  "description": "Add the npm script; typecheck and lint"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:33.418Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\core\alerts\sendTestAlert.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:33.606Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\api\alerts\route.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:33.794Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\api\alerts\test\route.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:33.978Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\scripts\alerts-test.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:47.873Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+(Bash completed with no output)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:49.793Z
+
+Clean. Tests for the read side: malformed rows are skipped, the 30-day window is honored, and the test alert is built and marked correctly:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:56.380Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\alerts\\recentAlerts.test.ts",
+  "content": "import { describe, expect, it, vi } from \"vitest\";\nimport type { StoredEvent } from \"../db/eventsRepository\";\nimport type { StoredSnapshot } from \"../db/scoresRepository\";\nimport { loadRecentAlerts, testAlertEvent } from \"./recentAlerts\";\n\nconst alertPayload = { hubId: \"dallas\", hubName: \"Dallas\", fromScore: 64.2, toScore: 72.4, change: 8.2, fromLevel: \"medium\", toLevel: \"high\", test: false };\nconst event = (id: string, payload: unknown): StoredEvent => ({ id, eventType: \"alert.score_changed\", hubId: \"dallas\", message: \"…\", payload: payload as never, createdAt: \"2026-11-25T06:05:00Z\" });\n\ndescribe(\"loadRecentAlerts\", () => {\n  it(\"reads the last 30 days of alerts and skips malformed rows\", async () => {\n    const listEvents = vi.fn(async () => [event(\"7\", alertPayload), event(\"8\", { hubId: \"broken\" })]);\n    const alerts = await loadRecentAlerts({ listEvents, now: () => new Date(\"2026-11-25T12:00:00Z\") });\n    expect(alerts).toEqual([{ ...alertPayload, id: \"7\", createdAt: \"2026-11-25T06:05:00Z\" }]);\n    expect(listEvents).toHaveBeenCalledWith({ eventType: \"alert.score_changed\", since: \"2026-10-26T12:00:00.000Z\", limit: 20 });\n  });\n});\n\ndescribe(\"testAlertEvent\", () => {\n  it(\"uses the top hub's real score, shows a +10 move, and is marked as a test\", () => {\n    const snapshots = [\n      { hubId: \"dallas\", overallScore: 72.4, riskLevel: \"high\" },\n      { hubId: \"new-orleans\", overallScore: 74.6, riskLevel: \"high\" },\n    ] as unknown as StoredSnapshot[];\n    const e = testAlertEvent(snapshots, (id) => (id === \"new-orleans\" ? \"New Orleans\" : id));\n    expect(e?.payload).toMatchObject({ hubId: \"new-orleans\", hubName: \"New Orleans\", fromScore: 64.6, toScore: 74.6, change: 10, fromLevel: \"medium\", toLevel: \"high\", test: true });\n    expect(e?.message).toMatch(/^TEST: New Orleans/);\n    expect(testAlertEvent([], (id) => id)).toBeNull();\n  });\n});\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:13:57.678Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npx tsc --noEmit 2>&1 | head -3; npx vitest run src/core/alerts 2>&1 | grep -E \"×|FAIL|Expected|Received|Tests \"",
+  "description": "Typecheck and run the alert tests",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:13:57.880Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\core\alerts\recentAlerts.test.ts (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:06.987Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+      Tests  4 passed (4)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:09.343Z
+
+The back end is done. Now the UI. Dismissed alert ids go into the browser's storage, following the same pattern as the chat list. Then a "Recent changes" card in the widgets rail. Here's the rail:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:09.886Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\WidgetsRail.tsx"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:10.088Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+1	"use client";
+2	/**
+3	 * Widget column (A5/U1): top risk hubs, the leader per hazard, data status.
+4	 * Deterministic data from /api/widgets. Clicking an item asks the agent about it.
+5	 */
+6	import { useEffect, useState } from "react";
+7	import { RISK_LEVEL_CUTOFFS } from "@/core/scoring/config";
+8	import type { WidgetsData } from "@/core/widgets/widgetsData";
+9	import { HAZARD_UI, LEVEL_UI, relativeTime } from "../_lib/labels";
+10	import { LevelChip } from "./LevelChip";
+11	
+12	/** Props for {@link WidgetsRail}. */
+13	interface WidgetsRailProps {
+14	  onAsk: (question: string) => void;
+15	  /** Reports the data status so the header can show freshness. */
+16	  onStatus: (status: WidgetsData["dataStatus"]) => void;
+17	}
+18	
+19	/**
+20	 * Layout (U1): phone = a horizontal swipe strip, tablet = a row of three, desktop = the right-hand column.
+21	 */
+22	const RAIL = "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 xl:block xl:space-y-4";
+23	
+24	/** The level scale, built from the scoring config (single source of truth). */
+25	const LEVEL_SCALE = `Low 0–${RISK_LEVEL_CUTOFFS.mediumFrom - 1} · Medium ${RISK_LEVEL_CUTOFFS.mediumFrom}–${RISK_LEVEL_CUTOFFS.highFrom - 1} · High ${RISK_LEVEL_CUTOFFS.highFrom}–100`;
+26	
+27	/** A glass panel with a plain title, a one-line "what is this and why it matters", and an optional hint. */
+28	function Panel({ title, description, hint, children }: { title: string; description: string; hint?: string; children: React.ReactNode }) {
+29	  return (
+30	    <section className="glass w-[85%] shrink-0 snap-start rounded-2xl p-4 lg:w-auto" aria-label={title}>
+31	      <h2 className="text-sm font-medium text-slate-100">{title}</h2>
+32	      <p className="mb-3 mt-1 text-xs leading-relaxed text-slate-400">{description}</p>
+33	      {children}
+34	      {hint && <p className="mt-3 text-[11px] text-slate-500">{hint}</p>}
+35	    </section>
+36	  );
+37	}
+38	
+39	/** Renders the widget column. */
+40	export function WidgetsRail({ onAsk, onStatus }: WidgetsRailProps) {
+41	  const [data, setData] = useState<WidgetsData | null>(null);
+42	  const [failed, setFailed] = useState(false);
+43	
+44	  useEffect(() => {
+45	    let alive = true;
+46	    fetch("/api/widgets")
+47	      .then((res) => (res.ok ? (res.json() as Promise<WidgetsData>) : Promise.reject(new Error(String(res.status)))))
+48	      .then((json) => {
+49	        if (!alive) return;
+50	        setData(jso
+… [truncated 4451 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:13.671Z
+
+Adding the dismissed-alert storage to `storage.ts`:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:19.122Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_lib\\storage.ts",
+  "old_string": "/** Server-side snapshot: nothing is remembered on the server. */\nexport const EMPTY_IDS: string[] = [];",
+  "new_string": "/** Server-side snapshot: nothing is remembered on the server. */\nexport const EMPTY_IDS: string[] = [];\n\n/** Alerts this browser dismissed (D124). There's no login, so a dismissal is per browser, never for everyone. */\nconst DISMISSED_KEY = \"sneakoscope.dismissedAlerts\";\n/** Older dismissals are dropped first; alerts older than 30 days aren't shown anyway. */\nconst MAX_DISMISSED = 100;\n\nlet cachedDismissedRaw: string | null = null;\nlet cachedDismissed: string[] = [];\n\n/**\n * Stable snapshot of the dismissed alert ids, for useSyncExternalStore.\n * @returns the ids.\n */\nexport function dismissedAlertsSnapshot(): string[] {\n  const raw = typeof window === \"undefined\" ? null : window.localStorage.getItem(DISMISSED_KEY);\n  if (raw !== cachedDismissedRaw) {\n    cachedDismissedRaw = raw;\n    try {\n      const parsed: unknown = JSON.parse(raw ?? \"[]\");\n      cachedDismissed = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === \"string\") : [];\n    } catch {\n      cachedDismissed = [];\n    }\n  }\n  return cachedDismissed;\n}\n\n/**\n * Remembers that this browser dismissed an alert.\n * @param id - the alert id.\n */\nexport function dismissAlert(id: string): void {\n  const ids = [id, ...dismissedAlertsSnapshot().filter((existing) => existing !== id)].slice(0, MAX_DISMISSED);\n  if (hasStorage()) window.localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));\n  notify();\n}"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:31.423Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\RecentChanges.tsx",
+  "content": "\"use client\";\n/**\n * \"Recent changes\" (Step 13, bonus, D124): score-change alerts from the nightly re-score.\n * Shown only while there are alerts this browser hasn't dismissed. Each one can be\n * dismissed (✕) or opened as a question to the agent. A test alert is clearly tagged.\n */\nimport { useEffect, useState, useSyncExternalStore } from \"react\";\nimport type { RecentAlert } from \"@/core/alerts/recentAlerts\";\nimport { LEVEL_UI, relativeTime } from \"../_lib/labels\";\nimport { EMPTY_IDS, dismissAlert, dismissedAlertsSnapshot, subscribeToStorage } from \"../_lib/storage\";\n\n/** Props for {@link RecentChanges}. */\ninterface RecentChangesProps {\n  onAsk: (question: string) => void;\n}\n\n/** One alert in plain words, e.g. \"rose 8.2 points to 72.4 (now High)\". */\nfunction describe(alert: RecentAlert): string {\n  const direction = alert.change >= 0 ? \"rose\" : \"fell\";\n  const levelChanged = alert.fromLevel !== alert.toLevel;\n  return `${direction} ${Math.abs(alert.change)} points to ${alert.toScore}${levelChanged ? ` (${LEVEL_UI[alert.fromLevel].label} → ${LEVEL_UI[alert.toLevel].label})` : \"\"}`;\n}\n\n/** Renders the card, or nothing when there's nothing new. */\nexport function RecentChanges({ onAsk }: RecentChangesProps) {\n  const [alerts, setAlerts] = useState<RecentAlert[]>([]);\n  const dismissed = useSyncExternalStore(subscribeToStorage, dismissedAlertsSnapshot, () => EMPTY_IDS);\n\n  useEffect(() => {\n    let alive = true;\n    fetch(\"/api/alerts\")\n      .then((res) => (res.ok ? (res.json() as Promise<{ alerts: RecentAlert[] }>) : Promise.reject(new Error(String(res.status)))))\n      .then((json) => alive && setAlerts(json.alerts))\n      .catch(() => {\n        // Quiet on failure: alerts are extra information, the rest of the overview still works.\n      });\n    return () => {\n      alive = false;\n    };\n  }, []);\n\n  const visible = alerts.filter((alert) => !dismissed.includes(alert.id));\n  if (visible.length === 0) return null;\n\n  return (\n    <section className=\"glass w-[85%] shrink-0 snap-start rounded-2xl border border-amber-400/30 p-4 lg:w-auto\" aria-label=\"Recent changes\">\n      <h2 className=\"flex items-center gap-2 text-sm font-medium text-amber-200\">\n        <span aria-hidden=\"true\">🔔</span> Recent changes\n      </h2>\n      <p className=\"mb-3 mt-1 text-xs leading-relaxed text-slate-
+… [truncated 1580 chars]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:32.923Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\WidgetsRail.tsx",
+  "old_string": "  return (\n    <div className={RAIL}>\n      <Panel\n        title=\"Most at-risk hubs\"",
+  "new_string": "  return (\n    <div className={RAIL}>\n      <RecentChanges onAsk={onAsk} />\n      <Panel\n        title=\"Most at-risk hubs\""
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:34.173Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\app\\_components\\WidgetsRail.tsx",
+  "old_string": "import { LevelChip } from \"./LevelChip\";",
+  "new_string": "import { LevelChip } from \"./LevelChip\";\nimport { RecentChanges } from \"./RecentChanges\";"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:14:35.922Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"export const LEVEL_UI\" -A5 src/app/_lib/labels.ts | head -6; npx tsc --noEmit 2>&1 | head -5; npx eslint 2>&1 | tail -3; npx vitest run 2>&1 | grep -E \"×|FAIL|→|Test Files|Tests \"",
+  "description": "Check LEVEL_UI labels; typecheck, lint, test",
+  "timeout": 300000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:36.141Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_lib\storage.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:36.336Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\Home-Assignment-Moveo\src\app\_components\RecentChanges.tsx (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:36.522Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\WidgetsRail.tsx has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:14:37.897Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\app\_components\WidgetsRail.tsx has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:15:09.935Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+20:export const LEVEL_UI: Record<RiskLevel, { label: string; text: string; bg: string; border: string }> = {
+21-  low: { label: "Low", text: "#93c5fd", bg: "rgba(96,165,250,0.14)", border: "rgba(96,165,250,0.35)" },
+22-  medium: { label: "Medium", text: "#fcd34d", bg: "rgba(251,191,36,0.14)", border: "rgba(251,191,36,0.35)" },
+23-  high: { label: "High", text: "#fda4af", bg: "rgba(251,113,133,0.16)", border: "rgba(251,113,133,0.4)" },
+24-};
+25-
+     × every relative link exists, and every [`symbol`](file#L…) link still points at that symbol 119ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/docLinks.test.ts > documentation links > every relative link exists, and every [`symbol`](file#L…) link still points at that symbol
++   "docs\\design.md → ../src/core/db/eventsRepository.ts#L84: line 84 no longer contains \"recordEvent\"",
++   "docs\\design.md → ../src/core/scoring/runScoring.ts#L65: line 65 no longer contains \"runScoring\"",
+ Test Files  1 failed | 47 passed (48)
+      Tests  1 failed | 221 passed (222)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:15:17.853Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\" && npx vitest run 2>&1 | grep -E \"×|FAIL|Test Files|Tests \"; npm run alerts:test --silent 2>&1 | tail -2; npm run build 2>&1 | grep -E \"✓ Compiled|rror|api/alerts\" | head -5",
+  "description": "Fix links, run tests, record a test alert, build",
+  "timeout": 600000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:16:03.696Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+docs/design.md: recordEvent L84 → L115
+docs/design.md: runScoring L65 → L94
+fixed 2
+ Test Files  48 passed (48)
+      Tests  222 passed (222)
+EventInsertError || Could not record event 'alert.score_changed': [object Object] || recordEvent || 🐘
+TestAlertError || Could not record the test alert (no scores yet, or the insert failed) || sendTestAlert || 🐘
+✓ Compiled successfully in 4.3s
+├ ƒ /api/alerts
+├ ƒ /api/alerts/test
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:16:09.318Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 80,95p src/core/errors/boundaryError.ts; grep -n \"error instanceof Error ? error.message : String(error)\" src/core/db/eventsRepository.ts",
+  "description": "Check describeUnknownError and the recordEvent log line"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:16:09.694Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+ * @returns a short description.
+ */
+export function describeUnknownError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+133:        message: `Could not record event '${event.eventType}': ${error instanceof Error ? error.message : String(error)}`,
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:16:14.055Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -i \"s#message: \\`Could not record event '\\${event.eventType}': \\${error instanceof Error ? error.message : String(error)}\\`,#message: \\`Could not record event '\\${event.eventType}': \\${describeUnknownError(error)}\\`,#\" src/core/db/eventsRepository.ts && grep -n \"Could not record event\" src/core/db/eventsRepository.ts && sed -i 's#  return alertEvent(alert, `test-${randomUUID()}`);#  return alertEvent(alert, randomUUID()); // correlation_id is a uuid column; the payload marks it as a test#' src/core/alerts/recentAlerts.ts && grep -n \"return alertEvent\" src/core/alerts/recentAlerts.ts && npx tsc --noEmit 2>&1 | head -3 && npm run alerts:test --silent 2>&1 | tail -2",
+  "description": "Fix the error log and the test alert's id; record the test alert",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:16:27.553Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+133:        message: `Could not record event '${event.eventType}': ${describeUnknownError(error)}`,
+76:  return alertEvent(alert, randomUUID()); // correlation_id is a uuid column; the payload marks it as a test
+🔔 Recorded: TEST: New Orleans 64.6 → 74.6 (+10), medium → high
+Open the app: it appears under "Recent changes", tagged as a test.
+[This command modified 2 files you've previously read: src\core\db\eventsRepository.ts, src\core\alerts\recentAlerts.ts. Call Read before editing.]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:16:40.186Z
+
+<details><summary>🔧 Tool call: <code>Write</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\drive-alerts.cjs",
+  "content": "// Screenshots the Recent changes card, dismisses the first alert, reloads, screenshots again.\nconst fs = require(\"fs\"), path = require(\"path\"), os = require(\"os\"), { spawn } = require(\"child_process\");\nconst [baseUrl, outDir] = process.argv.slice(2);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n(async () => {\n  const profile = fs.mkdtempSync(path.join(os.tmpdir(), \"sneakoscope-chrome-\"));\n  const chrome = spawn(\"C:/Program Files/Google/Chrome/Application/chrome.exe\",\n    [\"--headless=new\", \"--disable-gpu\", \"--hide-scrollbars\", \"--remote-debugging-port=9334\", `--user-data-dir=${profile}`, \"about:blank\"], { stdio: \"ignore\" });\n  let targets = [];\n  for (let i = 0; i < 40 && !targets.length; i++) {\n    await sleep(250);\n    try { targets = (await (await fetch(\"http://127.0.0.1:9334/json/list\")).json()).filter((t) => t.type === \"page\"); } catch {}\n  }\n  const ws = new WebSocket(targets[0].webSocketDebuggerUrl);\n  await new Promise((r) => (ws.onopen = r));\n  let id = 0; const pending = new Map();\n  ws.onmessage = (m) => { const msg = JSON.parse(m.data); if (pending.has(msg.id)) { pending.get(msg.id)(msg.result ?? msg); pending.delete(msg.id); } };\n  const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });\n  const evaluate = async (expr) => (await send(\"Runtime.evaluate\", { expression: expr, returnByValue: true, awaitPromise: true })).result?.value;\n  const shot = async (name) => {\n    const { data } = await send(\"Page.captureScreenshot\", { format: \"png\" });\n    fs.writeFileSync(path.join(outDir, name), Buffer.from(data, \"base64\"));\n    console.log(\"saved\", name);\n  };\n  await send(\"Emulation.setDeviceMetricsOverride\", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });\n  await send(\"Page.enable\");\n  await send(\"Page.navigate\", { url: baseUrl });\n  await sleep(6000);\n  console.log(\"card text:\", await evaluate(`document.querySelector('[aria-label=\"Recent changes\"]')?.innerText ?? \"NO CARD\"`));\n  await shot(\"alerts-1-card.png\");\n  console.log(\"clicked:\", await evaluate(`(() => { const b = document.querySelector('button[aria-label^=\"Dismiss\"]'); if (!b) return false; b.click(); return true; })()`));\n  await sleep(800);\n  
+… [truncated 488 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:16:40.391Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+File created successfully at: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\scratchpad\drive-alerts.cjs (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:16:41.188Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run build 2>&1 | grep -E \"✓ Compiled|rror\" | head -3",
+  "description": "Rebuild with the fixes",
+  "timeout": 600000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:16:55.737Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+✓ Compiled successfully in 1335ms
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:16:58.141Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node node_modules/next/dist/bin/next start -p 3100",
+  "description": "Start the production server locally on port 3100",
+  "run_in_background": true
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:01.884Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "for i in $(seq 1 20); do curl -s -o /dev/null -w \"%{http_code}\" -m 5 http://localhost:3100/ 2>/dev/null | grep -q 200 && break; sleep 1; done; echo \"alerts api: $(curl -s -m 15 http://localhost:3100/api/alerts | head -c 260)\"; echo; echo \"test route w/o secret: $(curl -s -X POST -o /dev/null -w '%{http_code}' -m 15 http://localhost:3100/api/alerts/test)\"; S=\"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad\"; node \"$S/drive-alerts.cjs\" http://localhost:3100/ \"$S/guard-shots\"",
+  "description": "Check the alerts API, the test route guard, and the card in a browser",
+  "timeout": 200000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:02.101Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Command running in background with ID: byumzezju. Output is being written to: ~\AppData\Local\Temp\claude\37fedcc146eee186\8f798a35-9696-41b6-a5d9-4921a79fe27a\tasks\byumzezju.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:18.359Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+alerts api: {"alerts":[{"hubId":"new-orleans","hubName":"New Orleans","fromScore":64.6,"toScore":74.6,"change":10,"fromLevel":"medium","toLevel":"high","test":true,"id":"513","createdAt":"2026-11-25T17:16:27.064657+00:00"}]}
+
+test route w/o secret: 401
+card text: 🔔
+Recent changes
+
+After each nightly update, hubs whose risk level changed or whose score moved 10+ points.
+
+New Orleans TEST
+rose 10 points to 74.6 (Medium → High) · 1 min ago · not a real change
+✕
+saved alerts-1-card.png
+clicked: true
+after dismiss: NO CARD
+after reload: NO CARD
+saved alerts-2-after.png
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:21.977Z
+
+<details><summary>🔧 Tool call: <code>Read</code></summary>
+
+```json
+{
+  "file_path": "~\\AppData\\Local\\Temp\\claude\\37fedcc146eee186\\8f798a35-9696-41b6-a5d9-4921a79fe27a\\scratchpad\\guard-shots\\alerts-1-card.png"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:22.178Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+[image]
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:30.282Z
+
+<details><summary>🔧 Tool call: <code>TaskStop</code></summary>
+
+```json
+{
+  "task_id": "byumzezju"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:30.490Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+{"message":"Successfully stopped task: byumzezju (node node_modules/next/dist/bin/next start -p 3100)","task_id":"byumzezju","task_type":"local_bash","command":"node node_modules/next/dist/bin/next start -p 3100"}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:31.417Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sleep 2; netstat -ano 2>/dev/null | grep \":3100 \" | grep LISTEN || echo \"port 3100 is free\"; cd ~/Home-Assignment-Moveo && grep -n \"^- Every step logs an event\" docs/design.md; grep -n \"| \\`GET /api/widgets\\`\" README.md; grep -n \"| \\`npm run eval:guard\\`\" README.md",
+  "description": "Confirm the port is free and find doc insertion points"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:34.226Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+port 3100 is free
+218:- Every step logs an event (`ingest.started`, `ingest.weather_saved`, `scoring.finished`, …), so a failed night can be
+155:| `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |
+142:| `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:36.657Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"export function detectScoreChanges\" src/core/alerts/scoreChanges.ts",
+  "description": "Get the detectScoreChanges line for doc links"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:37.169Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+57:export function detectScoreChanges(previous: ReadonlyMap<string, Omit<HubResult, "hubName">>, current: readonly HubResult[]): ScoreChangeAlert[] {
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:41.421Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\docs\\design.md",
+  "old_string": "- Every step logs an event (`ingest.started`, `ingest.weather_saved`, `scoring.finished`, …), so a failed night can be",
+  "new_string": "- **Score-change alerts** (bonus, D124). After each re-score, [`detectScoreChanges`](../src/core/alerts/scoreChanges.ts#L57)\n  compares every hub with its previous score from the same scoring version. If the risk level changed or the score moved\n  10+ points, an `alert.score_changed` event is saved. The app shows these in a \"Recent changes\" card\n  (`GET /api/alerts`, last 30 days), and each one can be dismissed (remembered per browser). `npm run alerts:test`\n  records a clearly marked test alert through the same path, for demos.\n- Every step logs an event (`ingest.started`, `ingest.weather_saved`, `scoring.finished`, …), so a failed night can be"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:43.471Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\README.md",
+  "old_string": "| `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |",
+  "new_string": "| `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |\n| `GET /api/alerts` | Score-change alerts of the last 30 days (a hub's level changed, or its score moved 10+ points) |\n| `POST /api/alerts/test` | Records one clearly marked test alert (for demos). Needs `Authorization: Bearer <CRON_SECRET>` |"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:45.121Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\README.md",
+  "old_string": "| `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |",
+  "new_string": "| `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |\n| `npm run alerts:test` | Record one clearly marked test score-change alert, to see the \"Recent changes\" card |"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:46.174Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"It also handles follow-ups\" README.md; grep -n \"## Operational limits of the demo deployment\" docs/assumptions.md",
+  "description": "Find README feature paragraph and assumptions section"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:46.356Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\docs\design.md has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:46.543Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:46.737Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:47.086Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+45:It also handles follow-ups (*"Why that one?"*), pushes back on false premises (*"Why is Seattle's hurricane risk
+133:## Operational limits of the demo deployment
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:49.080Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "sed -n 45,50p README.md",
+  "description": "Read the README feature paragraph"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:17:49.465Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+It also handles follow-ups (*"Why that one?"*), pushes back on false premises (*"Why is Seattle's hurricane risk
+so high?"* → it isn't), gives careful recommendations (*"Should we prioritize Houston or Denver?"*), and politely
+declines what it can't answer (cities that aren't hubs, off-topic requests). A guard checks every message first, so
+off-topic requests and attempts to change its rules get a friendly reply without running the AI agent at all.
+
+## How it works, in one minute
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:52.539Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\README.md",
+  "old_string": "off-topic requests and attempts to change its rules get a friendly reply without running the AI agent at all.\n\n## How it works, in one minute",
+  "new_string": "off-topic requests and attempts to change its rules get a friendly reply without running the AI agent at all.\n\n**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+\npoints shows up under **Recent changes** in the overview, where it can be dismissed.\n\n## How it works, in one minute"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:54.788Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\docs\\assumptions.md",
+  "old_string": "## Operational limits of the demo deployment\n",
+  "new_string": "## Operational limits of the demo deployment\n- **Alerts compare each night with the night before.** A score that creeps up slowly (say 2 points a week) never moves\n  10 points in one night, so it raises an alert only when it crosses a level cut-off. Dismissing an alert hides it in\n  that browser only; there's no login, so no shared state.\n"
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:17:59.533Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\docs\\decisions.md",
+  "old_string": "| D88 | **No Markdown tables in answers** (prompt rule).",
+  "new_string": "| D124 | **Score-change alerts** (Step 13, bonus). After every scoring run (the nightly job re-scores after fetching), each hub is compared with its previous snapshot **of the same scoring version**. The `if`: alert when the **risk level changed or the overall score moved 10+ points**. Alerts are stored as `alert.score_changed` events (no new table) and shown in a **\"Recent changes\"** card (`GET /api/alerts`, last 30 days), only while this browser hasn't dismissed them. **No webhook.** `npm run alerts:test` (or `POST /api/alerts/test` with the cron secret) records one clearly marked TEST alert through the same path: the top hub's real score, shown as +10, tagged \"test · not a real change\". If the previous scores can't be read, scoring still runs and the alerts are skipped (logged). | Your design: an `if` in the daily fetch, and the frontend shows it with a dismiss option. Same-version comparison means the v1 → v2 switch (D123) never fires an alert (D22). Dismissal is per browser because there's no login: a shared dismissal would let any visitor hide an alert for everyone. Fixed along the way: `recordEvent` used to log database errors as \"[object Object]\". |\n| D88 | **No Markdown tables in answers** (prompt rule)."
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:18:03.631Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node -e '\nconst fs=require(\"fs\");const p=\"docs/plan.md\";let t=fs.readFileSync(p,\"utf8\");\nconst a=\"| 13 | Score-change alerts (bonus) | `ALERT_WEBHOOK_URL` (optional) |\";\nif(!t.includes(a))throw new Error(\"row\");t=t.replace(a,\"| 13 | Score-change alerts (bonus): level change or ±10 points, Recent changes card with dismiss, no webhook (done: D124) | — |\");fs.writeFileSync(p,t);' && node \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\" && npx tsc --noEmit 2>&1 | head -3; npx eslint 2>&1 | tail -3; npx vitest run 2>&1 | grep -E \"×|FAIL|→|Test Files|Tests \"",
+  "description": "Update the plan, fix doc links, run all checks",
+  "timeout": 300000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:18:03.890Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\README.md has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:18:04.108Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\docs\assumptions.md has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:18:05.509Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\docs\decisions.md has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:18:39.789Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+fixed 0
+ Test Files  48 passed (48)
+      Tests  222 passed (222)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:18:41.749Z
+
+All green (222 tests). Before committing, I'll check whether #16 is merged: if it is, this branch should sit on the new `main`:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:18:43.056Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "gh api repos/yardenfarag/Home-Assignment-Moveo/pulls/16 --jq '\"PR 16: \\(.state) merged=\\(.merged)\"' 2>&1 | tail -1",
+  "description": "Check whether PR #16 is merged",
+  "timeout": 60000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T17:18:44.640Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+PR 16: open merged=false
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T17:18:47.168Z
+
+Not merged yet. This branch is built on top of #16, so merging #16 first and then #17 works without conflicts. Exporting the session, committing, and opening the PR:
+
+---
+
+### 🤖 Claude · 2026-11-25T17:18:53.114Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run session:export --silent -- ~/.claude/projects/~/8f798a35-9696-41b6-a5d9-4921a79fe27a.jsonl 2>&1 | tail -1 && node -e '\nconst fs=require(\"fs\");const env={};for(const l of fs.readFileSync(\".env.local\",\"utf8\").split(/\\r?\\n/)){const m=l.match(/^([A-Z_]+)=(.*)$/);if(m)env[m[1]]=m[2].trim();}\nconst t=fs.readFileSync(\"docs/session/transcript.jsonl\",\"utf8\")+fs.readFileSync(\"docs/session/transcript.md\",\"utf8\");\nconst bad=Object.entries(env).filter(([k,v])=>!/MODEL|URL|USERNAME/.test(k)&&((v.length>=6&&t.includes(v))||(v.length>=12&&t.includes(v.slice(0,10)))));console.log(bad.length?\"❌ LEAK: \"+bad.map(b=>b[0]).join(\",\"):\"✓ no .env.local value in the export\");' && git add -A && (git diff --cached --name-only | grep -i \"results/\\|\\.env\\.local\\|\\.vercel\" || echo \"-- nothing private staged\") && git commit -q -F - <<'EOF'\nfeat(step-13): score-change alerts with a dismissable Recent changes card (bonus)\n\n- After every scoring run: alert when a hub's level changes or its score moves 10+ points\n  (same scoring version only); stored as alert.score_changed events (D124)\n- GET /api/alerts (last 30 days); Recent changes card, dismiss remembered per browser\n- npm run alerts:test / POST /api/alerts/test (cron secret): clearly marked TEST alert\n- Fix: recordEvent logged database errors as \"[object Object]\"\n\nCo-Authored-By: Claude Opus 5.5 <[email removed]>\nEOF\ngit push -q -u origin step-13-alerts 2>&1 | tail -1; git log --oneline -3 | cat",
+  "description": "Export session, commit and push Step 13",
+  "timeout": 300000
+}
+```
+</details>
+
+---

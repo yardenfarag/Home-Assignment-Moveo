@@ -18,7 +18,8 @@
     "ask": "tsx --env-file=.env.local scripts/ask.ts",
     "eval": "tsx --env-file=.env.local scripts/eval.ts",
     "bakeoff": "tsx --env-file=.env.local scripts/bakeoff.ts",
-    "eval:guard": "tsx --env-file=.env.local scripts/eval-guard.ts"
+    "eval:guard": "tsx --env-file=.env.local scripts/eval-guard.ts",
+    "alerts:test": "tsx --env-file=.env.local scripts/alerts-test.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.186",

@@ -47,6 +47,9 @@ so high?"* → it isn't), gives careful recommendations (*"Should we prioritize 
 declines what it can't answer (cities that aren't hubs, off-topic requests). A guard checks every message first, so
 off-topic requests and attempts to change its rules get a friendly reply without running the AI agent at all.
 
+**Score-change alerts (bonus):** after the nightly update, any hub whose risk level changed or whose score moved 10+
+points shows up under **Recent changes** in the overview, where it can be dismissed.
+
 ## How it works, in one minute
 1. The chat page sends your question to **our own API** (`POST /api/chat`), never straight to an AI.
 2. The agent gives an AI model (`openai/gpt-6.1-terra`, via OpenRouter) **four tools**: rank hubs, compare hubs,
@@ -140,6 +143,7 @@ npm run dev
 | `npm run ask -- "question"` | Ask the real agent from the terminal. Add `--session=<id>` for a follow-up, `--metric` for metric units |
 | `npm run eval` | Run the 13 eval cases ([Evals](#evals)) |
 | `npm run eval:guard` | Run the 32 guard cases through the out-of-scope guard ([Evals](#evals)) |
+| `npm run alerts:test` | Record one clearly marked test score-change alert, to see the "Recent changes" card |
 | `npm run bakeoff -- <results.json …>` | Compare models from saved eval runs → [docs/bakeoff.md](docs/bakeoff.md) |
 | `npm run fema:anchors` | Recompute the national FEMA reference values, to review before changing the scoring config |
 | `npm run session:export -- <file.jsonl>` | Export the AI coding session to [docs/session/](docs/session/), with private details removed |
@@ -153,6 +157,8 @@ The app has no login, so every route is open, except the nightly job, which need
 | `GET /api/chat/sessions?ids=a,b` | Titles and dates of earlier chats (the ids this browser remembers) |
 | `GET /api/chat/history?sessionId=<uuid>` | Reopen an earlier chat: its questions and checked answers |
 | `GET /api/widgets` | The overview panel: top 5 hubs, the leading hub per hazard, data freshness |
+| `GET /api/alerts` | Score-change alerts of the last 30 days (a hub's level changed, or its score moved 10+ points) |
+| `POST /api/alerts/test` | Records one clearly marked test alert (for demos). Needs `Authorization: Bearer <CRON_SECRET>` |
 | `GET /api/cron/ingest` | The nightly job (Vercel Cron, 06:00 UTC): fetch new weather, then re-score. Needs `Authorization: Bearer <CRON_SECRET>` |
 
 Errors are always friendly JSON: `{ "error": { "code", "message", "hint", "retryable" } }`. `POST /api/chat` answers

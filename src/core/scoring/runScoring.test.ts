@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Hub } from "../domain/hub";
 import type { DailyWeather } from "../domain/weather";
 import { runScoring, type ScoringDeps } from "./runScoring";
+import type { StoredSnapshot } from "../db/scoresRepository";
 import type { FemaSignals } from "./types";
 
 const hub = (id: string): Hub => ({
@@ -47,6 +48,7 @@ function makeDeps(overrides: Partial<ScoringDeps> = {}): ScoringDeps {
     getWeatherDays: vi.fn(async () => [calmDay("2026-11-23"), calmDay("2026-11-24")]),
     getFemaSignalsByHub: vi.fn(async () => ({ signals: new Map([["miami", fema]]), problems: new Map() })),
     saveScoreSnapshots: vi.fn(async (rows) => rows.length),
+    getLatestSnapshots: vi.fn(async () => null),
     recordEvent: vi.fn(async () => true),
     log: () => {},
     ...overrides,
@@ -84,5 +86,30 @@ describe("runScoring", () => {
     const miami = summary.results.find((r) => r.hubId === "miami")!;
     expect(miami.warning).toMatch(/no county area/);
     expect(miami.confidence).toBe("low");
+  });
+});
+
+describe("runScoring alerts (D124)", () => {
+  /** The previous run's Miami result, as getLatestSnapshots would return it. */
+  const previousMiami = (overallScore: number, riskLevel: "low" | "medium" | "high") =>
+    [{ hubId: "miami", overallScore, riskLevel }] as unknown as StoredSnapshot[];
+
+  it("records an alert when a hub's level changed since the previous run", async () => {
+    const deps = makeDeps({ getLatestSnapshots: vi.fn(async () => previousMiami(10, "low")) });
+    const summary = await runScoring({ trigger: "cron" }, deps);
+    expect(summary.alerts).toBe(1);
+    const events = vi.mocked(deps.recordEvent).mock.calls.map(([e]) => e);
+    expect(events.find((e) => e.eventType === "alert.score_changed")).toMatchObject({ hubId: "miami", payload: { fromScore: 10, fromLevel: "low", test: false } });
+  });
+
+  it("keeps scoring (no alerts) when the previous scores can't be read", async () => {
+    const deps = makeDeps({
+      getLatestSnapshots: vi.fn(async () => {
+        throw new Error("db down");
+      }),
+    });
+    const summary = await runScoring({ trigger: "cron" }, deps);
+    expect(summary.hubsScored).toBe(1);
+    expect(summary.alerts).toBe(0);
   });
 });

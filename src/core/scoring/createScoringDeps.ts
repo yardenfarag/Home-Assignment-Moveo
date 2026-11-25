@@ -6,7 +6,7 @@
 import { recordEvent } from "../db/eventsRepository";
 import { getFemaSignalsByHub } from "../db/femaRepository";
 import { listActiveHubs } from "../db/hubsRepository";
-import { saveScoreSnapshots } from "../db/scoresRepository";
+import { getLatestSnapshots, saveScoreSnapshots } from "../db/scoresRepository";
 import { getLatestWeatherDate, getWeatherDays } from "../db/weatherRepository";
 import type { ScoringDeps } from "./runScoring";
 
@@ -22,6 +22,7 @@ export function createScoringDeps(log: (line: string) => void): ScoringDeps {
     getWeatherDays: (hubId, start, end) => getWeatherDays(hubId, start, end),
     getFemaSignalsByHub: () => getFemaSignalsByHub(),
     saveScoreSnapshots: (snapshots) => saveScoreSnapshots(snapshots),
+    getLatestSnapshots: () => getLatestSnapshots(),
     recordEvent: (event) => recordEvent(event),
     log,
   };

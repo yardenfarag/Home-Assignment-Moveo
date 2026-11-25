@@ -75,6 +75,37 @@ export async function countEvents(query: EventCountQuery, db: Db = getDb()): Pro
   }
 }
 
+/** A stored event, as read back. */
+export interface StoredEvent {
+  id: string;
+  eventType: string;
+  hubId: string | null;
+  message: string | null;
+  payload: Json;
+  createdAt: string;
+}
+
+/**
+ * Lists recent events of one type, newest first (uses the `(event_type, created_at)` index).
+ * @param query - event type, start time, max rows.
+ * @param db - database client (injectable for tests).
+ * @returns the events.
+ * @throws BoundaryError (database) when the query fails.
+ */
+export async function listEvents(query: { eventType: string; since: string; limit: number }, db: Db = getDb()): Promise<StoredEvent[]> {
+  const { data, error } = await db
+    .from("events")
+    .select("id, event_type, hub_id, message, payload, created_at")
+    .eq("event_type", query.eventType)
+    .gte("created_at", query.since)
+    .order("created_at", { ascending: false })
+    .limit(query.limit);
+  if (error) {
+    throw new BoundaryError({ name: "EventListError", message: `Could not list '${query.eventType}' events: ${error.message}`, functionName: "listEvents", boundary: "database", cause: error });
+  }
+  return data.map((row) => ({ id: String(row.id), eventType: row.event_type, hubId: row.hub_id, message: row.message, payload: row.payload, createdAt: row.created_at }));
+}
+
 /**
  * Records one event. Never throws — failures are printed to the console.
  * @param event - the event to store.
@@ -99,7 +130,7 @@ export async function recordEvent(event: NewEvent, db: Db = getDb()): Promise<bo
     console.error(
       formatBoundaryMessage({
         name: "EventInsertError",
-        message: `Could not record event '${event.eventType}': ${error instanceof Error ? error.message : String(error)}`,
+        message: `Could not record event '${event.eventType}': ${describeUnknownError(error)}`,
         functionName: "recordEvent",
         boundary: "database",
       }),
