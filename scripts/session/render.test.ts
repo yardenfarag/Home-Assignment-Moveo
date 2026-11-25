@@ -53,3 +53,12 @@ describe("truncate", () => {
     expect(result).toContain("[truncated 500 chars]");
   });
 });
+
+describe("isConversationRecord for sub-agents (D137)", () => {
+  it("keeps a sub-agent's own records only when reading its transcript", () => {
+    const record = { type: "assistant", isSidechain: true, message: { content: "hi" } };
+    expect(isConversationRecord(record)).toBe(false);
+    expect(isConversationRecord(record, true)).toBe(true);
+    expect(isConversationRecord({ type: "user", message: { content: "x" } }, true)).toBe(false);
+  });
+});
