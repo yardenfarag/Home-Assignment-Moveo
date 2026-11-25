@@ -20,8 +20,13 @@ export const AGENT_LIMITS = {
 /** How many chats a browser remembers, and how many `GET /api/chat/sessions` accepts at once. */
 export const REMEMBERED_CHATS_LIMIT = 50;
 
-/** How many past turns (user message + agent reply) the model sees (G7). */
-export const HISTORY_TURNS = 10;
+/**
+ * How many past turns the model sees (G7). Each turn is the question, its tool calls and results, and
+ * the answer, kept whole (cutting a turn would separate a tool call from its result). 5 turns ≈ the last
+ * ~10 user/assistant messages: enough for follow-ups, and every older turn would be paid for again on
+ * every request (D136; was 10).
+ */
+export const HISTORY_TURNS = 5;
 
 /** Fixed disclaimer added by CODE to every recommendation (D8) — the LLM cannot weaken it. */
 export const RECOMMENDATION_DISCLAIMER =

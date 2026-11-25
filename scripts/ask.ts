@@ -33,7 +33,8 @@ async function main(): Promise<void> {
   if (a.meta.warnings.length) console.log(`Warnings: ${a.meta.warnings.join(" | ")}`);
   console.log(
     `\n${a.meta.model} · ${a.meta.toolCalls.length} tool calls · retried ${a.meta.retried} · ` +
-      `${result.usage.inputTokens} in / ${result.usage.outputTokens} out tokens · ${((Date.now() - started) / 1000).toFixed(1)}s`,
+      `${result.usage.inputTokens} in (${result.usage.cachedInputTokens} from the prompt cache) / ${result.usage.outputTokens} out tokens · ` +
+      `${result.usage.costUsd === null ? "cost not reported" : `$${result.usage.costUsd.toFixed(4)} charged`} · ${((Date.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(`Session: ${result.sessionId}  (follow up with --session=${result.sessionId})`);
 }

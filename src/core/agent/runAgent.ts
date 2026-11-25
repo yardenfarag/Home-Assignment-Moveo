@@ -30,6 +30,7 @@ import { finalizeAnswer } from "./finalizeAnswer";
 import { ToolLedger } from "./ledger";
 import { buildTools } from "./tools";
 import type { ToolCallbacks } from "./tools/shared";
+import { NO_USAGE, addUsage, attemptUsage, cachedInstructions, type AnswerUsage } from "./usage";
 
 /** Re-exported so callers can tell bad input from a failed turn without importing the errors folder. */
 export { AgentInputError };
@@ -69,7 +70,8 @@ export interface AgentResult {
   answer: FinalAnswer;
   /** Messages to append to the conversation history (user message, tool calls/results, answers). */
   newMessages: ModelMessage[];
-  usage: { inputTokens: number; outputTokens: number };
+  /** Tokens (incl. prompt-cache hits) and OpenRouter's charged cost for the whole turn (D136). */
+  usage: AnswerUsage;
 }
 
 
@@ -94,7 +96,8 @@ async function attempt(
   let streamError: unknown = null;
   const result = streamText({
     model: deps.model,
-    system,
+    // Same instructions + tools at the start of every request, so the provider can cache them (D136).
+    instructions: cachedInstructions(system, deps.modelId),
     messages,
     tools,
     output: Output.object({ schema: llmAnswerSchema }),
@@ -151,12 +154,12 @@ async function attempt(
       problem = `Your final answer did not match the required JSON schema (${describeUnknownError(error)}).`;
     } else throw callFailed(error);
   }
-  const usage = await result.totalUsage;
+  const [totalUsage, steps] = await Promise.all([result.totalUsage, result.steps]);
   return {
     raw,
     problem,
     responseMessages: (await result.responseMessages) as ModelMessage[],
-    usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 },
+    usage: attemptUsage(totalUsage, steps),
   };
 }
 
@@ -185,14 +188,13 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
   const system = buildSystemPrompt(deps.context);
   const newMessages: ModelMessage[] = [{ role: "user", content: message }];
   const deadline = AbortSignal.timeout(AGENT_TIMEOUTS.turnMs); // one budget for both attempts
-  const usage = { inputTokens: 0, outputTokens: 0 };
+  let usage: AnswerUsage = NO_USAGE;
   let problems: string[] = [];
 
   for (let attemptNo = 0; attemptNo <= AGENT_LIMITS.validationRetries; attemptNo++) {
     const run = await attempt([...request.history, ...newMessages], system, deps, tools, callbacks, deadline);
     newMessages.push(...run.responseMessages);
-    usage.inputTokens += run.usage.inputTokens;
-    usage.outputTokens += run.usage.outputTokens;
+    usage = addUsage(usage, run.usage);
 
     if (run.raw) {
       const final = finalizeAnswer(run.raw, {

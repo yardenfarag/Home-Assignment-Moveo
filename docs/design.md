@@ -148,7 +148,7 @@ Step by step, with the code:
 2. **The route validates and hands off.** [`POST`](../src/app/api/chat/route.ts#L28) validates the body with Zod ([`chatRequestSchema`](../src/core/api/chatStream.ts#L19)), and starts a
    stream ([`buildChatStream`](../src/core/api/chatStream.ts#L55)).
 3. **Context and memory are loaded.** [`answerQuestion`](../src/core/agent/answerQuestion.ts#L71) loads the latest score
-   for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 10 turns of this chat
+   for every hub ([`loadAgentContext`](../src/core/agent/context.ts#L58)) and the last 5 turns of this chat
    ([`loadHistory`](../src/core/db/chatRepository.ts#L54)).
 4. **The guard checks the message** (Step 11, D118). Before the paid agent runs, [`runGuard`](../src/core/guard/jevGuard.ts#L243)
    asks Jev, a small yes/no decision model, two questions: *is this about weather risk for our hubs* (for a follow-up,

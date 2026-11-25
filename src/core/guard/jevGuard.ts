@@ -95,6 +95,8 @@ export interface GuardVerdict {
   error?: string;
   ms: number;
   model: string;
+  /** What OpenRouter charged for the check, in USD (absent or null when it didn't say, D136). */
+  costUsd?: number | null;
 }
 
 /**
@@ -250,14 +252,16 @@ export async function runGuard(input: GuardInput, deps: GuardDeps): Promise<Guar
       body: JSON.stringify(buildDecisionRequest(input, deps.model)),
       signal: AbortSignal.timeout(GUARD_TIMEOUT_MS),
     });
-    const body = (await response.json()) as { answers?: Record<string, { noul?: unknown }>; error?: { message?: string } };
+    const body = (await response.json()) as { answers?: Record<string, { noul?: unknown }>; error?: { message?: string }; usage?: { cost?: unknown } };
     const inScope = body.answers?.inScope?.noul;
     const manipulation = body.answers?.manipulation?.noul;
     if (!response.ok || typeof inScope !== "number" || typeof manipulation !== "number") {
       throw new Error(`HTTP ${response.status}: ${body.error?.message ?? "no probabilities in the response"}`);
     }
     const scores = { inScope, manipulation };
-    return { ...decideFromScores(scores), mode, scores, failedOpen: false, ms: Date.now() - started, model: deps.model };
+    // What OpenRouter charged for this check (D136), when it says.
+    const costUsd = typeof body.usage?.cost === "number" ? body.usage.cost : null;
+    return { ...decideFromScores(scores), mode, scores, failedOpen: false, ms: Date.now() - started, model: deps.model, costUsd };
   } catch (error) {
     const message = describeUnknownError(error);
     console.error(

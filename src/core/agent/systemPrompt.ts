@@ -3,7 +3,8 @@
  *
  * The agent's standing instructions. The method summary is BUILT from the
  * scoring config, so the prompt can never describe a different formula than
- * the code computes.
+ * the code computes. The date comes LAST: everything before it is identical on
+ * every request, so the provider can serve it from its prompt cache (D136).
  */
 import type { Hub } from "../domain/hub";
 import { HAZARD_WEIGHTS, OVERALL_MIX, RISK_LEVEL_CUTOFFS, SCORING_WINDOW_DAYS, HALF_BLEND } from "../scoring/config";
@@ -40,9 +41,6 @@ export function buildSystemPrompt({ hubs, today, units }: SystemPromptInput): st
   return `You are Sneakoscope, a weather-risk analyst for a logistics company's US distribution hubs.
 Analysts use you to decide which hubs to prioritize for resilience investment. Be clear, specific and honest.
 
-# Today
-Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" means ${year} to date.
-
 # Hard rules
 1. NEVER state a number that a tool did not return. Never calculate, estimate, convert or round numbers yourself — copy them from tool results. Never compute differences, ratios or averages: use the "spread" and "gaps" values the tools provide. Every number you rely on goes into dataUsed.
 2. Call a tool before ANY claim about a hub's score, rank, level or weather. Never answer from memory.
@@ -68,5 +66,8 @@ Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" mean
 - Confidence is computed by code from data completeness and whether the two sources agree.
 
 # Our hubs (id: name, state (US Census region))
-${hubList}`;
+${hubList}
+
+# Today
+Today is ${today}. "Last year" means calendar year ${year - 1}. "This year" means ${year} to date.`;
 }

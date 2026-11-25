@@ -7,7 +7,7 @@
 import { createUIMessageStreamResponse } from "ai";
 import { answerQuestion } from "@/core/agent/answerQuestion";
 import { createAnswerQuestionDeps } from "@/core/agent/createAnswerQuestionDeps";
-import { checkChatGate } from "@/core/api/chatGate";
+import { checkChatGate, isOperatorRequest } from "@/core/api/chatGate";
 import { buildChatStream, chatRequestSchema } from "@/core/api/chatStream";
 import { getCronEnv } from "@/core/config/env";
 import { countEvents, recordEvent } from "@/core/db/eventsRepository";
@@ -30,14 +30,11 @@ export async function POST(request: Request): Promise<Response> {
     const raw: unknown = await request.json().catch(() => undefined);
     if (raw === undefined) return errorResponse(userError("invalid_request")); // not JSON: the caller's mistake, not a 500
     const body = chatRequestSchema.parse(raw);
-    const limited = await checkChatGate(request.headers, {
-      countEvents,
-      recordEvent,
-      secret: getCronEnv().CRON_SECRET,
-      now: () => new Date(),
-    });
+    const secret = getCronEnv().CRON_SECRET;
+    const limited = await checkChatGate(request.headers, { countEvents, recordEvent, secret, now: () => new Date() });
     if (limited) return errorResponse(limited);
-    const deps = createAnswerQuestionDeps();
+    // The answer cache (D136) is for people; the eval script (operator) must always run the agent.
+    const deps = createAnswerQuestionDeps({ useAnswerCache: !isOperatorRequest(request.headers, secret) });
     const stream = buildChatStream(body, (req, callbacks) => answerQuestion({ ...req, units: "us" }, deps, callbacks));
     return createUIMessageStreamResponse({ stream, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

@@ -71,8 +71,12 @@ export interface SoftMetrics {
   p95Seconds: number;
   inputTokens: number;
   outputTokens: number;
-  /** Estimated USD, null when pricing/usage is unknown. */
+  /** Input tokens served from the provider's prompt cache (D136). */
+  cachedInputTokens: number;
+  /** USD: what OpenRouter charged when every turn reported it, else estimated from list prices; null when unknown. */
   costUsd: number | null;
+  /** Where `costUsd` comes from. */
+  costSource: "charged" | "estimated" | null;
 }
 
 /**
@@ -88,6 +92,11 @@ export function softMetrics(runs: CaseRun[], pricing: Pricing | null): SoftMetri
   const inputTokens = turns.reduce((s, t) => s + (t.usage?.inputTokens ?? 0), 0);
   const outputTokens = turns.reduce((s, t) => s + (t.usage?.outputTokens ?? 0), 0);
   const hasUsage = turns.some((t) => t.usage);
+  const cachedInputTokens = turns.reduce((s, t) => s + (t.usage?.cachedInputTokens ?? 0), 0);
+  // The charged cost is exact: use it when every turn with usage reported one (D136).
+  const withUsage = turns.filter((t) => t.usage);
+  const charged = withUsage.length > 0 && withUsage.every((t) => typeof t.usage?.costUsd === "number");
+  const estimated = pricing && hasUsage ? inputTokens * pricing.input + outputTokens * pricing.output : null;
   return {
     turns: turns.length,
     answered: answers.length,
@@ -100,8 +109,20 @@ export function softMetrics(runs: CaseRun[], pricing: Pricing | null): SoftMetri
     p95Seconds: seconds.length ? percentile(seconds, 0.95) : 0,
     inputTokens,
     outputTokens,
-    costUsd: pricing && hasUsage ? inputTokens * pricing.input + outputTokens * pricing.output : null,
+    cachedInputTokens,
+    costUsd: charged ? withUsage.reduce((s, t) => s + (t.usage?.costUsd ?? 0), 0) : estimated,
+    costSource: charged ? "charged" : estimated !== null ? "estimated" : null,
   };
+}
+
+/**
+ * The cost as text, saying whether OpenRouter charged it or it's estimated from list prices.
+ * @param metrics - soft metrics.
+ * @returns e.g. "$0.142 charged by OpenRouter" or "≈ $0.146 estimated from list prices".
+ */
+function costText(metrics: SoftMetrics): string {
+  const amount = `$${f(metrics.costUsd ?? 0, 3)}`;
+  return metrics.costSource === "charged" ? `${amount} charged by OpenRouter` : `≈ ${amount} estimated from list prices`;
 }
 
 /**
@@ -111,7 +132,10 @@ export function softMetrics(runs: CaseRun[], pricing: Pricing | null): SoftMetri
  * @returns "in / out", or a plain "n/a" explanation.
  */
 function tokensText(metrics: SoftMetrics): string {
-  if (metrics.usageReported) return `${metrics.inputTokens.toLocaleString()} in / ${metrics.outputTokens.toLocaleString()} out`;
+  if (metrics.usageReported) {
+    const cachedShare = metrics.inputTokens ? Math.round((metrics.cachedInputTokens / metrics.inputTokens) * 100) : 0;
+    return `${metrics.inputTokens.toLocaleString()} in (${metrics.cachedInputTokens.toLocaleString()} from the prompt cache, ${cachedShare}%) / ${metrics.outputTokens.toLocaleString()} out`;
+  }
   if (metrics.turns > 0 && metrics.answered === 0) return "n/a (every turn failed, so no tokens were counted)";
   return "n/a (remote run: the API stream doesn't report tokens)";
 }
@@ -138,7 +162,7 @@ export function printReport(runs: CaseRun[], metrics: SoftMetrics, label: string
     `   avg ${f(metrics.avgToolCalls)} tool calls · ${metrics.duplicateCalls} duplicate calls · ${metrics.untracedNumbers} untraced numbers · ` +
       `${metrics.retries} retries · avg ${f(metrics.avgSeconds)}s (p95 ${f(metrics.p95Seconds)}s) · ` +
       `tokens ${tokensText(metrics)}` +
-      (metrics.costUsd !== null ? ` · ≈ $${f(metrics.costUsd, 3)}` : ""),
+      (metrics.costUsd !== null ? ` · ${costText(metrics)}` : ""),
   );
 }
 
@@ -259,7 +283,7 @@ ${rows.join("\n")}
 | Answers that needed a validation retry | ${metrics.retries} |
 | Avg / p95 seconds per answer | ${f(metrics.avgSeconds)} / ${f(metrics.p95Seconds)} |
 | Tokens (in / out) | ${tokensText(metrics)} |
-| Estimated cost | ${metrics.costUsd !== null ? `$${f(metrics.costUsd, 3)}` : "n/a"} |
+| Cost | ${metrics.costUsd !== null ? costText(metrics) : "n/a"} |
 ${judgeSection(runs, meta.judgeModel, meta.selfTest)}`;
 }
 
