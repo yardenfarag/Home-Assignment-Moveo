@@ -27,6 +27,8 @@ import { judgeSelfTest, judgeTurns } from "../evals/lib/judging";
 import { buildOracle } from "../evals/lib/oracle";
 import { fetchPricing, markdownSummary, printFloodReview, printJudgeReport, printReport, softMetrics } from "../evals/lib/report";
 import { runInProcess, runRemote } from "../evals/lib/runners";
+import { evalRunSummary } from "../evals/lib/suite";
+import type { Json } from "../src/core/db/database.types";
 import type { CaseRun, EvalCase, TurnResult } from "../evals/lib/types";
 
 /** Reads `--name=value` (or PowerShell's `npm_config_name`). */
@@ -69,6 +71,7 @@ function findCase(id: string): EvalCase {
 /** Runs the evals. */
 async function main(): Promise<void> {
   installStrayAbortGuard();
+  const startedAt = Date.now();
   const url = flag("url");
   const repeat = Math.max(1, Number(flag("repeat") ?? 1));
   const only = flag("case")?.split(",").map((s) => s.trim());
@@ -154,6 +157,12 @@ async function main(): Promise<void> {
       costUsd: metrics.costUsd,
       judge: judge?.modelId ?? null,
       judgeSelfTest: selfTest ? `${selfTest.correct}/${selfTest.total}` : null,
+      // The same summary the app saves, so the "Answer quality" card shows CLI runs too (D130).
+      // Saved only for a single, live, in-process run: that's what the card describes.
+      summary:
+        repeat === 1 && !url && !saved
+          ? (evalRunSummary(runs, { model: label, trigger: "cli", judge: judge?.modelId ?? null, selfTest, seconds: (Date.now() - startedAt) / 1000 }) as unknown as Json)
+          : null,
     },
   });
   if (failed.length) process.exit(1);

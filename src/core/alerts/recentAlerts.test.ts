@@ -4,7 +4,7 @@ import type { StoredSnapshot } from "../db/scoresRepository";
 import { loadRecentAlerts, testAlertEvent } from "./recentAlerts";
 
 const alertPayload = { hubId: "dallas", hubName: "Dallas", fromScore: 64.2, toScore: 72.4, change: 8.2, fromLevel: "medium", toLevel: "high", test: false };
-const event = (id: string, payload: unknown): StoredEvent => ({ id, eventType: "alert.score_changed", hubId: "dallas", message: "…", payload: payload as never, createdAt: "2026-11-25T06:05:00Z" });
+const event = (id: string, payload: unknown): StoredEvent => ({ id, eventType: "alert.score_changed", correlationId: null, hubId: "dallas", message: "…", payload: payload as never, createdAt: "2026-11-25T06:05:00Z" });
 
 describe("loadRecentAlerts", () => {
   it("reads the last 30 days of alerts and skips malformed rows", async () => {
