@@ -21,6 +21,8 @@ import { createAnswerQuestionDeps } from "../src/core/agent/createAnswerQuestion
 import { recordEvent } from "../src/core/db/eventsRepository";
 import { createJudgeModel } from "../src/core/judge/judgeAnswer";
 import { EVAL_CASES } from "../evals/cases";
+import { baseModel } from "../evals/lib/bakeoff";
+import { installStrayAbortGuard } from "../evals/lib/guards";
 import { judgeSelfTest, judgeTurns } from "../evals/lib/judging";
 import { buildOracle } from "../evals/lib/oracle";
 import { fetchPricing, markdownSummary, printFloodReview, printJudgeReport, printReport, softMetrics } from "../evals/lib/report";
@@ -66,6 +68,7 @@ function findCase(id: string): EvalCase {
 
 /** Runs the evals. */
 async function main(): Promise<void> {
+  installStrayAbortGuard();
   const url = flag("url");
   const repeat = Math.max(1, Number(flag("repeat") ?? 1));
   const only = flag("case")?.split(",").map((s) => s.trim());
@@ -82,6 +85,11 @@ async function main(): Promise<void> {
 
   const judge = has("no-judge") ? null : createJudgeModel();
   const saved = rejudgeFile ? loadSavedRun(rejudgeFile) : null;
+  const provider = (id: string) => id.split("/")[0];
+  const answering = saved ? baseModel(saved.label) : url ? null : deps.agentModel.modelId;
+  if (judge && answering && provider(judge.modelId) === provider(answering)) {
+    console.warn(`⚠️  The judge (${judge.modelId}) and the answering model (${answering}) share a provider; judges can favor their own family (D100, D111).`);
+  }
   const label = saved ? `${saved.label} (rejudged)` : liveLabel;
   console.log(
     saved
@@ -113,7 +121,7 @@ async function main(): Promise<void> {
     process.stdout.write(`${run.pass ? "." : "F"}`);
   }
 
-  const pricedModel = saved ? (saved.label.startsWith("remote") ? null : saved.label) : url ? null : deps.agentModel.modelId;
+  const pricedModel = saved ? (saved.label.startsWith("remote") ? null : baseModel(saved.label)) : url ? null : deps.agentModel.modelId;
   const pricing = pricedModel ? await fetchPricing(pricedModel) : null;
   const metrics = softMetrics(runs, pricing);
   printReport(runs, metrics, `${label}${repeat > 1 ? ` · ${repeat} runs/case` : ""}`);
@@ -149,7 +157,7 @@ async function main(): Promise<void> {
       avgToolCalls: metrics.avgToolCalls,
       costUsd: metrics.costUsd,
       judge: judge?.modelId ?? null,
-      judgeSelfTest: selfTest ? `${selfTest.caught}/${selfTest.total}` : null,
+      judgeSelfTest: selfTest ? `${selfTest.correct}/${selfTest.total}` : null,
     },
   });
   if (failed.length) process.exit(1);

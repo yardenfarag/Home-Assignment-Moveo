@@ -101,3 +101,10 @@ Each one: *next time you see X → do Y*.
    its pass/fail flipped on 4 of 14 identical answers. Only the faithfulness score was stable enough to gate on.
 20. **Writing TS/JS through a bash heredoc + `node -e` replace** → escapes get mangled (`\n` turned into real newlines,
    `$$` collapsed to `$` by `String.replace`). Use the Edit tool for code changes.
+21. **A Node script dies with an uncaught `DOMException [TimeoutError]`** → reproduce against the real API (mocks didn't
+   trigger it), then record promise creation stacks with `async_hooks` to find where the unhandled one is born. Ours was
+   inside `@openrouter/ai-sdk-provider` (`reader.cancel()` without a catch), not our code.
+22. **A model "fails" a wording check** → read the answer before blaming the model. GPT models write curly apostrophes
+   ("aren’t") and different phrasings; two of Terra's three "failures" were our regexes.
+23. **Validating an LLM judge** → plant a known-good answer as well as known-bad ones, and check for self-contradicting
+   verdicts. A judge that fails everything passes a bad-answers-only test (Qwen flipped its scale on 105 of 160).

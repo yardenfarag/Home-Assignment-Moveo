@@ -1,7 +1,7 @@
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
 import type { FinalAnswer } from "../agent/answerSchema";
-import { buildJudgeEvidence, judgeAnswer, judgePasses, MAX_EVIDENCE_CHARS, type JudgeVerdict } from "./judgeAnswer";
+import { buildJudgeEvidence, isInconsistentVerdict, judgeAnswer, judgePasses, MAX_EVIDENCE_CHARS, type JudgeVerdict } from "./judgeAnswer";
 
 const usage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
@@ -74,6 +74,15 @@ describe("judgeAnswer", () => {
       }),
     });
     await expect(judgeAnswer("Why is Dallas high?", answer, { model, modelId: "mock/judge" })).resolves.toEqual(verdict);
+  });
+});
+
+describe("isInconsistentVerdict", () => {
+  it("flags a 'pass' with a near-zero faithfulness score and no unsupported claims (a flipped scale)", () => {
+    expect(isInconsistentVerdict({ ...verdict, faithfulToData: 1 })).toBe(true);
+    expect(isInconsistentVerdict(verdict)).toBe(false);
+    expect(isInconsistentVerdict({ ...verdict, faithfulToData: 1, verdict: "fail" })).toBe(false);
+    expect(isInconsistentVerdict({ ...verdict, faithfulToData: 2, unsupportedClaims: ["Dallas ranks 1st"] })).toBe(false);
   });
 });
 

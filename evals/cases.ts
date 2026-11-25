@@ -6,7 +6,7 @@
  * from the oracle at run time — nothing is hand-typed (E2).
  */
 import { RECOMMENDATION_DISCLAIMER } from "../src/core/agent/config";
-import { callsTo, check, firstHubMentioned, textHasNumber } from "./lib/checks";
+import { callsTo, check, firstHubMentioned, plainText, textHasNumber } from "./lib/checks";
 import type { CheckResult, EvalCase, TurnResult } from "./lib/types";
 
 /** Every case must at least produce an answer (it passed validation within one retry). */
@@ -146,7 +146,9 @@ export const EVAL_CASES: EvalCase[] = [
     check: ([r]) => {
       const base = answered([r]);
       if (!r.answer) return base;
-      const said = /not (one of )?our|isn't one of|is not a hub|don't (have|track|cover)|not in our (list|network)|no hub in boise/i.test(r.answer.answer);
+      const said = /not (one of )?(our|the)\b[^.]{0,40}\bhubs?\b|not (one of )?our|isn't one of|is not a hub|don't (have|track|cover)|not in our (list|network)|no hub in boise/i.test(
+        plainText(r.answer.answer),
+      );
       return [
         ...base,
         check("says Boise isn't one of our hubs", said, "expected a plain 'not one of our hubs'"),
@@ -161,7 +163,7 @@ export const EVAL_CASES: EvalCase[] = [
     check: ([r]) => {
       const base = answered([r]);
       if (!r.answer) return base;
-      const text = r.answer.answer;
+      const text = plainText(r.answer.answer);
       return [...base, check("says dust storms aren't scored", /dust/i.test(text) && /(not|n't)\b[^.]{0,80}(scor|cover|track|measur|includ|model)/i.test(text), "expected a plain statement that dust storms aren't scored")];
     },
   },

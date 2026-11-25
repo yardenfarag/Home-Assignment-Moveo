@@ -154,6 +154,17 @@ export function judgePasses(verdict: JudgeVerdict): boolean {
 }
 
 /**
+ * Whether a verdict contradicts itself: "pass" with faithfulness ≤ 2 and no unsupported claims
+ * listed. A Qwen judge did this on about half its answers in the bakeoff (it flipped the 1–5 scale),
+ * and its self-test didn't catch it. Such a judge can't be trusted (D109).
+ * @param verdict - the judge's verdict.
+ * @returns true when the verdict is internally inconsistent.
+ */
+export function isInconsistentVerdict(verdict: JudgeVerdict): boolean {
+  return verdict.verdict === "pass" && verdict.faithfulToData <= 2 && verdict.unsupportedClaims.length === 0;
+}
+
+/**
  * Builds the judge model from env (`OPENROUTER_API_KEY`, `JUDGE_MODEL`).
  * @param source - env variables (injectable for tests).
  * @returns the judge model.

@@ -6,6 +6,7 @@
  */
 import type { AgentContext } from "../../src/core/agent/context";
 import { duplicateCalls } from "./checks";
+import { isInconsistentVerdict } from "../../src/core/judge/judgeAnswer";
 import type { JudgeSelfTest } from "./judging";
 import type { CaseRun } from "./types";
 
@@ -116,6 +117,8 @@ export interface JudgeAverages {
   unsupportedClaims: number;
   /** Widely known context, allowed but listed (J6). */
   generalKnowledgeClaims: number;
+  /** Verdicts that contradict themselves (D109): a sign the judge is broken. */
+  inconsistent: number;
 }
 
 /**
@@ -140,6 +143,7 @@ export function judgeAverages(runs: CaseRun[]): JudgeAverages | null {
     passVerdicts: verdicts.filter((v) => v.verdict === "pass").length,
     unsupportedClaims: verdicts.reduce((s, v) => s + v.unsupportedClaims.length, 0),
     generalKnowledgeClaims: verdicts.reduce((s, v) => s + v.generalKnowledgeClaims.length, 0),
+    inconsistent: verdicts.filter(isInconsistentVerdict).length,
   };
 }
 
@@ -152,8 +156,8 @@ export function judgeAverages(runs: CaseRun[]): JudgeAverages | null {
 export function printJudgeReport(runs: CaseRun[], selfTest: JudgeSelfTest | null, judgeModel: string | null): void {
   if (!judgeModel) return console.log("\n⚖️  Judge: off (--no-judge)");
   const a = judgeAverages(runs);
-  const reliable = selfTest !== null && selfTest.caught === selfTest.total;
-  console.log(`\n⚖️  Judge (${judgeModel}) — self-test: ${selfTest ? `${selfTest.caught}/${selfTest.total} planted bad answers caught` : "n/a"}${reliable ? " ✅" : " ⚠️  JUDGE UNRELIABLE — don't trust its verdicts"}`);
+  const reliable = selfTest !== null && selfTest.correct === selfTest.total && (a?.inconsistent ?? 0) === 0;
+  console.log(`\n⚖️  Judge (${judgeModel}) — self-test: ${selfTest ? `${selfTest.correct}/${selfTest.total} planted answers graded right` : "n/a"}${reliable ? " ✅" : " ⚠️  JUDGE UNRELIABLE — don't trust its verdicts"}`);
   for (const d of selfTest?.details ?? []) console.log(`   · ${d}`);
   if (a) {
     console.log(
@@ -161,7 +165,8 @@ export function printJudgeReport(runs: CaseRun[], selfTest: JudgeSelfTest | null
         `honest about limits ${f(a.honestAboutLimits)} · premise ${a.premiseHandling === null ? "n/a" : f(a.premiseHandling)} · clarity ${f(a.clarity)}`,
     );
     console.log(
-      `   "pass" verdicts ${a.passVerdicts}/${a.judged} (soft) · ${a.unsupportedClaims} unsupported claims · ${a.generalKnowledgeClaims} general-knowledge claims (allowed)`,
+      `   "pass" verdicts ${a.passVerdicts}/${a.judged} (soft) · ${a.unsupportedClaims} unsupported claims · ${a.generalKnowledgeClaims} general-knowledge claims (allowed)` +
+        (a.inconsistent ? ` · ⚠️  ${a.inconsistent} self-contradicting verdicts` : ""),
     );
     for (const run of runs) {
       for (const j of run.judgments ?? []) {
@@ -219,7 +224,7 @@ ${judgeSection(runs, meta.judgeModel, meta.selfTest)}`;
 function judgeSection(runs: CaseRun[], judgeModel: string | null, selfTest: JudgeSelfTest | null): string {
   if (!judgeModel) return "\n## Independent judge\nNot run (`--no-judge`).\n";
   const a = judgeAverages(runs);
-  const reliable = selfTest !== null && selfTest.caught === selfTest.total;
+  const reliable = selfTest !== null && selfTest.correct === selfTest.total && (a?.inconsistent ?? 0) === 0;
   const flagged = runs.flatMap((r) =>
     (r.judgments ?? []).flatMap((j) => (j.verdict?.unsupportedClaims ?? []).map((claim) => `- \`${r.caseId}\`: ${claim.replace(/\|/g, "\\|")}`)),
   );
@@ -229,7 +234,7 @@ Each answer is graded by **${judgeModel}** (a different provider than the answer
 Hard check: faithful to data ≥ 4 (included in the results above). Everything else here is a soft metric:
 graded twice on identical answers, the pass/fail verdict flipped on 4 of 14, so it can't fail a case on its own (D103).
 
-**Judge self-test:** ${selfTest ? `${selfTest.caught}/${selfTest.total} planted bad answers caught` : "n/a"} ${reliable ? "✅ — the judge's verdicts can be trusted" : "⚠️ — the judge missed a planted error, treat its verdicts with caution"}
+**Judge self-test:** ${selfTest ? `${selfTest.correct}/${selfTest.total} planted answers graded right` : "n/a"} ${reliable ? "✅ — the judge's verdicts can be trusted" : "⚠️ — the judge misgraded a planted answer or contradicted itself, treat its verdicts with caution"}
 ${(selfTest?.details ?? []).map((d) => `- ${d}`).join("\n")}
 ${
   a
@@ -244,6 +249,7 @@ ${
 | "Pass" verdicts | ${a.passVerdicts}/${a.judged} |
 | Unsupported claims about our data | ${a.unsupportedClaims} |
 | General-knowledge claims (allowed, D104) | ${a.generalKnowledgeClaims} |
+| Self-contradicting verdicts (D109) | ${a.inconsistent} |
 `
     : ""
 }${flagged.length ? `\n**Claims the judge flagged as unsupported** (to review, not all are errors):\n${flagged.join("\n")}\n` : ""}`;

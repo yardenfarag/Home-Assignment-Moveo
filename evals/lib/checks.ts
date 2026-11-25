@@ -19,6 +19,16 @@ export function check(name: string, pass: boolean, detail: string): CheckResult 
 }
 
 /**
+ * Answer text with typographic quotes made plain, so wording checks don't depend on the
+ * model's apostrophe style (GPT models write "aren’t", which broke `n't` regexes in the bakeoff).
+ * @param text - answer text.
+ * @returns the same text with ’ ‘ → ' and “ ” → ".
+ */
+export function plainText(text: string): string {
+  return text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+}
+
+/**
  * Finds tool calls by name whose input matches a predicate.
  * @param answer - the answer.
  * @param tool - tool name.
