@@ -3,13 +3,13 @@
  *
  * THE single source of truth for every scoring number: day thresholds, anchors,
  * weights, the overall mix, level cut-offs and confidence rules.
- * docs/decisions.md (D19, D20, D47–D55) explains *why*; this file says *what*.
+ * docs/decisions.md (D19, D20, D47–D55, D123) explains *why*; this file says *what*.
  * Changing any value here means bumping SCORING_VERSION.
  */
 import type { Hazard } from "./types";
 
 /** Bump whenever a number below changes, so history never mixes formulas (D22). */
-export const SCORING_VERSION = "v1";
+export const SCORING_VERSION = "v2";
 
 /** Scoring window: the last 5 years (1,826 days) ending at the newest stored day (D55). */
 export const SCORING_WINDOW_DAYS = 1_826;
@@ -46,13 +46,14 @@ export const OBSERVED_ANCHORS = {
 /**
  * FEMA signals: national 95th percentile across US counties where FEMA rates the
  * hazard (NRI v1.20, Dec 2025) → score 100 (D47). Recompute with `npm run fema:anchors`.
- * Units: events (or event-days) per year; tornado per 1,000 sq mi of county (D53).
+ * Units: events (or event-days) per year; tornado per 1,000 sq mi of county (D53); inland flood
+ * per 1,000 sq mi of county with the area floored at the median US county (D123).
  */
 export const FEMA_ANCHORS_P95 = {
   hurricane: 0.248,
   tornadoPer1000SqMi: 0.987,
   hail: 8.169,
-  inlandFlood: 3.536,
+  inlandFloodPer1000SqMi: 4.7,
   coastalFlood: 4.917,
   iceStorm: 1.548,
   winterWeather: 25.079,
@@ -60,6 +61,14 @@ export const FEMA_ANCHORS_P95 = {
   heatWave: 17.842,
   strongWind: 6.191,
 } as const;
+
+/**
+ * Inland flood is divided by county area, but no county counts as smaller than the median US
+ * county (D123). Without the floor, tiny city-counties (St. Louis City, 67 sq mi; Manhattan,
+ * 34 sq mi) jump to 100, because flood warnings don't scale with county size the way tornadoes
+ * do. Printed by `npm run fema:anchors` (NRI v1.20).
+ */
+export const INLAND_FLOOD_AREA_FLOOR_SQ_MI = 645.8;
 
 /** FEMA NRI version the anchors were computed from. */
 export const FEMA_ANCHORS_NRI_VERSION = "December 2025";

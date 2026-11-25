@@ -68,12 +68,18 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 9 | README, design doc, final assumptions (done: D112) | — |
 | 10 | Deploy to Vercel, env vars, cron, run evals against live URL. Site login removed (D113), request limits (D114). **Done: https://sneakoscope.vercel.app** (D116) | (same, in Vercel; no `APP_USERNAME` / `APP_PASSWORD`) |
 | 11 | Jev guard: topic + manipulation on every message, follow-ups judged with the last 2 turns, tuned cutoffs 0.15 / 0.6, 2 s fail-open, guard evals (done: D118–D121) | `JEV_MODEL` |
+| 12 | Scoring v2: inland flood per area, floored at the median county (done: D123) | — |
+| 13 | Score-change alerts (bonus) | `ALERT_WEBHOOK_URL` (optional) |
+| 14 | Three-panel layout that fits the screen | — |
+| 15 | Voice (bonus) | — |
+| 16 | Evals from the UI (quality card, live run, limits) | — |
 
 ## Later (order to be chosen)
-Themed login page · dust storm hazard (NOAA Storm Events) · US map widget · abuse/off-topic
-hardening · score-change alerts · 7-day forecast + NWS active alerts · per-hub local
-thresholds · hub volume weighting · voice · **scoring v2: inland flood per county area (D97)** ·
-**live "Reviewed" badge: the judge grades answers in the background after they are shown (D99, J1-c)**.
+Reviewed together after Step 11:
+- **Scheduled:** scoring v2 (Step 12) · score-change alerts, a bonus (Step 13) · voice, a bonus (Step 15).
+- **Done or obsolete:** abuse/off-topic hardening (the guard + request limits) · themed login page (no login, D113).
+- **Still later:** live "Reviewed" badge (the judge grades answers in the background, D99) · dust storm hazard (NOAA Storm
+  Events) · US map widget · 7-day forecast + NWS active alerts · per-hub local thresholds · hub volume weighting.
 
 ## Eval cases (Step 7)
 1. Midwest winter ranking. 2. Miami vs Houston hurricane + flood. 3. Denver % snow days 2025.

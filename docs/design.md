@@ -176,14 +176,16 @@ Step by step, with the code:
 ## 5. How a hub's risk score is computed
 All numbers live in one file, [src/core/scoring/config.ts](../src/core/scoring/config.ts). The method:
 
-- **Six hazards, weighted** ([`HAZARD_WEIGHTS`](../src/core/scoring/config.ts#L68)): hurricane 25%, winter 20%,
+- **Six hazards, weighted** ([`HAZARD_WEIGHTS`](../src/core/scoring/config.ts#L77)): hurricane 25%, winter 20%,
   flood/heavy rain 20%, severe storms (tornado + hail) 15%, wind 10%, heat 10%.
 - **Each hazard is scored 0–100 on a fixed national scale**, so a score means the same thing for every hub. Most hazards
   blend two sources 50/50:
   - **Observed weather:** days over a threshold in the last 5 years, from Open-Meteo. Example: snow days ≥ 1 cm.
   - **FEMA's long-term frequency** for the hub's county.
 
-  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L106)).
+  Hurricane and severe storms use FEMA only ([`computeHazardScores`](../src/core/scoring/hazards.ts#L107)).
+  FEMA counts events per county, so big counties look riskier just for being big. Tornadoes are therefore counted per
+  1,000 sq mi (D53), and so is inland flood since scoring v2, with the area never less than a typical county's (D123).
 - **Overall = 0.6 × weighted average + 0.4 × worst hazard** ([`computeOverall`](../src/core/scoring/overall.ts#L24)).
   This way one severe hazard isn't averaged away: a hurricane hub isn't "medium" just because it never snows.
 - **Levels:** Low 0–33, Medium 34–66, High 67–100 ([`riskLevelFor`](../src/core/scoring/overall.ts#L38)).

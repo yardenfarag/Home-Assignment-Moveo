@@ -53,14 +53,15 @@ How these are handled is in [decisions.md](decisions.md) D47–D58. The numbers 
 [`src/core/scoring/config.ts`](../src/core/scoring/config.ts).
 - **County-level FEMA data depends on county shape and size.**
   - **Tornado:** FEMA spreads frequency by county area (within-state rank correlation +0.62), so we score **per 1,000 sq mi** (D53).
-  - **Inland flood:** a mild size effect (+0.21) that we do not correct. Huge counties (Maricopa/Phoenix 9,319 sq mi, Clark/Las Vegas,
-    Los Angeles) likely have an overstated FEMA flood half.
+  - **Inland flood:** since scoring v2 (D123) it's also scored **per 1,000 sq mi**, but no county counts as smaller than the
+    median US county (646 sq mi). This fixed huge counties that used to max out (Maricopa/Phoenix 100 → 19, Clark/Las
+    Vegas 100 → 19) without blowing up tiny city-counties (pure per-area would have taken St. Louis City from 36 to 100).
+    The trade-off: a large county that is urban throughout, like Harris County (Houston, 1,795 sq mi), is now
+    **understated**. Houston's flood score stays High (72) thanks to its observed heavy-rain days.
   - **Mountains:** King County (Seattle) includes the Cascades and Salt Lake County the Wasatch, which inflates FEMA winter weather.
     Seattle's winter is flagged **Medium confidence** because the sources disagree (D52).
-- **The FEMA flood half caps at 100 for 15 of 36 hubs** (metros issue many flood warnings), so FEMA alone can't separate
-  them, and flood rankings are effectively driven by observed heavy-rain days. County size also distorts the FEMA half
-  (small Orleans Parish scores *lower*, huge Los Angeles County *higher*). Reviewed in Step 7 and kept for v1 (D97).
-  Planned fix: score inland flood per county area.
+- **The FEMA flood half still caps at 100 for 11 of 36 hubs** (15 in v1). Metros issue many flood warnings, so FEMA alone
+  can't separate them, and among those hubs the flood ranking is decided by observed heavy-rain days (D97, D123).
 - **Heavy rain ≠ flooding.** The flood score blends heavy-rain days with FEMA's flood warnings but doesn't cross-check them (D56).
 - **Ice storms come from FEMA only.** Observed weather has no ice signal (D56).
 - **Heavy-snow days (≥15 cm) and warning-level gusts (≥93 km/h) are reported, not scored.** The modeled data barely
