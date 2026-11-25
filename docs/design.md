@@ -280,7 +280,7 @@ docs/                    this design, decisions, assumptions, plan, evals, bakeo
 ## 9. Errors, security and limits
 - **One log format for every failure at a boundary** (external API, database, LLM, API route, config):
   `ErrorName || message || function || emoji`, with a fixed emoji per boundary: 🦉 LLM, 🐸 Open-Meteo, 🦡 FEMA,
-  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page) ([`BoundaryError`](../src/core/errors/boundaryError.ts#L60),
+  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page), 🐈 script (a script or the eval harness catching its own error) ([`BoundaryError`](../src/core/errors/boundaryError.ts#L60),
   [`BOUNDARY_EMOJI`](../src/core/errors/boundaryError.ts#L15)). A log line shows at a glance where something broke.
 - **Users never see raw errors.** [`toUserError`](../src/core/errors/userErrors.ts#L121) turns any failure into
   `{ code, message, hint, retryable }` with friendly copy, e.g. *"I couldn't put together an answer I can stand behind

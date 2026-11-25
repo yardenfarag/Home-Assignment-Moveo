@@ -66525,3 +66525,450 @@ fixed 3
 </details>
 
 ---
+
+### ⚙️ Tool output · 2026-11-25T20:06:52.290Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+🔒 Leak check passed: no emails, tokens, secret values, username or home path left.
+3b5f301 Review 4/5: browser error copy moved to userErrors.ts, ui boundary (🦋), docs (D134), doc links, session log
+ea22749 Review 4/5: frontend fixes
+e818b42 Review 3/5: docs (D133), migration renamed to 20261126000001 and applied, doc links, session log
+bba9cb3 Review 3/5: data pipeline fixes
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:06:54.634Z
+
+PR 4 is pushed. Now **PR 5**, rebased on top of PR 4. I expect two small conflicts:
+
+- **`boundaryError.ts`:** both PRs add an emoji there.
+- **`design.md`:** both PRs touched its doc links.
+
+---
+
+### 🤖 Claude · 2026-11-25T20:06:55.879Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git checkout -q review-5-evals-scripts && git rebase review-4-frontend 2>&1 | tail -4; git status --short | grep -E \"^(UU|AA|DU|UD)\" ",
+  "description": "Rebase PR 5 onto PR 4",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:06:58.730Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply b279885... Review 5/5: evals, scripts, JSDoc and DRY fixes
+UU src/core/errors/boundaryError.ts
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:00.833Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"<<<<<<<\\|>>>>>>>\\|=======\" -A0 src/core/errors/boundaryError.ts; sed -n 1,35p src/core/errors/boundaryError.ts",
+  "description": "Show the boundary conflict"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:07:01.221Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+23:<<<<<<< HEAD
+--
+26:=======
+--
+29:>>>>>>> b279885 (Review 5/5: evals, scripts, JSDoc and DRY fixes)
+/**
+ * @module core/errors/boundaryError
+ *
+ * One error format for every failure at a system boundary (external APIs,
+ * database, LLM, Jev, API routes, configuration, script entry points), so a log line is easy to
+ * locate at a glance:
+ *
+ *   `ErrorName || message || functionName || 🐘`
+ *
+ * Each boundary has a fixed animal emoji (searchable in logs).
+ * Pure functions (scoring, stats) do NOT use this — they just throw plain errors.
+ */
+
+/** Fixed emoji per boundary, so you can grep logs by where the error came from. */
+export const BOUNDARY_EMOJI = {
+  llm: "🦉",
+  openMeteo: "🐸",
+  fema: "🦡",
+  database: "🐘",
+  apiRoute: "🦄",
+  jev: "🐍",
+  config: "🦔",
+<<<<<<< HEAD
+  /** Something that failed while drawing the UI in the browser (caught by an error boundary). */
+  ui: "🦋",
+=======
+  /** A script entry point or the eval harness catching an error that isn't a BoundaryError (our own code). */
+  script: "🐈",
+>>>>>>> b279885 (Review 5/5: evals, scripts, JSDoc and DRY fixes)
+} as const;
+
+/** Name of a system boundary where errors are caught and wrapped. */
+export type Boundary = keyof typeof BOUNDARY_EMOJI;
+
+/** Everything needed to build a {@link BoundaryError}. */
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:02.416Z
+
+Both entries should stay. Resolving by keeping each:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:04.621Z
+
+<details><summary>🔧 Tool call: <code>Edit</code></summary>
+
+```json
+{
+  "replace_all": false,
+  "file_path": "~\\Home-Assignment-Moveo\\src\\core\\errors\\boundaryError.ts",
+  "old_string": "<<<<<<< HEAD\n  /** Something that failed while drawing the UI in the browser (caught by an error boundary). */\n  ui: \"🦋\",\n=======\n  /** A script entry point or the eval harness catching an error that isn't a BoundaryError (our own code). */\n  script: \"🐈\",\n>>>>>>> b279885 (Review 5/5: evals, scripts, JSDoc and DRY fixes)",
+  "new_string": "  /** Something that failed while drawing the UI in the browser (caught by an error boundary). */\n  ui: \"🦋\",\n  /** A script entry point or the eval harness catching an error that isn't a BoundaryError (our own code). */\n  script: \"🐈\","
+}
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:05.872Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git add src/core/errors/boundaryError.ts && GIT_EDITOR=true git rebase --continue 2>&1 | tail -3; git status --short | grep -E \"^(UU|AA)\"; git log --oneline -3",
+  "description": "Continue the rebase",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:07:06.950Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+The file ~\Home-Assignment-Moveo\src\core\errors\boundaryError.ts has been updated successfully.
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:07:08.251Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 1aa31c4... Review 5/5 follow-ups: suite deadline for the app run, no card summary for --case subsets, ignore .claude in tsc/eslint
+UU docs/design.md
+cf6ad13 Review 5/5: evals, scripts, JSDoc and DRY fixes
+3b5f301 Review 4/5: browser error copy moved to userErrors.ts, ui boundary (🦋), docs (D134), doc links, session log
+ea22749 Review 4/5: frontend fixes
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:10.464Z
+
+The second conflict is only doc-link line numbers in `design.md`. I'm keeping the stacked version and letting the link fixer recompute them:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:13.050Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "git checkout --ours docs/design.md && node \"~/AppData/Local/Temp/claude/37fedcc146eee186/8f798a35-9696-41b6-a5d9-4921a79fe27a/scratchpad/fix-doc-links.cjs\" 2>&1 | tail -3 && grep -c \"<<<<<<<\" docs/design.md; git add docs/design.md && GIT_EDITOR=true git rebase --continue 2>&1 | tail -1; git log --oneline -5",
+  "description": "Resolve design.md links and finish rebase",
+  "timeout": 120000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:07:14.660Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Updated 1 path from the index
+docs/design.md: judgeSelfTest L96 → L105
+docs/design.md: runEvalSuite L130 → L165
+fixed 5
+0
+Successfully rebased and updated refs/heads/review-5-evals-scripts.
+44b068f Review 5/5 follow-ups: suite deadline for the app run, no card summary for --case subsets, ignore .claude in tsc/eslint
+cf6ad13 Review 5/5: evals, scripts, JSDoc and DRY fixes
+3b5f301 Review 4/5: browser error copy moved to userErrors.ts, ui boundary (🦋), docs (D134), doc links, session log
+ea22749 Review 4/5: frontend fixes
+e818b42 Review 3/5: docs (D133), migration renamed to 20261126000001 and applied, doc links, session log
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:17.661Z
+
+The rebase is done. One follow-up from the PR 5 agent: the eval dialog still describes a "reliable" judge with the old definition. Fixing that copy:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:18.706Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -rn \"planted test answers\\|planted\" src/app/_components/EvalQuality.tsx src/core/errors/userErrors.ts | head",
+  "description": "Find judge reliability copy"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:07:19.038Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+src/app/_components/EvalQuality.tsx:375:            ? `${summary.judge} · ${summary.judgeReliable ? "reliable ✓ (graded all planted test answers right)" : "unreliable ⚠️ (missed a planted test answer, so its scores are a hint only)"}`
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:07:23.097Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");const p=\"src/app/_components/EvalQuality.tsx\";let t=fs.readFileSync(p,\"utf8\");\nconst a='\"reliable ✓ (graded all planted test answers right)\" : \"unreliable ⚠️ (missed a planted test answer, so its scores are a hint only)\"';\nif(!t.includes(a)) throw new Error(\"copy not found\");\nt=t.replace(a,'\"reliable ✓ (graded every planted test answer right and never contradicted itself)\" : \"unreliable ⚠️ (missed a planted test answer or contradicted itself, so its scores are a hint only)\"');\nfs.writeFileSync(p,t);\nEOF\nnpx tsc --noEmit 2>&1 | head -3; npx eslint . 2>&1 | tail -2; npx vitest run 2>&1 | grep -E \"×|Test Files|Tests \"",
+  "description": "Update reliability copy and run all checks",
+  "timeout": 400000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:08:09.363Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+ Test Files  68 passed (68)
+      Tests  403 passed (403)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:08:12.151Z
+
+All 403 tests pass. The checks themselves changed in this PR (number checks, wording checks, check kinds), so I'm verifying them against the real model with a full live eval (about $0.15):
+
+---
+
+### 🤖 Claude · 2026-11-25T20:08:13.644Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "npm run eval 2>&1 | grep -vE \"^\\s*$\" | sed -n '/🏆\\|❌\\|✅/p;/Judge (/,/clarity/p' | head -30",
+  "description": "Run the full live eval with the new checks",
+  "timeout": 600000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:10:46.066Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+✅ midwest-winter         Midwest hubs most exposed to winter              tools 1 · 9.8s
+✅ miami-vs-houston       Compare Miami and Houston (hurricane + flood)    tools 1 · 8.6s
+✅ denver-snow            % of Denver days last year with snowfall         tools 2 · 7.5s
+✅ dallas-why-high        Why is Dallas's risk high? (premise check)       tools 1 · 12.4s
+✅ seattle-false-premise  False premise: Seattle hurricane risk            tools 1 · 7.3s
+✅ follow-up              Follow-up: 'Why that one?'                       tools 2 · 17.6s
+✅ top-5                  Top 5 hubs overall                               tools 3 · 12.2s
+✅ unknown-city           City that isn't one of our hubs                  tools 0 · 3.7s
+✅ dust-storm             Hazard we don't score (dust storms)              tools 1 · 12.5s
+✅ decision               Decision question (recommendation + disclaimer)  tools 1 · 13.8s
+✅ off-topic              Off-topic request                                tools 0 · 2.7s
+✅ last-year              'Last year' = previous calendar year             tools 1 · 9.5s
+✅ confidence             Confidence explained (Seattle winter)            tools 1 · 6.7s
+🏆 13/13 cases passed
+⚖️  Judge (google/gemini-3.5-flash-lite) — self-test: 3/3 planted answers graded right ✅
+⚖️  Judge (google/gemini-3.5-flash-lite) — self-test: 3/3 planted answers graded right ✅
+   · right: correct answer (Dallas) must PASS (verdict pass, faithful 5/5)
+   · right: wrong number + wrong driver (Dallas) must FAIL (verdict fail, faithful 1/5)
+   · right: swallowed a false premise (Seattle hurricanes) must FAIL (verdict fail, faithful 1/5)
+   avg over 14 answers (1–5): faithful 5.0 · answers question 5.0 · honest about limits 5.0 · premise 5.0 · clarity 5.0
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:10:48.213Z
+
+**13/13** with the stricter checks, and the judge's self-test was 3/3. Next, the PowerShell flag fix: `npm run eval --no-judge` used to be silently ignored there. One cheap case, no judge:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:10:49.302Z
+
+<details><summary>🔧 Tool call: <code>PowerShell</code></summary>
+
+```json
+{
+  "command": "npm run eval --no-judge --case=off-topic 2>&1 | Select-String -Pattern \"Running|judge|passed\" | Select-Object -First 5",
+  "description": "Check --no-judge works through PowerShell npm",
+  "timeout": 180000
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:10:57.340Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+Running 1 case(s) × 1 on openai/gpt-6.1-terra…
+🏆 1/1 cases passed
+⚖️  Judge: off (--no-judge)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:11:02.289Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "grep -n \"^1\\. \\*\\*\" -A2 CLAUDE.md; grep -n \"🦋 UI\" docs/design.md",
+  "description": "Locate lesson 1 and emoji list"
+}
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:11:02.712Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+26:1. **Reuse.** Search the codebase for an existing function, util, type or component that already does the job.
+27-2. **Usages.** Before changing something, find every place that uses it, and mention the impacted areas and side effects.
+28-3. **Single source of truth.** Each fact lives in one place. Derive what can be derived. If you see the same
+--
+62:1. **`npm run x -- --flag` on PowerShell** → the `--` is swallowed and the flag arrives as env var
+63-   `npm_config_flag`. Read both `process.argv` and `process.env.npm_config_*`.
+64-2. **"This API probably lags N days / returns shape X"** → probe the real API first. Open-Meteo's archive
+283:  🐘 database, 🦄 API route, 🐍 Jev, 🦔 config, 🦋 UI (errors caught while drawing the page) ([`BoundaryError`](../src/core/errors/boundaryError.ts#L60),
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:11:16.051Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");\nconst edit=(p,a,b)=>{let t=fs.readFileSync(p,\"utf8\");if(!t.includes(a))throw new Error(p+\" missing \"+a.slice(0,60));fs.writeFileSync(p,t.replace(a,b));};\nedit(\"CLAUDE.md\",\"   `npm_config_flag`. Read both `process.argv` and `process.env.npm_config_*`.\",\"   `npm_config_flag` (dashes become underscores; `--no-x` arrives as `npm_config_x=false`). Use the shared\\n   `scripts/lib/cli.ts` helpers, which handle every form.\");\nedit(\"docs/design.md\",\"🦋 UI (errors caught while drawing the page) (\",\"🦋 UI (errors caught while drawing the page), 🐈 script (a script or the eval harness catching its own error) (\");\nconst d135=\"| D135 | **Evals and scripts fixes** (code review, PR 5 of 5). **No case can sink a run:** one shared `runOneCase` (used by `npm run eval` and the app) turns a crash into a failed case (\\\"case crashed\\\") and keeps every other result; the app run has a **150 s budget**, after which no new case starts and the rest are reported as \\\"skipped: out of time\\\", so a summary is always saved. **Checks that can't pass for the wrong reason:** a number now counts only when the answer's `dataUsed` has it for that hub and topic AND the text states it in a sentence about that hub or topic (scale phrases like \\\"0–100\\\" ignored, percentages need \\\"%\\\"); wording checks need the words in the same sentence. Every check has a **kind** (`gate` = wrong data or premise, `tool`, `behavior`, `judge`, `setup`); only `gate` checks disqualify a model in the bakeoff, and a broken case setup is no longer blamed on the model. **One definition of a reliable judge** (every planted answer right AND no self-contradictions), used by the CLI, the app card and the bakeoff. **Flags:** one helper handles `--x=v`, `--x`, `--no-x` and npm's PowerShell forms; `--repeat=abc` is a clear error instead of an empty \\\"0/0 passed\\\". **`--rejudge`** stamps results with the data they were made on and warns when today's data differs. **Scripts** report errors in the boundary format with a new 🐈 `script` boundary (the owner likes cats). Also: `--publish` only for full runs, a `--case` subset no longer replaces the app's \\\"last run\\\", pricing failures are logged, the stray-abort guard also protects `npm run ask`, shared percentile and helpers, and the missing JSDoc. | The review's eval and script findings, all fixed. **Verified:** 403 tests; the new checks re-run over all 302 saved real answers (0 ne
+… [truncated 791 chars]
+```
+</details>
+
+---
+
+### ⚙️ Tool output · 2026-11-25T20:11:21.141Z
+
+<details><summary>📤 Tool result</summary>
+
+```
+76:| 17 | Code review fixes, 5 PRs: 1 session log privacy (D131) · 2 agent and API (D132) · 3 data pipeline (D133) · 4 frontend (D134) · 5 evals, scripts, JSDoc and DRY (D135) · 3 data pipeline · 4 frontend · 5 evals, scripts, JSDoc and DRY | — |
+fixed 0
+      Tests  2 passed (2)
+```
+</details>
+
+---
+
+### 🤖 Claude · 2026-11-25T20:11:22.418Z
+
+The plan row ended up with a leftover duplicate tail. Fixing it:
+
+---
+
+### 🤖 Claude · 2026-11-25T20:11:27.411Z
+
+<details><summary>🔧 Tool call: <code>Bash</code></summary>
+
+```json
+{
+  "command": "node - <<'EOF'\nconst fs=require(\"fs\");const p=\"docs/plan.md\";let t=fs.readFileSync(p,\"utf8\");\nconst a=\"5 evals, scripts, JSDoc and DRY (D135) · 3 data pipeline · 4 frontend · 5 evals, scripts, JSDoc and DRY | — |\";\nif(!t.includes(a)) throw new Error(\"row\");\nt=t.replace(a,\"5 evals, scripts, JSDoc and DRY (D135). Done. | — |\\n| 18 | LLM cost: compact tool results, precomputed scores, provider prompt caching, a first-question answer cache, limits, cost tracking | — |\");\nfs.writeFileSync(p,t);\nEOF\nsed -n 76,77p docs/plan.md; npm run build 2>&1 | grep -E \"Compiled|rror\"; npm run session:export -- \"~/.claude/projects/~/8f798a35-9696-41b6-a5d9-4921a79fe27a.jsonl\" 2>&1 | tail -1; git add -A && git commit -q -m \"Review 5/5: judge-reliability copy, docs (D135), CLAUDE.md lesson 1, doc links, session log\n\nCo-Authored-By: Claude Opus 5.5 <[email removed]>\" && git push -q -u origin review-5-evals-scripts 2>&1 | grep -v \"^remote:\" | tail -1; git log --oneline -3",
+  "description": "Fix plan row, build, export session, push PR 5",
+  "timeout": 400000
+}
+```
+</details>
+
+---
