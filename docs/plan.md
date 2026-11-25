@@ -66,7 +66,7 @@ Every table has `created_at` + `updated_at` (trigger-maintained). RLS on, no pub
 | 7 | Eval set (13 cases) + `npm run eval` (`--url` for deployed). **Revisit D57** (FEMA flood half capped for 15 hubs) if flood rankings look off (done: kept, D97) · independent judge + self-test (D99–D106) | `JUDGE_MODEL` |
 | 8 | Model bakeoff (9 models screened, 4 finalists × 3 runs: gate → accuracy → cost → speed), lock in the winner (done: gpt-6.1-terra, D107–D111) | `OPENROUTER_MODEL`, `JUDGE_MODEL` (new values) |
 | 9 | README, design doc, final assumptions (done: D112) | — |
-| 10 | Deploy to Vercel, env vars, cron, run evals against live URL. Site login removed (D113) | (same, in Vercel; no `APP_USERNAME` / `APP_PASSWORD`) |
+| 10 | Deploy to Vercel, env vars, cron, run evals against live URL. Site login removed (D113), request limits (D114). **Done: https://sneakoscope.vercel.app** (D116) | (same, in Vercel; no `APP_USERNAME` / `APP_PASSWORD`) |
 | 11 | Phase 1.5: Jev guard (`typesafe/jev-1.14`, cutoff 0.4, 2 s fail-open, last 2 turns) + guard evals + cutoff tuning | `JEV_MODEL` |
 
 ## Later (order to be chosen)
