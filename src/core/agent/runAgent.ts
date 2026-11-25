@@ -152,7 +152,10 @@ export async function runAgent(request: AgentRequest, deps: AgentDeps, callbacks
 
   const ledger = new ToolLedger();
   ledger.seedFromHistory(request.history);
-  ledger.addKnownNumbers([deps.context.hubs.length]); // the prompt lists our hubs, so "36 hubs" is a known fact
+  // Facts the system prompt states, so they're known even though no tool returned them: the hub count
+  // ("36 hubs") and this year and last year ("Today is …"), which rule 14 asks the agent to name (D122).
+  const year = Number(deps.context.today.slice(0, 4));
+  ledger.addKnownNumbers([deps.context.hubs.length, year, year - 1]);
   const tools = buildTools(deps.context, { ledger, callbacks });
   const system = buildSystemPrompt(deps.context);
   const newMessages: ModelMessage[] = [{ role: "user", content: message }];

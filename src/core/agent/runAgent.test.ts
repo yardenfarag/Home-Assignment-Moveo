@@ -72,6 +72,14 @@ describe("runAgent", () => {
     expect(result.answer.meta.retried).toBe(false);
   });
 
+  it("treats this year and last year as known facts, not untraced numbers (D122)", async () => {
+    const withYears = { ...goodAnswer, answer: `Yes — Dallas is High (${score.overallScore}). Plan the upgrade for 2026, after the 2025 season.` };
+    const model = new MockLanguageModelV4({ doStream: [toolCallStep("explain_hub_score", { hubId: "dallas" }), answerStep(withYears)] });
+    const result = await runAgent({ message: "Should we upgrade Dallas this year?", history: [] }, { model, modelId: "mock/model", context: ctx });
+    expect(ctx.today.startsWith("2026")).toBe(true);
+    expect(result.answer.meta.warnings).toEqual([]);
+  });
+
   it("retries once when the answer uses a number no tool returned, then succeeds", async () => {
     const invented = { ...goodAnswer, dataUsed: [{ hubId: "dallas", label: "overall", value: 12.34, unit: "score" }] };
     const model = new MockLanguageModelV4({
