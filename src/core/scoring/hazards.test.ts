@@ -51,7 +51,7 @@ describe("computeHazardScores — combination rules (D49)", () => {
   });
 
   it("flood FEMA half takes the worse of inland and coastal", () => {
-    // inland 1.768/3.536 = 50, coastal 4.917/4.917 = 100 → 100; observed rain 2.5/5 = 50 → (50+100)/2 = 75
+    // inland 1.768 per 1,000 sq mi = 1.768/4.7 = 37.6, coastal 4.917/4.917 = 100 → 100; rain 2.5/5 = 50 → (50+100)/2 = 75
     const scores = computeHazardScores(observed({ heavyRainDays: 2.5 }), {
       ...noFema,
       inlandFlood: 1.768,
@@ -92,7 +92,20 @@ describe("computeHazardScores — combination rules (D49)", () => {
     expect(scores.winter.confidence).toBe("medium");
   });
 
+  it("inland flood is per 1,000 sq mi with the area floored at the median county (v2, D123)", () => {
+    // St. Louis City: 1.29 over 67 sq mi → floored to 645.8 → 1.998 → 42.5 (pure per-area would be 100).
+    const tiny = computeHazardScores(observed({ heavyRainDays: 0 }), { ...noFema, countyAreaSqMi: 67, inlandFlood: 1.29 });
+    expect(tiny.flood.femaScore).toBeCloseTo(42.5, 1);
+    // Maricopa (Phoenix): 8.46 over 9,319 sq mi → 0.908 → 19.3 (v1 capped it at 100).
+    const huge = computeHazardScores(observed({ heavyRainDays: 0 }), { ...noFema, countyAreaSqMi: 9319, inlandFlood: 8.46 });
+    expect(huge.flood.femaScore).toBeCloseTo(19.3, 1);
+    // No county area (0 = unknown) → no inland signal (like tornado).
+    const noArea = computeHazardScores(observed({ heavyRainDays: 0 }), { ...noFema, countyAreaSqMi: 0, inlandFlood: 3 });
+    expect(noArea.flood.inputs.find((i) => i.signal === "inlandFloodPer1000SqMi")?.value).toBeNull();
+  });
+
   it("flood has no cross-check: heavy rain and flood warnings measure different things", () => {
+    // 8.46 per 1,000 sq mi (county 1,000 sq mi) is above the 4.7 anchor → FEMA half 100.
     const scores = computeHazardScores(observed({ heavyRainDays: 0 }), { ...noFema, inlandFlood: 8.46 });
     expect(scores.flood.score).toBe(50); // (0 + 100) / 2
     expect(scores.flood.confidence).toBe("high");
@@ -123,6 +136,12 @@ describe("computeHazardScores — realistic regression (Minneapolis, hand-calcul
       strongWind: 4.566,
     },
   );
+
+  it("flood ≈ 37.3 = (rain 1.2/5 = 24 + inland 1.536 per 645.8 sq mi floor = 2.378/4.7 = 50.6) / 2 (v2, D123)", () => {
+    // Hennepin County is 613 sq mi, below the 645.8 sq mi floor, so the floor is used.
+    expect(scores.flood.femaScore).toBeCloseTo(50.6, 1);
+    expect(scores.flood.score).toBeCloseTo(37.3, 1);
+  });
 
   it("winter ≈ 86.5 = (max(52, 86.7) + max(66.1, 86.3, 31.3)) / 2, High (sources agree)", () => {
     expect(scores.winter.score).toBeCloseTo(86.5, 1);

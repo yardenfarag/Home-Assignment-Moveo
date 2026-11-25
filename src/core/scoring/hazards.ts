@@ -7,14 +7,15 @@
  * |---------------|-----------------------------------|---------------------------------------------|
  * | hurricane     | —                                 | hurricane                                   |
  * | winter        | max(snow days, extreme cold days) | max(winter weather, cold wave, ice storm)   |
- * | flood         | heavy rain days                   | max(inland flood, coastal flood)            |
+ * | flood         | heavy rain days                   | max(inland flood per area*, coastal flood) |
  * | severeStorms  | —                                 | avg(tornado per 1,000 sq mi, hail)          |
  * | wind          | gust ≥72 km/h days                | strong wind                                 |
  * | heat          | extreme heat days                 | heat wave                                   |
  *
  * Hazard score = average of the halves that exist.
+ * \* per 1,000 sq mi of county, with the area floored at the median US county (D123).
  */
-import { FEMA_ANCHORS_P95 as FEMA, OBSERVED_ANCHORS as OBS } from "./config";
+import { FEMA_ANCHORS_P95 as FEMA, INLAND_FLOOD_AREA_FLOOR_SQ_MI, OBSERVED_ANCHORS as OBS } from "./config";
 import { femaOnlyConfidence, hybridConfidence, type ConfidenceResult } from "./confidence";
 import { linearScore } from "./normalize";
 import type { ObservedSignals } from "./observedSignals";
@@ -115,6 +116,11 @@ export function computeHazardScores(observed: ObservedSignals | null, fema: Fema
   const fem = (signal: keyof typeof FEMA, value: number | null | undefined, unit = events) =>
     input(signal, "fema", value ?? null, unit, FEMA[signal], true);
 
+  // Inland flood per 1,000 sq mi, with the area floored at the median US county (D123).
+  const inlandFloodDensity =
+    f.inlandFlood === undefined || f.inlandFlood === null || !f.countyAreaSqMi
+      ? null
+      : (f.inlandFlood / Math.max(f.countyAreaSqMi, INLAND_FLOOD_AREA_FLOOR_SQ_MI)) * 1_000;
   const tornadoDensity =
     f.tornado === undefined || f.tornado === null || !f.countyAreaSqMi ? null : (f.tornado / f.countyAreaSqMi) * 1_000;
 
@@ -148,7 +154,7 @@ export function computeHazardScores(observed: ObservedSignals | null, fema: Fema
       hazard: "flood",
       observed: { inputs: [obs("heavyRainDays", o?.heavyRainDays)], how: "max" },
       fema: {
-        inputs: [fem("inlandFlood", f.inlandFlood, "event-days/yr"), fem("coastalFlood", f.coastalFlood)],
+        inputs: [fem("inlandFloodPer1000SqMi", inlandFloodDensity, "event-days/yr per 1,000 sq mi"), fem("coastalFlood", f.coastalFlood)],
         how: "max",
       },
       // Heavy-rain days and county-wide flood warnings measure different things (D56).

@@ -2,7 +2,8 @@
  * @module scripts/compute-fema-anchors
  *
  * Recomputes the FEMA "100" anchors (D47): the 95th percentile of each signal
- * across all US counties where FEMA rates the hazard. Tornado is per area (D53).
+ * across all US counties where FEMA rates the hazard. Tornado is per area (D53);
+ * inland flood is per area with the area floored at the median US county (D123).
  *
  * `npm run fema:anchors` prints the values; they are then frozen by hand in
  * src/core/scoring/config.ts (FEMA_ANCHORS_P95) so scores never shift silently
@@ -47,15 +48,20 @@ async function fetchAllCounties(): Promise<CountyRow[]> {
 async function main(): Promise<void> {
   const rows = await fetchAllCounties();
   console.log(`Counties: ${rows.length} · NRI version: ${rows[0]?.NRI_VER}`);
+  // Inland flood's area floor (D123): the median US county area → INLAND_FLOOD_AREA_FLOOR_SQ_MI.
+  const medianArea = percentile(rows.map((r) => Number(r.AREA)).filter((a) => a > 0), 0.5);
+  console.log(`${"Median county area".padEnd(34)} = ${round(medianArea, 1)} sq mi  (INLAND_FLOOD_AREA_FLOOR_SQ_MI)`);
   for (const field of AFREQ_FIELDS) {
-    const values =
+    const rated = rows.filter((r) => r[`${field}_AFREQ`] !== null && Number(r.AREA) > 0);
+    const freq = (r: CountyRow) => Number(r[`${field}_AFREQ`]);
+    // Scored per 1,000 sq mi: tornado per county area (D53), inland flood per area floored at the median (D123).
+    const [label, values] =
       field === "TRND"
-        ? rows
-            .filter((r) => r.TRND_AFREQ !== null && Number(r.AREA) > 0)
-            .map((r) => (Number(r.TRND_AFREQ) / Number(r.AREA)) * 1_000)
-        : rows.filter((r) => r[`${field}_AFREQ`] !== null).map((r) => Number(r[`${field}_AFREQ`]));
-    const label = field === "TRND" ? "TRND per 1,000 sq mi" : `${field}_AFREQ`;
-    console.log(`${label.padEnd(22)} p95 = ${round(percentile(values, 0.95), 3)}  (n=${values.length})`);
+        ? ["TRND per 1,000 sq mi", rated.map((r) => (freq(r) / Number(r.AREA)) * 1_000)]
+        : field === "IFLD"
+          ? ["IFLD per 1,000 sq mi (area ≥ median)", rated.map((r) => (freq(r) / Math.max(Number(r.AREA), medianArea)) * 1_000)]
+          : [`${field}_AFREQ`, rated.map(freq)];
+    console.log(`${label.padEnd(34)} p95 = ${round(percentile(values, 0.95), 3)}  (n=${values.length})`);
   }
 }
 

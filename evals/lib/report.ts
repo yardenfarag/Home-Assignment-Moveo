@@ -280,14 +280,14 @@ export function printFloodReview(ctx: AgentContext): void {
         observed: flood.observedScore,
         fema: flood.femaScore,
         rainDays: input("heavyRainDays"),
-        inland: input("inlandFlood"),
+        inland: input("inlandFloodPer1000SqMi"),
         coastal: input("coastalFlood"),
       };
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
-  console.log("\n🌊 Flood review (D57) — top 10 by flood score");
-  console.log("   hub              score  observed  FEMA   heavy-rain d/yr  inland ev-d/yr  coastal ev/yr");
+  console.log("\n🌊 Flood review (D57, D123) — top 10 by flood score");
+  console.log("   hub              score  observed  FEMA   heavy-rain d/yr  inland /1k sq mi  coastal ev/yr");
   for (const r of rows) {
     console.log(
       `   ${r.hub.padEnd(16)} ${f(r.score).padStart(5)}  ${String(r.observed ?? "—").padStart(8)}  ${String(r.fema ?? "—").padStart(5)}` +

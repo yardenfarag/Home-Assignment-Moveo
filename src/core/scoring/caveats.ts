@@ -39,7 +39,7 @@ export function hazardCaveats(hazard: Hazard, units: UnitSystem): string[] {
       ];
     case "flood":
       return [
-        `Heavy-rain days, ${t("heavy_rain_day")}, are not the same as flooding; FEMA's flood frequency counts flood warnings anywhere in the county.`,
+        `Heavy-rain days, ${t("heavy_rain_day")}, are not the same as flooding. FEMA's inland flood frequency counts flood warnings anywhere in the county, so it is divided by the county's area (never less than a typical county's), which keeps very large counties from looking overstated. Large counties that are urban throughout can be understated instead.`,
         "In very large counties (e.g. Phoenix, Las Vegas, Los Angeles) FEMA's flood frequency is likely overstated, and for many big metros it is at the top of the scale.",
       ];
     case "severeStorms":
