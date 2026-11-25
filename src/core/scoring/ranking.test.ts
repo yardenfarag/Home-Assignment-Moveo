@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { competitionRanks, rankHubs } from "./ranking";
+import { competitionRanks, rankHubs, scoreSpread } from "./ranking";
 
 describe("competitionRanks", () => {
   it("gives ties the same rank and skips after them (1, 2, 2, 4)", () => {
@@ -10,6 +10,21 @@ describe("competitionRanks", () => {
       { id: "d", score: 10 },
     ]);
     expect(Object.fromEntries(ranks)).toEqual({ a: 1, b: 2, c: 2, d: 4 });
+  });
+});
+
+describe("scoreSpread (E10 — gaps are computed in code, never by the LLM)", () => {
+  it("names the highest and lowest and the points between them (rounded to 1 decimal)", () => {
+    expect(
+      scoreSpread([
+        { hubId: "houston", score: 69.1 },
+        { hubId: "denver", score: 57.9 },
+      ]),
+    ).toEqual({ highestHubId: "houston", lowestHubId: "denver", spread: 11.2 });
+  });
+
+  it("returns null for fewer than two scores", () => {
+    expect(scoreSpread([{ hubId: "a", score: 1 }])).toBeNull();
   });
 });
 

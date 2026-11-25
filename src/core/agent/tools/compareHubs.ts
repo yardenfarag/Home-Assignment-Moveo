@@ -8,7 +8,7 @@ import { z } from "zod";
 import { GENERAL_CAVEATS, hazardCaveats } from "../../scoring/caveats";
 import { weakestConfidence } from "../../scoring/confidence";
 import { riskLevelFor } from "../../scoring/overall";
-import { competitionRanks } from "../../scoring/ranking";
+import { competitionRanks, scoreSpread } from "../../scoring/ranking";
 import { HAZARDS, type Hazard } from "../../scoring/types";
 import type { AgentContext } from "../context";
 import { hubLabel, runTool, type HubIdSchema, type ToolRuntime } from "./shared";
@@ -77,9 +77,15 @@ export function compareHubsOutput(ctx: AgentContext, input: { hubIds: string[]; 
       ),
     };
   });
+  const spreadOf = (pick: (hubId: string) => number) => scoreSpread(input.hubIds.map((hubId) => ({ hubId, score: pick(hubId) })));
   return {
     totalHubs: all.length,
     hubs,
+    /** Gaps between the compared hubs, computed in code — quote these instead of subtracting (E10). */
+    gaps: {
+      overall: spreadOf((id) => ctx.snapshotByHub.get(id)!.overallScore),
+      ...Object.fromEntries(hazards.map((h) => [h, spreadOf((id) => ctx.snapshotByHub.get(id)!.hazards[h].score)])),
+    },
     hubIds: input.hubIds,
     confidence: weakestConfidence(
       input.hubIds.flatMap((id) => hazards.map((h) => ctx.snapshotByHub.get(id)!.hazards[h].confidence)),

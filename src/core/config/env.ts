@@ -20,15 +20,27 @@ const supabaseEnvSchema = z.object({
 /** Validated Supabase settings. */
 export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
 
+/** An OpenRouter model slug: `provider/model`, e.g. `anthropic/claude-sonnet-5.5`. */
+const modelSlug = z.string().regex(/^[a-z0-9-]+\/[a-z0-9.:-]+$/, "expected provider/model, e.g. anthropic/claude-sonnet-5.5");
+
 /** Environment variables for the LLM (OpenRouter). Server-side only. */
 const openRouterEnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(20),
-  /** OpenRouter model slug, e.g. `anthropic/claude-sonnet-5.5` (chosen in G9; re-chosen by the Step 8 bakeoff). */
-  OPENROUTER_MODEL: z.string().regex(/^[a-z0-9-]+\/[a-z0-9.:-]+$/, "expected provider/model, e.g. anthropic/claude-sonnet-5.5"),
+  /** The answering model (chosen in G9; re-chosen by the Step 8 bakeoff). */
+  OPENROUTER_MODEL: modelSlug,
 });
 
 /** Validated OpenRouter settings. */
 export type OpenRouterEnv = z.infer<typeof openRouterEnvSchema>;
+
+/** The answer judge (J2): a cheap model from a DIFFERENT provider than the answering model. Same OpenRouter key. */
+const judgeEnvSchema = z.object({
+  OPENROUTER_API_KEY: z.string().min(20),
+  JUDGE_MODEL: modelSlug,
+});
+
+/** Validated judge settings. */
+export type JudgeEnv = z.infer<typeof judgeEnvSchema>;
 
 /** Site access (Basic Auth, Q16/A2) and the nightly job's secret (A3). */
 const accessEnvSchema = z.object({
@@ -49,6 +61,7 @@ export const ENV_SCHEMAS = {
   supabase: supabaseEnvSchema,
   openRouter: openRouterEnvSchema,
   access: accessEnvSchema,
+  judge: judgeEnvSchema,
 } as const;
 
 /**
@@ -101,4 +114,14 @@ export function getOpenRouterEnv(source: EnvSource = process.env): OpenRouterEnv
  */
 export function getAccessEnv(source: EnvSource = process.env): AccessEnv {
   return parseEnv(accessEnvSchema, source, "getAccessEnv");
+}
+
+/**
+ * Returns validated judge settings.
+ * @param source - variables to read (defaults to `process.env`; injectable for tests).
+ * @returns the API key and judge model slug.
+ * @throws BoundaryError when a variable is missing or malformed.
+ */
+export function getJudgeEnv(source: EnvSource = process.env): JudgeEnv {
+  return parseEnv(judgeEnvSchema, source, "getJudgeEnv");
 }

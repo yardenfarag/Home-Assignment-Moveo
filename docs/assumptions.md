@@ -34,7 +34,9 @@ How these are handled is in [decisions.md](decisions.md) D47–D58. The numbers 
   - **Mountains:** King County (Seattle) includes the Cascades and Salt Lake County the Wasatch, which inflates FEMA winter weather.
     Seattle's winter is flagged **Medium confidence** because the sources disagree (D52).
 - **The FEMA flood half caps at 100 for 15 of 36 hubs** (metros issue many flood warnings), so FEMA alone can't separate
-  them. The observed half still does. **To revisit in Step 7** (D57).
+  them, and flood rankings are effectively driven by observed heavy-rain days. County size also distorts the FEMA half
+  (small Orleans Parish scores *lower*, huge Los Angeles County *higher*). Reviewed in Step 7 and kept for v1 (D97).
+  Planned fix: score inland flood per county area.
 - **Heavy rain ≠ flooding.** The flood score blends heavy-rain days with FEMA's flood warnings but doesn't cross-check them (D56).
 - **Ice storms come from FEMA only.** Observed weather has no ice signal (D56).
 - **Heavy-snow days (≥15 cm) and warning-level gusts (≥93 km/h) are reported, not scored.** The modeled data barely

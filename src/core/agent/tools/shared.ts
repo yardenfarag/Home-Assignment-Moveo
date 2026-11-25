@@ -27,6 +27,12 @@ export interface ToolErrorOutput extends ToolOutputBase {
   error: string;
 }
 
+/** Short reply for a repeated identical call in the same answer (E8). */
+export interface DuplicateCallOutput extends ToolOutputBase {
+  sameAsEarlierCall: true;
+  note: string;
+}
+
 /**
  * Runs a tool body with progress callbacks, ledger recording and error capture.
  * @param name - tool name.
@@ -40,7 +46,20 @@ export async function runTool<T extends ToolOutputBase>(
   input: unknown,
   runtime: ToolRuntime,
   body: () => Promise<T> | T,
-): Promise<T | ToolErrorOutput> {
+): Promise<T | ToolErrorOutput | DuplicateCallOutput> {
+  if (!runtime.ledger.claim(name, input)) {
+    // E8: the model repeated a call it already made in this answer. Don't re-run it or re-send the
+    // (often large) result — reply briefly. Still recorded, so the duplicate stays measurable.
+    const output: DuplicateCallOutput = {
+      sameAsEarlierCall: true,
+      note: "Identical to a call you already made in this answer — use that earlier result.",
+      hubIds: [],
+      confidence: null,
+      caveats: [],
+    };
+    runtime.ledger.record(name, input, output);
+    return output;
+  }
   runtime.callbacks.onToolStart?.(name, input);
   let output: T | ToolErrorOutput;
   try {

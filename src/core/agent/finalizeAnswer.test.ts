@@ -64,6 +64,18 @@ describe("finalizeAnswer — numbers must come from tools (G3)", () => {
     expect(result.ok && result.answer.meta.warnings).toEqual([]);
   });
 
+  it("knows the method's own facts: cutoffs, formula weights, 50/50 blend, thresholds (from config)", () => {
+    const result = finalizeAnswer(
+      answer({
+        answer:
+          "Dallas scores 72.4: High starts at 67. Overall = 0.6 × weighted average + 0.4 × worst hazard; hurricane weighs 25%. " +
+          "Winter blends 50% observed with 50% FEMA; a snow day is ≥ 0.4 in (1 cm).",
+      }),
+      context(),
+    );
+    expect(result.ok && result.answer.meta.warnings).toEqual([]);
+  });
+
   it("warns (does not block) about numbers in the text that no tool returned", () => {
     const result = finalizeAnswer(answer({ answer: "Dallas scores 72.4, roughly 3 times riskier than average." }), context());
     expect(result.ok).toBe(true);

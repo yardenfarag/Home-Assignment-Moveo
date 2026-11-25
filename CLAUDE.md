@@ -96,3 +96,8 @@ Each one: *next time you see X → do Y*.
    owner before trusting a test.
 18. **Judging UI from code** → drive the real app and look at screenshots (headless Chrome over the DevTools protocol
    with an Authorization header). Three layout bugs were invisible in the code and obvious in the screenshots.
+19. **An LLM judge fails many answers** → first check that it sees everything the agent saw (system prompt, earlier
+   turns). Then grade the same answers twice before trusting a verdict. Ours missed the hub list (false 1/5 scores), and
+   its pass/fail flipped on 4 of 14 identical answers. Only the faithfulness score was stable enough to gate on.
+20. **Writing TS/JS through a bash heredoc + `node -e` replace** → escapes get mangled (`\n` turned into real newlines,
+   `$$` collapsed to `$` by `String.replace`). Use the Edit tool for code changes.
