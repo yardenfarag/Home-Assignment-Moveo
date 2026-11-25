@@ -34,6 +34,7 @@ const MIDWEST: GuardTurn[] = [
   },
 ];
 
+/** A short earlier conversation about Dallas, used by the follow-up cases. */
 const DALLAS: GuardTurn[] = [
   {
     question: "Why is the Dallas hub's weather disruption risk high?",

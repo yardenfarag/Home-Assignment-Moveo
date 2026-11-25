@@ -5,10 +5,12 @@
  * "Recent changes" card can be demoed without waiting for the weather to move a score.
  */
 import { sendTestAlert } from "../src/core/alerts/sendTestAlert";
+import { runScript } from "./lib/run";
 
-sendTestAlert()
-  .then((message) => console.log(`🔔 Recorded: ${message}\nOpen the app: it appears under "Recent changes", tagged as a test.`))
-  .catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
+/** Records the test alert and says where to see it. */
+async function main(): Promise<void> {
+  const message = await sendTestAlert();
+  console.log(`🔔 Recorded: ${message}\nOpen the app: it appears under "Recent changes", tagged as a test.`);
+}
+
+void runScript(main, "scripts/alerts-test");

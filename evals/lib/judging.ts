@@ -50,11 +50,12 @@ export async function judgeTurns(
           `judge: turn ${i + 1} faithful to data`,
           judgePasses(verdict),
           `verdict ${verdict.verdict}, faithful ${verdict.faithfulToData}/5 — ${verdict.reason}${unsupported}${contradiction}`,
+          "judge",
         ),
       );
     } catch (error) {
       judgments.push({ question: turn.question, verdict: null, error: describeUnknownError(error) });
-      checks.push(check(`judge: turn ${i + 1} faithful to data`, false, `judge unavailable: ${describeUnknownError(error)}`));
+      checks.push(check(`judge: turn ${i + 1} faithful to data`, false, `judge unavailable: ${describeUnknownError(error)}`, "judge"));
     }
   }
   return { judgments, checks };
@@ -68,7 +69,15 @@ export interface JudgeSelfTest {
   details: string[];
 }
 
-/** A minimal answer built around one real tool result. */
+/**
+ * A minimal answer built around one real tool result.
+ * @param text - the planted answer text (right or deliberately wrong).
+ * @param tool - the tool the answer claims to have called.
+ * @param input - that tool call's input.
+ * @param output - the REAL tool output, so the judge grades against actual data.
+ * @param premiseCheck - the premise verdict to attach (or null).
+ * @returns a complete answer the judge can grade.
+ */
 function plantedAnswer(text: string, tool: string, input: object, output: unknown, premiseCheck: FinalAnswer["premiseCheck"]): FinalAnswer {
   return {
     answer: text,
@@ -98,6 +107,7 @@ export async function judgeSelfTest(ctx: AgentContext, judge: JudgeModel): Promi
   const seattle = explainHubScoreOutput(ctx, { hubId: "seattle" });
   const wrongScore = Math.round((dallas.overallScore + 15.3) * 10) / 10;
   const dallasIsHigh = dallas.level === "high";
+  const seattleHurricane = ctx.levelsByHub.get("seattle")!.hazards.hurricane!;
   const planted: { label: string; question: string; answer: FinalAnswer; shouldPass: boolean }[] = [
     {
       label: "correct answer (Dallas) must PASS",
@@ -134,7 +144,7 @@ export async function judgeSelfTest(ctx: AgentContext, judge: JudgeModel): Promi
         "explain_hub_score",
         { hubId: "seattle" },
         seattle,
-        { hubId: "seattle", hazard: "hurricane", claimedLevel: "high", actualLevel: "low", holds: false },
+        { hubId: "seattle", hazard: "hurricane", claimedLevel: "high", actualLevel: seattleHurricane, holds: seattleHurricane === "high" },
       ),
     },
   ];

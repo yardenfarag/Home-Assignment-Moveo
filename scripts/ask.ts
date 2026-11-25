@@ -8,19 +8,16 @@
  */
 import { createAnswerQuestionDeps } from "../src/core/agent/createAnswerQuestionDeps";
 import { answerQuestion } from "../src/core/agent/answerQuestion";
-
-/** Reads `--name=value` from argv or (PowerShell) `npm_config_name`. */
-function flag(name: string): string | undefined {
-  return process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? process.env[`npm_config_${name}`];
-}
+import { installStrayAbortGuard } from "../evals/lib/guards";
+import { flag, positionalArgs, UsageError } from "./lib/cli";
+import { runScript } from "./lib/run";
 
 /** Runs one question and prints the result. */
 async function main(): Promise<void> {
-  const message = process.argv.slice(2).filter((a) => !a.startsWith("--")).join(" ");
-  if (!message) {
-    console.error('Usage: npm run ask -- "your question" [--session=<id>]');
-    process.exit(1);
-  }
+  // Same provider as the evals, so the same stray-abort rejection can happen on a step timeout (D108).
+  installStrayAbortGuard();
+  const message = positionalArgs().join(" ");
+  if (!message) throw new UsageError('Usage: npm run ask -- "your question" [--session=<id>]');
   const started = Date.now();
   const result = await answerQuestion({ sessionId: flag("session") ?? null, message, units: "us" }, createAnswerQuestionDeps(), {
     onToolStart: (tool, input) => console.log(`🔧 ${tool} ${JSON.stringify(input)}`),
@@ -41,7 +38,4 @@ async function main(): Promise<void> {
   console.log(`Session: ${result.sessionId}  (follow up with --session=${result.sessionId})`);
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+void runScript(main, "scripts/ask");

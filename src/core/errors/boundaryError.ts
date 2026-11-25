@@ -2,7 +2,7 @@
  * @module core/errors/boundaryError
  *
  * One error format for every failure at a system boundary (external APIs,
- * database, LLM, Jev, API routes, configuration), so a log line is easy to
+ * database, LLM, Jev, API routes, configuration, script entry points), so a log line is easy to
  * locate at a glance:
  *
  *   `ErrorName || message || functionName || 🐘`
@@ -22,6 +22,8 @@ export const BOUNDARY_EMOJI = {
   config: "🦔",
   /** Something that failed while drawing the UI in the browser (caught by an error boundary). */
   ui: "🦋",
+  /** A script entry point or the eval harness catching an error that isn't a BoundaryError (our own code). */
+  script: "🐈",
 } as const;
 
 /** Name of a system boundary where errors are caught and wrapped. */

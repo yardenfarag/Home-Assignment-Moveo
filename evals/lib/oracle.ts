@@ -11,6 +11,7 @@ import type { DayMetricId } from "../../src/core/scoring/dayMetrics";
 import { rankHubs, type RankMetric } from "../../src/core/scoring/ranking";
 import { HAZARDS, type Confidence, type RiskLevel } from "../../src/core/scoring/types";
 import { computeWeatherStat, resolvePeriod } from "../../src/core/stats/weatherStats";
+import type { DataStamp } from "./types";
 
 /** Expected values for the eval cases. */
 export interface Oracle {
@@ -45,7 +46,7 @@ export function buildOracle(ctx: AgentContext): Oracle {
   return {
     lastYear: Number(ctx.today.slice(0, 4)) - 1,
     hubs: snapshots.map((s) => ({ id: s.hubId, name: ctx.hubById.get(s.hubId)!.name })),
-    ranking: (metric, region) => rankHubs(rows, { metric, region, order: "most", limit: 36 }).map((r) => r.hubId),
+    ranking: (metric, region) => rankHubs(rows, { metric, region, order: "most", limit: rows.length }).map((r) => r.hubId),
     level: (hubId, hazard) => (hazard ? ctx.levelsByHub.get(hubId)!.hazards[hazard]! : ctx.levelsByHub.get(hubId)!.overall),
     hazardScore: (hubId, hazard) => ctx.snapshotByHub.get(hubId)!.hazards[hazard].score,
     hazardConfidence: (hubId, hazard) => ctx.snapshotByHub.get(hubId)!.hazards[hazard].confidence,
@@ -55,4 +56,37 @@ export function buildOracle(ctx: AgentContext): Oracle {
       return computeWeatherStat(days, metric, period).percentOfDays;
     },
   };
+}
+
+/**
+ * Which data the oracle (and the agent) read, saved with every results file (see `DataStamp`).
+ * @param ctx - loaded agent context.
+ * @returns the stamp.
+ */
+export function dataStamp(ctx: AgentContext): DataStamp {
+  const snapshots = [...ctx.snapshotByHub.values()];
+  const runIds = new Set(snapshots.map((s) => s.runId));
+  return {
+    today: ctx.today,
+    scoringRunId: runIds.size === 1 ? [...runIds][0] : null,
+    window: snapshots[0] ? { start: snapshots[0].window.start, end: snapshots[0].window.end } : null,
+    weatherLatest: ctx.weatherBounds.latest,
+  };
+}
+
+/**
+ * How two data stamps differ in ways that change expected values: the scores ("last year" and
+ * the scoring run/window). A newer weather day alone doesn't change any case's expected value.
+ * @param saved - the stamp in a saved results file.
+ * @param now - today's stamp.
+ * @returns what differs, empty when the expected values are the same.
+ */
+export function dataDifferences(saved: DataStamp, now: DataStamp): string[] {
+  const differences: string[] = [];
+  if (saved.today.slice(0, 4) !== now.today.slice(0, 4)) differences.push(`"last year" was ${Number(saved.today.slice(0, 4)) - 1}, now ${Number(now.today.slice(0, 4)) - 1}`);
+  if (saved.scoringRunId !== now.scoringRunId) differences.push(`scoring run ${saved.scoringRunId ?? "mixed"} → ${now.scoringRunId ?? "mixed"}`);
+  if (saved.window?.start !== now.window?.start || saved.window?.end !== now.window?.end) {
+    differences.push(`scoring window ${saved.window?.start}…${saved.window?.end} → ${now.window?.start}…${now.window?.end}`);
+  }
+  return differences;
 }

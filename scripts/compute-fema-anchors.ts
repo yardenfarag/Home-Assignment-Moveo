@@ -11,11 +11,19 @@
  */
 import { fetchJsonWithRetry } from "../src/core/data/http";
 import { percentile, round } from "../src/core/utils/stats";
+import { runScript } from "./lib/run";
 
+/** FEMA's National Risk Index county layer (ArcGIS feature service query endpoint). */
 const LAYER =
   "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Counties/FeatureServer/0/query";
+
+/**
+ * NRI hazard codes whose annualized frequency (`<CODE>_AFREQ`) we anchor: hurricane, tornado, hail,
+ * inland flood, coastal flood, ice storm, winter weather, cold wave, heat wave, strong wind.
+ */
 const AFREQ_FIELDS = ["HRCN", "TRND", "HAIL", "IFLD", "CFLD", "ISTM", "WNTW", "CWAV", "HWAV", "SWND"] as const;
 
+/** One county's attributes as the layer returns them (field name → value). */
 type CountyRow = Record<string, number | string | null>;
 
 /**
@@ -53,6 +61,11 @@ async function main(): Promise<void> {
   console.log(`${"Median county area".padEnd(34)} = ${round(medianArea, 1)} sq mi  (INLAND_FLOOD_AREA_FLOOR_SQ_MI)`);
   for (const field of AFREQ_FIELDS) {
     const rated = rows.filter((r) => r[`${field}_AFREQ`] !== null && Number(r.AREA) > 0);
+    /**
+     * A county's annualized frequency for this hazard.
+     * @param r - the county row.
+     * @returns events per year.
+     */
     const freq = (r: CountyRow) => Number(r[`${field}_AFREQ`]);
     // Scored per 1,000 sq mi: tornado per county area (D53), inland flood per area floored at the median (D123).
     const [label, values] =
@@ -65,7 +78,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+void runScript(main, "scripts/compute-fema-anchors");

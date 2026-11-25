@@ -6,41 +6,54 @@
  *
  * Several files for the same model are pooled (e.g. a screen run + a --repeat=2 run).
  * Files graded by a judge other than JUDGE_MODEL (made with --rejudge and another
- * JUDGE_MODEL) go into the cross-judge table (B3) instead of the ranking.
+ * JUDGE_MODEL) go into the cross-judge table (B3) instead of the ranking. Files without a
+ * judge (--no-judge) can't be ranked and are skipped with a warning.
  *
  * Winner rule (B4): 1) gate: zero failures on premise/data checks and p95 ≤ 30 s;
  * 2) accuracy: pass rate, where within 2 case-runs of the best counts as a tie;
  * 3) cheapest per answer among the tied; 4) fastest as the final tiebreak.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { getJudgeEnv } from "../src/core/config/env";
-import { baseModel, judgeReliable, P95_LIMIT_SECONDS, rankModels, summarize, TIE_BAND_RUNS, type ResultsFile } from "../evals/lib/bakeoff";
+import { baseModel, judgeReliable, P95_LIMIT_SECONDS, rankModels, summarize, TIE_BAND_RUNS } from "../evals/lib/bakeoff";
+import { fixed as f, groupBy } from "../evals/lib/helpers";
+import type { ResultsFile } from "../evals/lib/types";
+import { has, positionalArgs, UsageError } from "./lib/cli";
+import { loadResultsFile } from "./lib/results";
+import { runScript } from "./lib/run";
 
-/** Formats a number to fixed decimals. */
-const f = (n: number, d = 1) => n.toFixed(d);
-
-/** Formats a USD amount per answer. */
+/**
+ * Formats a USD amount per answer.
+ * @param n - USD, or null when unknown.
+ * @returns e.g. "$0.0042", or "n/a".
+ */
 const usd = (n: number | null) => (n === null ? "n/a" : n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(3)}`);
+
+/**
+ * The model a results file belongs to (its label without " (rejudged)").
+ * @param file - a results file.
+ * @returns the model id.
+ */
+const modelOf = (file: ResultsFile) => baseModel(file.label);
 
 /** Runs the comparison. */
 function main(): void {
-  const paths = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  if (paths.length === 0) throw new Error("Usage: npm run bakeoff -- <evals/results/…json> [more.json …]");
+  const paths = positionalArgs();
+  if (paths.length === 0) throw new UsageError("Usage: npm run bakeoff -- <evals/results/…json> [more.json …]");
   const primaryJudge = getJudgeEnv().JUDGE_MODEL;
-  const files = paths.map((p) => JSON.parse(readFileSync(p, "utf8")) as ResultsFile);
-  const modelOf = (f: ResultsFile) => baseModel(f.label);
-  const primary = files.filter((f) => f.judge === primaryJudge);
-  const cross = files.filter((f) => f.judge && f.judge !== primaryJudge);
-  /** Groups files by a key. */
-  const groupBy = (list: ResultsFile[], key: (f: ResultsFile) => string) => {
-    const map = new Map<string, ResultsFile[]>();
-    for (const file of list) map.set(key(file), [...(map.get(key(file)) ?? []), file]);
-    return map;
-  };
+  const loaded = paths.map((path) => ({ path, file: loadResultsFile(path) }));
+  for (const { path } of loaded.filter(({ file }) => !file.judge)) {
+    console.warn(`⚠️  Skipped ${path}: it has no judge (made with --no-judge), so it can't be ranked or cross-checked.`);
+  }
+  const files = loaded.map(({ file }) => file);
+  const primary = files.filter((file) => file.judge === primaryJudge);
+  const cross = files.filter((file) => file.judge && file.judge !== primaryJudge);
 
-  const byModel = new Map<string, ResultsFile[]>();
-  for (const file of primary) byModel.set(modelOf(file), [...(byModel.get(modelOf(file)) ?? []), file]);
+  const byModel = groupBy(primary, modelOf);
   const ranked = rankModels([...byModel].map(([model, fs]) => summarize(model, fs)));
+  // Facts about the inputs, derived from the files rather than retyped.
+  const caseCount = new Set(primary.flatMap((file) => file.runs.map((run) => run.caseId))).size;
+  const plantedCount = Math.max(0, ...[...primary, ...cross].map((file) => file.selfTest?.total ?? 0));
 
   const rows = ranked.map(
     ({ summary: m, verdict }) =>
@@ -55,17 +68,18 @@ function main(): void {
     const reliable = judgeReliable(judgeFiles);
     return [...groupBy(judgeFiles, modelOf)].map(([model, modelFiles]) => {
       const s = summarize(model, modelFiles);
-      const main = byModel.get(model) ? summarize(model, byModel.get(model)!) : null;
+      const primaryFiles = byModel.get(model);
+      const onPrimary = primaryFiles ? summarize(model, primaryFiles) : null;
       return (
-        `| ${judgeId} ${reliable ? "✅" : "❌ unreliable, ignore"} | ${model} | ${s.passed}/${s.caseRuns} | ${main ? `${main.passed}/${main.caseRuns}` : "n/a"} | ` +
-        `${s.judgeFailures} | ${main ? main.judgeFailures : "n/a"} | ${s.faithful === null ? "n/a" : f(s.faithful)} | ${s.judgeInconsistent} |`
+        `| ${judgeId} ${reliable ? "✅" : "❌ unreliable, ignore"} | ${model} | ${s.passed}/${s.caseRuns} | ${onPrimary ? `${onPrimary.passed}/${onPrimary.caseRuns}` : "n/a"} | ` +
+        `${s.judgeFailures} | ${onPrimary ? onPrimary.judgeFailures : "n/a"} | ${s.faithful === null ? "n/a" : f(s.faithful)} | ${s.judgeInconsistent} |`
       );
     });
   });
 
   const markdown = `# Model bakeoff
 
-Generated by \`npm run bakeoff\` from saved eval runs (same prompt, same 13 cases, no per-model tuning).
+Generated by \`npm run bakeoff\` from saved eval runs (same prompt, same ${caseCount} cases, no per-model tuning).
 Rule (D107): **gate** (zero premise/data check failures, p95 ≤ ${P95_LIMIT_SECONDS}s) → **accuracy** (within ${TIE_BAND_RUNS} case-runs of the best = tie) → **cost per answer** → **speed**.
 
 | Model | Cases passed | Gate fails | Judge fails | Cost / answer | Avg / p95 s | Tool calls | Dups | Untraced | Retries | Faithful (1–5) | Verdict |
@@ -77,7 +91,7 @@ ${
   crossRows.length
     ? `## Cross-judge check (B3)
 The same answers re-graded by a judge from another provider, to catch a judge favoring its own model family.
-A judge counts as reliable only if it grades all 3 planted answers right in every run and never contradicts itself (D109).
+A judge counts as reliable only if it grades all ${plantedCount} planted answers right in every run and never contradicts itself (D109).
 
 | Cross judge | Model | Passed (cross) | Passed (${primaryJudge}) | Judge fails (cross) | Judge fails (${primaryJudge}) | Faithful (cross) | Self-contradicting |
 |---|---|---|---|---|---|---|---|
@@ -86,15 +100,10 @@ ${crossRows.join("\n")}
     : ""
 }`;
   console.log(markdown);
-  if (process.argv.includes("--publish") || process.env.npm_config_publish === "true") {
+  if (has("publish")) {
     writeFileSync("docs/bakeoff.md", markdown);
     console.log("Written to docs/bakeoff.md");
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-}
+void runScript(main, "scripts/bakeoff");

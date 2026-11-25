@@ -6,6 +6,7 @@
  */
 import { listActiveHubs } from "../src/core/db/hubsRepository";
 import { CENSUS_REGIONS } from "../src/core/domain/hub";
+import { runScript } from "./lib/run";
 
 /** Prints how many active hubs exist per Census region. */
 async function main(): Promise<void> {
@@ -17,7 +18,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+void runScript(main, "scripts/check-db");

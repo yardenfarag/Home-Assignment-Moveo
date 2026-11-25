@@ -38,6 +38,36 @@ describe("runEvalSuite (D130)", () => {
     expect(summary.cases.map((c) => c.caseId)).toEqual(["slow", "b", "c"]);
     expect(summary.cases[1]).toMatchObject({ pass: false, failed: ["numbers-match"], seconds: 1.5 });
   });
+
+  const options = { agent: { modelId: "test/model" } as AgentModel, context: {} as AgentContext, judge: null, onEvent: () => {} };
+
+  it("a case whose checks throw fails as 'case crashed' and every other case is kept (B3)", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const broken: EvalCase = { ...makeCase("broken", true), check: () => { throw new Error("regex exploded"); } };
+    const { runs, summary } = await runEvalSuite({ ...options, cases: [makeCase("a", true), broken, makeCase("c", true)] });
+    expect(summary).toMatchObject({ passed: 2, total: 3 });
+    expect(runs[1].checks).toEqual([expect.objectContaining({ name: "case crashed", pass: false, kind: "setup", detail: "regex exploded" })]);
+    expect(errors.mock.calls.flat().join(" ")).toMatch(/regex exploded .*🐈/);
+    errors.mockRestore();
+  });
+
+  it("starts no new case after the deadline and reports the rest as skipped (S10)", async () => {
+    const events: { type: string }[] = [];
+    const { summary } = await runEvalSuite({ ...options, concurrency: 1, deadlineMs: 10, cases: [makeCase("slow", true), makeCase("b", true), makeCase("c", true)], onEvent: (e) => events.push(e) });
+    expect(summary.cases.map((c) => [c.caseId, c.pass, c.failed])).toEqual([
+      ["slow", true, []],
+      ["b", false, ["skipped: out of time"]],
+      ["c", false, ["skipped: out of time"]],
+    ]);
+    expect(events.filter((e) => e.type === "case")).toHaveLength(3);
+  });
+
+  it("records who started the run (N3) and survives a throwing progress listener", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { summary } = await runEvalSuite({ ...options, trigger: "cli", cases: [makeCase("a", true)], onEvent: () => { throw new Error("browser gone"); } });
+    expect(summary).toMatchObject({ trigger: "cli", passed: 1, total: 1 });
+    errors.mockRestore();
+  });
 });
 
 describe("latestRunSummary", () => {
