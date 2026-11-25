@@ -78,6 +78,16 @@ export function softMetrics(runs: CaseRun[], pricing: Pricing | null): SoftMetri
 const f = (n: number, d = 1) => n.toFixed(d);
 
 /**
+ * Token counts as text. A remote run (`--url`) can't see them: the streamed API doesn't carry usage.
+ * @param metrics - soft metrics.
+ * @returns "in / out", or a plain "n/a" explanation.
+ */
+function tokensText(metrics: SoftMetrics): string {
+  if (metrics.inputTokens === 0 && metrics.outputTokens === 0) return "n/a (remote run: the API stream doesn't report tokens)";
+  return `${metrics.inputTokens.toLocaleString()} in / ${metrics.outputTokens.toLocaleString()} out`;
+}
+
+/**
  * Prints the per-case table and the totals to the terminal.
  * @param runs - case runs.
  * @param metrics - soft metrics.
@@ -98,7 +108,7 @@ export function printReport(runs: CaseRun[], metrics: SoftMetrics, label: string
   console.log(
     `   avg ${f(metrics.avgToolCalls)} tool calls · ${metrics.duplicateCalls} duplicate calls · ${metrics.untracedNumbers} untraced numbers · ` +
       `${metrics.retries} retries · avg ${f(metrics.avgSeconds)}s (p95 ${f(metrics.p95Seconds)}s) · ` +
-      `${metrics.inputTokens.toLocaleString()} in / ${metrics.outputTokens.toLocaleString()} out tokens` +
+      `tokens ${tokensText(metrics)}` +
       (metrics.costUsd !== null ? ` · ≈ $${f(metrics.costUsd, 3)}` : ""),
   );
 }
@@ -215,7 +225,7 @@ ${rows.join("\n")}
 | Numbers in text not traced to tools | ${metrics.untracedNumbers} |
 | Answers that needed a validation retry | ${metrics.retries} |
 | Avg / p95 seconds per answer | ${f(metrics.avgSeconds)} / ${f(metrics.p95Seconds)} |
-| Tokens (in / out) | ${metrics.inputTokens.toLocaleString()} / ${metrics.outputTokens.toLocaleString()} |
+| Tokens (in / out) | ${tokensText(metrics)} |
 | Estimated cost | ${metrics.costUsd !== null ? `$${f(metrics.costUsd, 3)}` : "n/a"} |
 ${judgeSection(runs, meta.judgeModel, meta.selfTest)}`;
 }

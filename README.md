@@ -25,7 +25,7 @@ the result, and code checks the explanation before you see it.
 - [Data attribution](#data-attribution)
 
 ## Try it
-- **Live app:** the Vercel URL is added here at deployment (Step 10).
+- **Live app: https://sneakoscope.vercel.app**
 - **No sign-in needed.** Just open the link. To protect the shared budget, each visitor can ask **20 questions per
   10 minutes and 100 per day**, and everyone together **300 per day**.
 - Click one of the example questions on the start screen, or type your own. Use the **US / Metric** switch for
@@ -71,7 +71,7 @@ The full picture, with diagrams and links down to the line of code: **[docs/desi
 | 7 | Zod-validated tool inputs and final answer; retry once, then a clear error | [src/core/agent/answerSchema.ts](src/core/agent/answerSchema.ts), [src/core/agent/finalizeAnswer.ts](src/core/agent/finalizeAnswer.ts), [design §3](docs/design.md#3-how-the-llm-is-kept-from-inventing-numbers) |
 | 8 | 10–15 eval questions, `npm run eval` with pass/fail and a total | 13 cases in [evals/cases.ts](evals/cases.ts); results in [docs/evals.md](docs/evals.md) |
 | 9 | Assumptions, uncertainty and scope, in docs and in answers | [docs/assumptions.md](docs/assumptions.md); every answer carries a code-computed confidence, assumptions and limitations |
-| 10 | README, short design doc, Vercel deployment | This file, [docs/design.md](docs/design.md), live URL in Step 10 |
+| 10 | README, short design doc, Vercel deployment | This file, [docs/design.md](docs/design.md), live at https://sneakoscope.vercel.app |
 
 ## Run it locally
 **You need:** Node 22+, a free [Supabase](https://supabase.com) project, and an [OpenRouter](https://openrouter.ai) API key.
